@@ -1,0 +1,51 @@
+#!/bin/bash
+
+url="192.168.1.15:5000"
+verbose=
+
+python drivers/sqlite.py
+
+read -r -d '' cmdlist << EOM
+curl -s $url/dishes/
+curl -s $url/ingredients/
+curl -s -d 'name=Tartare&directions=Mix meat with ingredients' -X POST $url/dishes/new
+curl -s $url/dishes/0bf4e96db4a7f25aa91e5ca9abb226526675e0f90a25eae555e2438d4396f880
+curl -s -d 'ingredient=Minced Beef&quantity=500g' -X POST $url/dishes/0bf4e96db4a7f25aa91e5ca9abb226526675e0f90a25eae555e2438d4396f880/ingredient
+curl -s -d 'ingredient=Onion&quantity=One' -X POST $url/dishes/0bf4e96db4a7f25aa91e5ca9abb226526675e0f90a25eae555e2438d4396f880/ingredient
+curl -s -d 'ingredient=Onion&quantity=Two' -X POST $url/dishes/0bf4e96db4a7f25aa91e5ca9abb226526675e0f90a25eae555e2438d4396f880/ingredient
+curl -s -d 'ingredient=Onion&quantity=0' -X POST $url/dishes/0bf4e96db4a7f25aa91e5ca9abb226526675e0f90a25eae555e2438d4396f880/ingredient
+curl -s $url/dishes/0bf4e96db4a7f25aa91e5ca9abb226526675e0f90a25eae555e2438d4396f880/delete
+curl -s -d 'name=Goulash&directions=- Blanch the pork in parprika and butter with the onion chopped\n- Once the pork is seized, deglaze with the white wine' -X POST $url/dishes/new
+EOM
+
+function cut_string() {
+	if [ $(echo "$1" | wc -c) -gt 80 ] ; then
+		echo "$(echo $1 | cut -c1-77)..."
+	else
+		echo "$1"
+	fi
+}
+
+function execute() {
+	echo -e "\e[1mExecuting: $(cut_string "$1") \e[0m"
+	data=$(eval $1)
+	json=$(echo $data | python -m json.tool 2>/dev/null)
+	status=$?
+
+	if [ $verbose ] ; then
+		echo "$json"
+	fi
+
+	if [ $status -eq 1 ] ; then
+		echo -e "\e[31m\e[1mError in call: $1\e[0m"
+		echo "$data"
+		exit 1
+	fi
+}
+
+while IFS= read -r line
+do
+   execute "$line"
+done < <(printf '%s\n' "$cmdlist")
+
+echo -e "\e[32m\e[1mTests OK\e[0m"
