@@ -8,11 +8,11 @@ class store:
 
     @property
     def dishes(self):
-        return [Dish(params) for params in self.driver.get_dish({})]
+        return [Dish(params, self) for params in self.driver.get_dish({})]
 
     @property
     def ingredients(self):
-        return [ingredient(params) for params in self.driver.get_ingredient({})]
+        return [Ingredient(params, self) for params in self.driver.get_ingredient({})]
 
     def save(self, dish):
         return self.driver.put_dish(dish)
@@ -22,6 +22,14 @@ class store:
 
     def load(self, query):
         return [Dish(params, self) for params in self.driver.get_dish(query)]
+
+    def load_one(self, query):
+        results = self.load(query)
+
+        if len(results) == 0:
+            return None
+
+        return results[0]
 
     def create(self, params):
         return Dish(params, self)
