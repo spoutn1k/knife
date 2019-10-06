@@ -1,6 +1,6 @@
 #!/bin/bash
 
-url="http://hmrouter/knife"
+url=$1
 verbose=
 
 python drivers/sqlite.py
