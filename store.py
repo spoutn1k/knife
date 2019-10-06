@@ -1,5 +1,5 @@
 from dish import Dish
-from ingredient import ingredient
+from ingredient import Ingredient
 import drivers
 
 class store:
@@ -21,19 +21,30 @@ class store:
         return self.driver.delete_dish(query)
 
     def load(self, query):
-        return [Dish(params) for params in self.driver.get_dish(query)]
+        return [Dish(params, self) for params in self.driver.get_dish(query)]
 
     def create(self, params):
         return Dish(params, self)
+
+    def get_ingredient(self, params):
+        params = {'name': params['ingredient']}
+        stored = self.driver.get_ingredient(params)
+
+        if len(stored):
+            return Ingredient(stored[0], self)
+
+        ingredient = Ingredient(params, self)
+        self.driver.put_ingredient(ingredient)
+        return ingredient
 
     def add(self, params):
         ing_list = self.driver.get_ingredient({'name': params['ingredient']})
 
         if len(ing_list) == 0:
-            ing = ingredient({'name': params['ingredient']})
+            ing = Ingredient({'name': params['ingredient']}, self)
             self.driver.put_ingredient(ing)
         else:
-            ing = ingredient(ing_list[0])
+            ing = Ingredient(ing_list[0], self)
 
         if params['quantity'] == '0':
             return self.driver.delete_requirement({'dish_id': params['dish'],

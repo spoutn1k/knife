@@ -51,11 +51,14 @@ def close(connexion):
     connexion.commit()
     connexion.close()
 
-def execute(query_string, params=None):
+def execute(template, values=None, params=None):
     CONNEXION, CURSOR = setup(params)
 
     try:
-        CURSOR.execute(query_string)
+        if values:
+            CURSOR.execute(template, values)
+        else:
+            CURSOR.execute(template)
         status = True
     except sqlite3.IntegrityError as err:
         status = False
@@ -104,7 +107,13 @@ def setup_database():
 #  \__,_|_|___/_| |_|
 
 def put_dish(dish):
-    return execute("INSERT INTO dishes VALUES ('{}', '{}', '{}', '{}')".format(dish.id, dish.name, 'jb', dish.directions))
+    status = execute("INSERT INTO dishes VALUES (?, ?, ?, ?)", (dish.id, dish.name, 'jb', dish.directions))
+    for data in dish.requirements:
+        put_ingredient(data['ingredient'])
+        status = status and put_requirement({'dish_id': dish.id,
+                                             'ingredient_id': data['ingredient'].id,
+                                             'quantity': data['quantity']})
+    return status
 
 def delete_dish(query_params):
     return execute("delete from dishes {}".format(translate_dict(query_params)), params="PRAGMA foreign_keys = 1")
@@ -115,7 +124,7 @@ def get_dish(query_params):
 
     for (_id, name, author, directions) in results:
         requirements_data = query("select name, quantity from ingredients join requirements on id = ingredient_id where dish_id = '{}'".format(_id))
-        requirements = [{'name': name, 'quantity': quantity} for (name, quantity) in requirements_data]
+        requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
         data.append({'_id': _id,
                  'name': name,
                  'author': author,
@@ -140,7 +149,7 @@ def get_ingredient(query_params):
     return data
 
 def put_ingredient(ingredient):
-    return execute("INSERT INTO ingredients VALUES ('{}', '{}')".format(ingredient.id, ingredient.name))
+    return execute("INSERT INTO ingredients VALUES (?, ?)", (ingredient.id, ingredient.name))
 
 #                       _                               _   
 #  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_ 
@@ -163,7 +172,7 @@ def exists_requirement(query_params):
     return len(get_requirement(query_params)) > 0
 
 def put_requirement(requirement):
-    return execute("INSERT INTO requirements VALUES ('{}', '{}', '{}')".format(requirement['dish_id'], requirement['ingredient_id'], requirement['quantity']))
+    return execute("INSERT INTO requirements VALUES (?, ?, ?)", (requirement['dish_id'], requirement['ingredient_id'], requirement['quantity']))
 
 def update_requirement(query, values):
     vals = ",".join(["{}='{}'".format(key, val) for (key, val) in values.items()])

@@ -6,8 +6,9 @@ class Dish:
         self.name = params.get('name')
         self.author = params.get('author')
         self.directions = params.get('directions')
-        self.requirements = params.get('ingredients')
         self.store = store
+        self.requirements = [{'ingredient': store.get_ingredient(data),
+                              'quantity': data['quantity']} for data in params.get('ingredients', [])]
 
     def __str__(self):
         return self.name
@@ -28,6 +29,15 @@ class Dish:
                 'author': self.author,
                 'directions': self.directions,
                 'ingredients': self.requirements}
+
+    @property
+    def json(self):
+        return {'_id': self.id,
+                'name': self.name,
+                'author': self.author,
+                'directions': self.directions,
+                'ingredients': [{'ingredient': data['ingredient'].name, 'quantity': data['quantity']} for data in self.requirements]}
+
     @property
     def markdown(self):
         return "# %s\n\n## Ingredients\n" % self.name + '\n'.join([" - %s (%s)" % (req[0].name, str(req[1])) for req in self.requirements]) + "\n\n## Directions\n" + self.directions

@@ -17,7 +17,7 @@ def show_dish(hashid):
 
     if len(query) != 1:
         return {'accept': False}
-    return query[0].params
+    return query[0].json
 
 @app.route('/dishes/<hashid>/delete')
 def delete_dish(hashid):
@@ -35,6 +35,11 @@ def create_dish():
     valid = back_end.create({'name': request.form['name'],
                              'author': request.form.get('author'),
                              'directions': request.form['directions']}).save()
+    return {'accept': valid}
+
+@app.route('/dishes/import', methods=['POST'])
+def import_dish():
+    valid = back_end.create(json.loads(request.form['json'])).save()
     return {'accept': valid}
 
 @app.route('/ingredients/')

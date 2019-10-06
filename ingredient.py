@@ -11,16 +11,15 @@ class Units(IntEnum):
     TEASPOON = 30
     TABLESPOON = 31
 
-class ingredient:
+class Ingredient:
     name = ''
     default_unit = Units.WHOLE
     _id = 0
     references = 0
 
-    def __init__(self, params):
-        self._id = params.get("_id", None)
-        self.name = params.get("name")
-        #self.default_unit = Units(params["unit"])
+    def __init__(self, params, store):
+        self._id = params.get("_id")
+        self.name = params["name"]
 
     @property
     def id(self):
