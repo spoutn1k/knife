@@ -66,11 +66,17 @@ def execute(template, values=None, params=None):
     close(CONNEXION)
     return status
 
-def query(query_string, params=None):
+"""Query wrapper
+We assume all query params keys are sanitized
+"""
+def query(query_string, query_params={}, params=None):
     CONNEXION, CURSOR = setup(params)
 
+    if len(query_params) > 0:
+        query_string = query_string + " where " + " and ".join(["{}=:{}".format(key, key) for (key, _) in query_params.items()])
+
     try:
-        CURSOR.execute(query_string)
+        CURSOR.execute(query_string, query_params)
         data = CURSOR.fetchall()
     except sqlite3.IntegrityError as err:
         data = []
@@ -84,7 +90,6 @@ def drop_tables(tables):
             execute("DROP TABLE {}".format(name))
         except Exception as err:
             print("Error {}".format(err))
-            None
 
 def translate_dict(query):
     query_string = " and ".join(["{}='{}'".format(key, val) for (key, val) in query.items()])
@@ -106,6 +111,11 @@ def setup_database():
 # | (_| | \__ \ | | |
 #  \__,_|_|___/_| |_|
 
+valid_dish_queries = ['name', 'id', 'author']
+
+def validate_dish_query(query_params):
+    [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_dish_queries]
+
 def put_dish(dish):
     status = execute("INSERT INTO dishes VALUES (?, ?, ?, ?)", (dish.id, dish.name, 'jb', dish.directions))
     for data in dish.requirements:
@@ -116,10 +126,12 @@ def put_dish(dish):
     return status
 
 def delete_dish(query_params):
+    validate_dish_query(query_params)
     return execute("delete from dishes {}".format(translate_dict(query_params)), params="PRAGMA foreign_keys = 1")
 
 def get_dish(query_params):
-    results = query("select * from dishes {}".format(translate_dict(query_params)))
+    validate_dish_query(query_params)
+    results = query("select * from dishes", query_params)
     data = []
 
     for (_id, name, author, directions) in results:
@@ -139,8 +151,14 @@ def get_dish(query_params):
 # |_|_| |_|\__, |_|  \___|\__,_|_|\___|_| |_|\__|
 #          |___/                                 
 
+valid_ingredient_queries = ['name', 'id']
+
+def validate_ingredient_query(query_params):
+    [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_ingredient_queries]
+
 def get_ingredient(query_params):
-    results = query("select * from ingredients {}".format(translate_dict(query_params)))
+    validate_ingredient_query(query_params)
+    results = query("select * from ingredients", query_params)
     data = []
 
     for (_id, name) in results:
@@ -159,7 +177,7 @@ def put_ingredient(ingredient):
 #              |_|                                          
 
 def get_requirement(query_params):
-    results = query("select * from requirements {}".format(translate_dict(query_params)))
+    results = query("select * from requirements", query_params)
     data = []
 
     for (dish_id, ingredient_id, quantity) in results:
