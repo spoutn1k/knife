@@ -8,7 +8,7 @@ class store:
 
     @property
     def dishes(self):
-        return [Dish(params, self) for params in self.driver.get_dish({})]
+        return [Dish(params, self) for params in self.driver.get_dish_list({})]
 
     @property
     def ingredients(self):

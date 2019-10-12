@@ -144,6 +144,16 @@ def get_dish(query_params):
                  'ingredients': requirements})
     return data
 
+def get_dish_list(query_params):
+    validate_dish_query(query_params)
+    results = query("select id,name from dishes", query_params)
+    data = []
+
+    for (_id, name) in results:
+        data.append({'_id': _id,
+                    'name': name})
+
+    return data
 #  _                          _ _            _   
 # (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_ 
 # | | '_ \ / _` | '__/ _ \/ _` | |/ _ \ '_ \| __|
