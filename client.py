@@ -1,4 +1,5 @@
 import curses
+import os
 import json
 from math import ceil
 import requests
@@ -16,6 +17,13 @@ class Connexion:
 
     def dish(self, hashid):
         return requests.get("{}/dishes/{}".format(URL, hashid)).json()
+
+    def save(self, dish_data):
+        res = requests.post("{}/dishes/import".format(URL), data={'json': json.dumps(dish_data)})
+        if res.ok:
+            return res.json().get('accept')
+        return False
+
 
 class UI:
     def __init__(self, screen, connexion):
@@ -107,6 +115,8 @@ class UI:
                 self.cursor = None
             elif key == curses.KEY_LEFT:
                 self.cursor = self.cursor
+            elif key == ord('n'):
+                self.edit_dish()
             elif key in [curses.KEY_ENTER, ord('\n'), ord('\r')]:
                 self.shown = self.cursor
             else:
@@ -119,6 +129,40 @@ class UI:
         self.window_list.noutrefresh()
         self.window_detail.noutrefresh()
         curses.doupdate()
+
+    def edit_dish(self):
+        name = self.prompt('Name:')
+        if name == '':
+            return
+        dish_build = {'name': name, 'ingredients': [], 'directions': ""}
+        self.show_dish(dish_data=dish_build)
+        self.refresh()
+
+        exited = False
+        while not exited:
+            key = self.screen.getch()
+
+            if key == ord('q'):
+                exited = True
+            elif key == ord('i'):
+                ingredient = self.prompt('Ingredient:')
+                quantity = self.prompt('Quantity:')
+                if name != '' and quantity != '':
+                    dish_build['ingredients'].append({'ingredient': ingredient, 'quantity': quantity})
+            elif key == ord('e'):
+                line = self.prompt('Instruction:')
+                if line != '':
+                    dish_build['directions'] += "{}\n".format(line)
+            elif key == ord('s'):
+                if self.connexion.save(dish_build):
+                    self.prompt("Dish saved successfully")
+                else:
+                    self.prompt("There was an error saving the dish")
+
+            else:
+                None
+            self.show_dish(dish_data=dish_build)
+            self.refresh()
 
     def show_list(self, dish_list):
         self.dishes = dish_list
@@ -150,6 +194,53 @@ class UI:
         for element in formatted_text[self.scroll:self.scroll+height-2]:
             self.window_detail.addstr(cursory, 2, *element)
             cursory += 1
+
+    def prompt(self, text):
+        height, width = self.screen.getmaxyx()
+        self.screen.addstr(height-1, 0, "{} ".format(text), curses.A_BOLD)
+
+        curses.curs_set(1)
+        user_input = input_edit(self.screen, width)
+        curses.curs_set(0)
+        self.screen.deleteln()
+
+        return user_input
+
+def input_edit(window, max_x):
+    exited = False
+    orig_y, orig_x = window.getyx()
+    y, x = orig_y, orig_x
+    string = []
+
+    while not exited:
+        key = window.get_wch()
+
+        if key in ['\n']:
+            exited = True
+
+        elif key == '\x7f':
+            if x > orig_x:
+                window.delch(y, x-1)
+                if len(string) > (max_x - orig_x - 1):
+                    char = string[::-1][max_x - orig_x - 1]
+                    window.insch(orig_y, orig_x, char)
+                    window.move(y, x)
+                else:
+                    x -= 1
+                string.pop()
+            elif x == orig_x:
+                return ""
+
+        else:
+            if x == max_x-1:
+                window.delch(y, orig_x)
+                window.move(y, x-1)
+            else:
+                x += 1
+            window.addch(key)
+            string.append(key)
+
+    return ''.join(string)
 
 def format_dish(dish_data, width):
     print_lines = []
