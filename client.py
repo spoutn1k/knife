@@ -4,8 +4,11 @@ import json
 from math import ceil
 import requests
 
-#URL='http://192.168.1.1/knife'
-URL='http://127.0.0.1:5000'
+URL='http://192.168.1.1/knife'
+#URL='http://127.0.0.1:5000'
+
+LIST_MODE = 1
+EDIT_MODE = 2
 
 ERROR_DISH_EXISTS = "Dish already exists"
 
@@ -37,11 +40,13 @@ class UI:
         self._cursor = 0
         self._shown = None
         self._scroll_top = 0
+        self.mode = LIST_MODE
 
         curses.use_default_colors()
         curses.curs_set(0)
-        screen.addstr(0, 0, "Knife client v0.0")
-        screen.addstr(0, curses.COLS - len(URL), URL)
+
+        curses.init_pair(LIST_MODE, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        curses.init_pair(EDIT_MODE, curses.COLOR_WHITE, curses.COLOR_GREEN)
 
         begin_x = 0
         begin_y = 2
@@ -49,7 +54,15 @@ class UI:
         width = int(curses.COLS/3)
         self.window_list = curses.newwin(height, width, begin_y, begin_x)
         self.window_detail = curses.newwin(height, curses.COLS - width, begin_y, begin_x + width)
-    
+
+    def draw(self):
+        height, width = self.screen.getmaxyx()
+        rpart = "Knife client v0.0"
+        lpart = URL
+        filler = "".join([' ' for _ in range(width - len(rpart) - len(lpart) - 4)])
+        header = " {} {} {} ".format(rpart, filler, lpart)
+        self.screen.addstr(0, 0, header, curses.color_pair(self.mode) | curses.A_BOLD)
+
     @property
     def dishes(self):
         return self._dishes
@@ -121,9 +134,8 @@ class UI:
                 self.cursor = self.cursor
             elif key == ord('n'):
                 name = self.prompt('Name:')
-                if name == '':
-                    return
-                self.edit_dish({'name': name, 'ingredients': [], 'directions': ""})
+                if name != '':
+                    self.edit_dish({'name': name, 'ingredients': [], 'directions': ""})
             elif key == ord('e'):
                 self.edit_dish(self._shown)
             elif key in [curses.KEY_ENTER, ord('\n'), ord('\r')]:
@@ -138,6 +150,7 @@ class UI:
             self.refresh()
 
     def refresh(self):
+        self.draw()
         self.screen.noutrefresh()
         self.window_list.noutrefresh()
         self.window_detail.noutrefresh()
@@ -145,6 +158,7 @@ class UI:
 
     def edit_dish(self, dish_build):
         self.show_dish(dish_data=dish_build)
+        self.mode = EDIT_MODE
         self.refresh()
 
         exited = False
@@ -181,6 +195,7 @@ class UI:
                         self.prompt("There was an error saving the dish: {}".format(error))
             self.show_dish(dish_data=dish_build)
             self.refresh()
+        self.mode = LIST_MODE
 
     def show_list(self, dish_list):
         self.dishes = dish_list
@@ -236,12 +251,17 @@ def input_edit(window, max_x):
         if key in ['\n']:
             exited = True
 
-        elif key == '\x7f':
+        elif key in ['\x7f']:
             if x > orig_x:
                 window.delch(y, x-1)
                 if len(string) > (max_x - orig_x - 1):
                     char = string[::-1][max_x - orig_x - 1]
-                    window.insch(orig_y, orig_x, char)
+                    # insch is broken when trying to input a special character.
+                    # This workaround allows the app not to crash by writing X instead
+                    try:
+                        window.insch(orig_y, orig_x, char)
+                    except:
+                        window.insch(orig_y, orig_x, 'X')
                     window.move(y, x)
                 else:
                     x -= 1
