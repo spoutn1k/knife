@@ -60,11 +60,13 @@ def execute(template, values=None, params=None):
         else:
             CURSOR.execute(template)
         status = True
+        error = None
     except sqlite3.IntegrityError as err:
         status = False
+        error = repr(err)
 
     close(CONNEXION)
-    return status
+    return status, error
 
 """Query wrapper
 We assume all query params keys are sanitized
@@ -117,13 +119,14 @@ def validate_dish_query(query_params):
     [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_dish_queries]
 
 def put_dish(dish):
-    status = execute("INSERT INTO dishes VALUES (?, ?, ?, ?)", (dish.id, dish.name, 'jb', dish.directions))
+    status, error = execute("INSERT INTO dishes VALUES (?, ?, ?, ?)", (dish.id, dish.name, 'jb', dish.directions))
     for data in dish.requirements:
-        put_ingredient(data['ingredient'])
-        status = status and put_requirement({'dish_id': dish.id,
-                                             'ingredient_id': data['ingredient'].id,
-                                             'quantity': data['quantity']})
-    return status
+        if status:
+            put_ingredient(data['ingredient'])
+            status = status and put_requirement({'dish_id': dish.id,
+                                                'ingredient_id': data['ingredient'].id,
+                                                'quantity': data['quantity']})
+    return status, translate_exception(error)
 
 def delete_dish(query_params):
     validate_dish_query(query_params)
@@ -209,6 +212,11 @@ def update_requirement(query, values):
 def delete_requirement(query):
     return execute("DELETE FROM requirements {}".format(translate_dict(query)))
 
-
 if __name__ == "__main__":
     setup_database()
+
+def translate_exception(err):
+    if str(err) == "IntegrityError('UNIQUE constraint failed: dishes.id')":
+        return "Dish already exists"
+    else:
+        return repr(err)

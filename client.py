@@ -4,8 +4,10 @@ import json
 from math import ceil
 import requests
 
-URL='http://192.168.1.1/knife'
-#URL='http://127.0.0.1:5000'
+#URL='http://192.168.1.1/knife'
+URL='http://127.0.0.1:5000'
+
+ERROR_DISH_EXISTS = "Dish already exists"
 
 class Connexion:
     def __init__(self, address):
@@ -21,9 +23,11 @@ class Connexion:
     def save(self, dish_data):
         res = requests.post("{}/dishes/import".format(URL), data={'json': json.dumps(dish_data)})
         if res.ok:
-            return res.json().get('accept')
-        return False
+            return res.json().get('accept'), res.json().get('error')
+        return False, res.status_code
 
+    def delete(self, hashid):
+        return requests.get("{}/dishes/{}/delete".format(URL, hashid)).json().get('accept')
 
 class UI:
     def __init__(self, screen, connexion):
@@ -71,12 +75,12 @@ class UI:
 
     @property
     def shown(self):
-        return self._shown.get('id') if self._shown else None
+        return self._shown.get('_id') if self._shown else None
 
     @shown.setter
     def shown(self, index):
         if index != None:
-            if self.shown and self.shown.get('id') == self.dishes[index].get('id'):
+            if self._shown and self._shown.get('id') == self.dishes[index].get('id'):
                 return
             data = self.connexion.dish(self.dishes[index].get('id'))
             self._shown = data
@@ -116,9 +120,18 @@ class UI:
             elif key == curses.KEY_LEFT:
                 self.cursor = self.cursor
             elif key == ord('n'):
-                self.edit_dish()
+                name = self.prompt('Name:')
+                if name == '':
+                    return
+                self.edit_dish({'name': name, 'ingredients': [], 'directions': ""})
+            elif key == ord('e'):
+                self.edit_dish(self._shown)
             elif key in [curses.KEY_ENTER, ord('\n'), ord('\r')]:
                 self.shown = self.cursor
+            elif key == 330:
+                query = self.prompt("Delete {} ? [yes/No]".format(self._shown.get('name')))
+                if query == 'yes':
+                    res = self.connexion.delete(self.shown)
             else:
                 None
 
@@ -130,11 +143,7 @@ class UI:
         self.window_detail.noutrefresh()
         curses.doupdate()
 
-    def edit_dish(self):
-        name = self.prompt('Name:')
-        if name == '':
-            return
-        dish_build = {'name': name, 'ingredients': [], 'directions': ""}
+    def edit_dish(self, dish_build):
         self.show_dish(dish_data=dish_build)
         self.refresh()
 
@@ -144,23 +153,32 @@ class UI:
 
             if key == ord('q'):
                 exited = True
+            elif key == ord('n'):
+                name = self.prompt('Name:')
+                if name != '':
+                    dish_build['name'] = name
             elif key == ord('i'):
                 ingredient = self.prompt('Ingredient:')
                 quantity = self.prompt('Quantity:')
-                if name != '' and quantity != '':
+                if ingredient != '' and quantity != '':
                     dish_build['ingredients'].append({'ingredient': ingredient, 'quantity': quantity})
             elif key == ord('e'):
                 line = self.prompt('Instruction:')
                 if line != '':
                     dish_build['directions'] += "{}\n".format(line)
             elif key == ord('s'):
-                if self.connexion.save(dish_build):
+                status, error = self.connexion.save(dish_build)
+                if status:
                     self.prompt("Dish saved successfully")
+                    exited = True
                 else:
-                    self.prompt("There was an error saving the dish")
-
-            else:
-                None
+                    if error == ERROR_DISH_EXISTS:
+                        if self.prompt("{}. Overwrite ? [yes/No]".format(error)) == 'yes':
+                            self.connexion.delete(dish_build['_id'])
+                            self.connexion.save(dish_build)
+                            exited = True
+                    else:
+                        self.prompt("There was an error saving the dish: {}".format(error))
             self.show_dish(dish_data=dish_build)
             self.refresh()
 

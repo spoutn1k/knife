@@ -15,7 +15,8 @@ class store:
         return [Ingredient(params, self) for params in self.driver.get_ingredient({})]
 
     def save(self, dish):
-        return self.driver.put_dish(dish)
+        status, error = self.driver.put_dish(dish)
+        return status, error
 
     def delete(self, query):
         return self.driver.delete_dish(query)
