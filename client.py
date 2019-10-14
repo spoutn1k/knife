@@ -1,14 +1,10 @@
 import curses
-import os
+from editor import Editor
 import json
-from math import ceil
 import requests
 
 URL='http://192.168.1.1/knife'
 #URL='http://127.0.0.1:5000'
-
-LIST_MODE = 1
-EDIT_MODE = 2
 
 ERROR_DISH_EXISTS = "Dish already exists"
 
@@ -32,28 +28,213 @@ class Connexion:
     def delete(self, hashid):
         return requests.get("{}/dishes/{}/delete".format(URL, hashid)).json().get('accept')
 
-class UI:
+class ListWindow:
+    def __init__(self, parent):
+        self.parent = parent
+        self.dishes = []
+        self.window = None
+
+    def win_init(self):
+        full_height, full_width = self.parent.screen.getmaxyx()
+        self.height = full_height - 1
+        self.width = int(full_width/3)
+        begin_x = 0
+        begin_y = 2
+
+        self.buffer_size = self.height - 3
+        self.cursor_index = 0
+
+        self.window = curses.newwin(self.height, self.width, begin_y, begin_x)
+        self.draw()
+        self.window.refresh()
+
+    def draw(self):
+        self.window.erase()
+        self.window.addstr(0,0,"Dish list", curses.A_BOLD)
+        self.window.addstr(1,0,"".join(["=" for _ in range(self.width)]), curses.A_BOLD)
+
+        line = 2
+        for dish in self.dishes:
+            self.window.addstr(line, 0, dish.get('name')[:self.width])
+            line+=1
+
+        if len(self.dishes):
+            self.show_cursor()
+
+    @property
+    def keys(self):
+        return {curses.KEY_UP:      self.scroll_up,
+                curses.KEY_DOWN:    self.scroll_down,
+                ord('r'):           self.refresh_data,
+                ord('\n'):          self.select,
+                ord('\r'):          self.select,
+                ord('q'):           self.terminate,
+                curses.KEY_RIGHT:   self.switch}
+
+    @property
+    def cursor_y(self):
+        return self.cursor_index + 2
+
+    @property
+    def selected(self):
+        return self.dishes[self.cursor_index]
+
+    def hide_cursor(self):
+        self.window.chgat(self.cursor_y, 0, curses.A_NORMAL)
+
+    def show_cursor(self):
+        self.window.chgat(self.cursor_y, 0, curses.A_REVERSE | curses.A_BOLD)
+
+    def _scroll(self, increment):
+        # TODO Scroll the list along with the cursor
+        scrolling = min(self.buffer_size, len(self.dishes))
+        if not scrolling:
+            return
+        self.hide_cursor()
+        self.cursor_index = (self.cursor_index + increment)%scrolling
+        self.show_cursor()
+        self.window.refresh()
+
+    def scroll_up(self):
+        self._scroll(-1)
+
+    def scroll_down(self):
+        self._scroll(1)
+
+    def refresh_data(self):
+        self.dishes = self.parent.connexion.dish_list
+        self.draw()
+        self.window.refresh()
+
+    def select(self):
+        self.parent.show(self.selected)
+    
+    def terminate(self):
+        curses.ungetch(ord('q'))
+        self.yield_input()
+
+    def switch(self):
+        curses.ungetch(curses.KEY_RIGHT)
+        self.yield_input()
+
+    def yield_input(self):
+        self.hide_cursor()
+        self.window.refresh()
+        self.focused = False
+
+    def __call__(self):
+        self.focused = True
+        self.draw()
+        self.window.refresh()
+
+        while self.focused:
+            ch = self.parent.screen.getch()
+            method = self.keys.get(ch)
+
+            if method:
+                method()
+
+class DetailWindow:
+    def __init__(self, parent):
+        self.parent = parent
+        self.lines = []
+        self.scroll = 0
+        self.window = None
+
+    def win_init(self):
+        full_height, full_width = self.parent.screen.getmaxyx()
+        self.height = full_height - 3
+        self.width = full_width - int(full_width/3)
+        self.begin_x = int(full_width/3)
+        self.begin_y = 2
+
+        self.window = curses.newwin(self.height, self.width, self.begin_y, self.begin_x)
+
+        self.draw()
+        self.window.refresh()
+
+    def draw(self, data=None, scroll_reset=True):
+        cursory = 1
+
+        self.window.erase()
+        self.window.border()
+
+        if scroll_reset:
+            self.scroll = 0
+
+        if data:
+            self.lines = format_dish(data, self.width) if data else []
+
+        for element in self.lines[self.scroll:self.scroll+self.height-2]:
+            self.window.addstr(cursory, 2, *element)
+            cursory += 1
+
+    @property
+    def keys(self):
+        return {curses.KEY_UP:      self.scroll_up,
+                curses.KEY_DOWN:    self.scroll_down,
+                ord('r'):           self.refresh_data,
+                ord('e'):           self.edit,
+                ord('q'):           self.terminate,
+                curses.KEY_LEFT:    self.switch}
+
+    def scroll_up(self):
+        if self.scroll > 0:
+            self.scroll -= 1
+        self.draw(scroll_reset = False)
+        self.window.refresh()
+
+    def scroll_down(self):
+        max_scroll = len(self.lines) - (self.height - 2)
+        if self.scroll < max_scroll:
+            self.scroll += 1
+        self.draw(scroll_reset = False)
+        self.window.refresh()
+
+    def refresh_data(self):
+        None
+
+    def edit(self):
+        Editor(self.parent.screen, win_location=(self.begin_y, self.begin_x), win_size=(10, self.width))()
+        self.draw()
+        self.window.refresh()
+
+    def terminate(self):
+        curses.ungetch(ord('q'))
+        self.yield_input()
+
+    def switch(self):
+        curses.ungetch(curses.KEY_LEFT)
+        self.yield_input()
+
+    def yield_input(self):
+        self.focused = False
+
+    def __call__(self):
+        self.focused = True
+        self.draw()
+        self.window.refresh()
+
+        while self.focused:
+            ch = self.parent.screen.getch()
+            method = self.keys.get(ch)
+
+            if method:
+                method()
+
+class KnifeScreen:
     def __init__(self, screen, connexion):
         self.screen = screen
         self.connexion = connexion
-        self._dishes = None
-        self._cursor = 0
-        self._shown = None
-        self._scroll_top = 0
-        self.mode = LIST_MODE
 
         curses.use_default_colors()
         curses.curs_set(0)
 
-        curses.init_pair(LIST_MODE, curses.COLOR_WHITE, curses.COLOR_BLUE)
-        curses.init_pair(EDIT_MODE, curses.COLOR_WHITE, curses.COLOR_GREEN)
-
-        begin_x = 0
-        begin_y = 2
-        height = curses.LINES - 3
-        width = int(curses.COLS/3)
-        self.window_list = curses.newwin(height, width, begin_y, begin_x)
-        self.window_detail = curses.newwin(height, curses.COLS - width, begin_y, begin_x + width)
+        self.refresh()
+        self.window_list = ListWindow(self)
+        self.window_list.win_init()
+        self.window_detail = DetailWindow(self)
+        self.window_detail.win_init()
 
     def draw(self):
         height, width = self.screen.getmaxyx()
@@ -61,104 +242,47 @@ class UI:
         lpart = URL
         filler = "".join([' ' for _ in range(width - len(rpart) - len(lpart) - 4)])
         header = " {} {} {} ".format(rpart, filler, lpart)
-        self.screen.addstr(0, 0, header, curses.color_pair(self.mode) | curses.A_BOLD)
+        self.screen.addstr(0, 0, header, curses.A_REVERSE | curses.A_BOLD)
 
-    @property
-    def dishes(self):
-        return self._dishes
+    def show(self, dish_listing):
+        identifier = dish_listing.get('id')
 
-    @dishes.setter
-    def dishes(self, dictionnary):
-        dictionnary.sort(key=lambda dish: dish.get('name'))
-        self._dishes = dictionnary
+        if identifier:
+            self._fetched_dish_data = self.connexion.dish(identifier)
 
-    @property
-    def cursor(self):
-        return self._cursor
+        self.window_detail.draw(self._fetched_dish_data)
+        self.window_detail.window.refresh()
 
-    @cursor.setter
-    def cursor(self, position):
-        _, line = self.window_list.getmaxyx()
-        if position == None:
-            self.window_list.chgat(2 + self._cursor, 0, line, curses.A_NORMAL)
-        else:
-            self.window_list.chgat(2 + self._cursor, 0, line, curses.A_NORMAL)
-            self._cursor = position%len(self.dishes)
-            self.window_list.chgat(2 + self._cursor, 0, line, curses.A_REVERSE | curses.A_BOLD)
-
-    @property
-    def shown(self):
-        return self._shown.get('_id') if self._shown else None
-
-    @shown.setter
-    def shown(self, index):
-        if index != None:
-            if self._shown and self._shown.get('id') == self.dishes[index].get('id'):
-                return
-            data = self.connexion.dish(self.dishes[index].get('id'))
-            self._shown = data
-            self.show_dish(dish_data=data)
-        else:
-            self._shown = None
-
-    @property
-    def scroll(self):
-        return self._scroll_top
-
-    @scroll.setter
-    def scroll(self, lineno):
-        self._scroll_top = lineno if lineno > 0 else 0
+    def keys(self):
+        return {ord('q'):           self.exit,
+                curses.KEY_RIGHT:   self.hide_cursor,
+                curses.KEY_LEFT:    self.window_list(),
+                330:                self.delete}
 
     def input(self):
+        selected = {}
         exited = False
         while not exited:
             key = self.screen.getch()
 
             if key == ord('q'):
                 exited = True
-            elif key == ord('r'):
-                self.show_list(self.connexion.dish_list)
-            elif key == curses.KEY_UP:
-                self.cursor = self.cursor - 1
-            elif key == curses.KEY_DOWN:
-                self.cursor = self.cursor + 1
-            elif key == ord('j'):
-                self.scroll = self.scroll + 1
-                self.show_dish()
-            elif key == ord('k'):
-                self.scroll = self.scroll - 1
-                self.show_dish()
             elif key == curses.KEY_RIGHT:
-                self.cursor = None
+                self.window_detail()
             elif key == curses.KEY_LEFT:
-                self.cursor = self.cursor
-            elif key == ord('n'):
-                name = self.prompt('Name:')
-                if name != '':
-                    self.edit_dish({'name': name, 'ingredients': [], 'directions': ""})
-            elif key == ord('e'):
-                self.edit_dish(self._shown)
-            elif key in [curses.KEY_ENTER, ord('\n'), ord('\r')]:
-                self.shown = self.cursor
+                self.window_list()
             elif key == 330:
                 query = self.prompt("Delete {} ? [yes/No]".format(self._shown.get('name')))
                 if query == 'yes':
                     res = self.connexion.delete(self.shown)
-            else:
-                None
-
-            self.refresh()
 
     def refresh(self):
         self.draw()
         self.screen.noutrefresh()
-        self.window_list.noutrefresh()
-        self.window_detail.noutrefresh()
         curses.doupdate()
 
     def edit_dish(self, dish_build):
         self.show_dish(dish_data=dish_build)
-        self.mode = EDIT_MODE
         self.refresh()
 
         exited = False
@@ -195,38 +319,6 @@ class UI:
                         self.prompt("There was an error saving the dish: {}".format(error))
             self.show_dish(dish_data=dish_build)
             self.refresh()
-        self.mode = LIST_MODE
-
-    def show_list(self, dish_list):
-        self.dishes = dish_list
-        height, width = self.window_list.getmaxyx()
-
-        self.window_list.erase()
-        self.window_list.addstr(0,0,"Dish list", curses.A_BOLD)
-        self.window_list.addstr(1,0,"".join(["─" for _ in range(width)]), curses.A_BOLD)
-
-        line = 2
-        for dish in self.dishes:
-            self.window_list.addstr(line, 0, dish.get('name')[:width])
-            line+=1
-
-    def show_dish(self, dish_data=None):
-        if not dish_data:
-            dish_data = self._shown
-        height, width = self.window_detail.getmaxyx()
-        cursory = 1
-
-        self.window_detail.erase()
-        self.window_detail.border()
-
-        formatted_text = format_dish(dish_data, width)
-
-        if height - 2 + self.scroll > len(formatted_text):
-            self.scroll = len(formatted_text) - height + 2
-
-        for element in formatted_text[self.scroll:self.scroll+height-2]:
-            self.window_detail.addstr(cursory, 2, *element)
-            cursory += 1
 
     def prompt(self, text):
         height, width = self.screen.getmaxyx()
@@ -310,8 +402,7 @@ def cut(string, width):
     return [string[:width-space_index]] + cut(string[width-space_index:], width)
 
 def main(stdscreen):
-    interface = UI(stdscreen, Connexion(URL))
-    interface.refresh()
+    interface = KnifeScreen(stdscreen, Connexion(URL))
     interface.input()
 
 curses.wrapper(main)
