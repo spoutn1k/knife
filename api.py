@@ -23,10 +23,11 @@ def show_dish(hashid):
 
 @app.route('/dishes/new', methods=['POST'])
 def create_dish():
-    valid,error = back_end.create({'name': request.form['name'],
+    dish = back_end.create({'name': request.form['name'],
                              'author': request.form.get('author'),
-                             'directions': request.form['directions']}).save()
-    return {'accept': valid, 'error': error}
+                             'directions': request.form['directions']})
+    valid, error = dish.save()
+    return {'accept': valid, 'dish': dish.params, 'error': error}
 
 @app.route('/dishes/<hashid>/delete')
 def delete_dish(hashid):
@@ -35,8 +36,9 @@ def delete_dish(hashid):
 
 @app.route('/dishes/import', methods=['POST'])
 def import_dish():
-    valid, error = back_end.create(json.loads(request.form['json'])).save()
-    return {'accept': valid, 'error': error}
+    dish = back_end.create(json.loads(request.form['json']))
+    valid, error = dish.save()
+    return {'accept': valid, 'dish': dish.params, 'error': error}
 
 @app.route('/ingredients/')
 def list_ingredients():
