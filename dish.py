@@ -2,7 +2,7 @@ import hashlib
 
 class Dish:
     def __init__(self, params, store=None):
-        self._id = params.get('_id', None)
+        self._id = params.get('id', None)
         self.name = params.get('name')
         self.author = params.get('author')
         self.directions = params.get('directions')
@@ -24,7 +24,7 @@ class Dish:
 
     @property
     def params(self):
-        return {'_id': self.id,
+        return {'id': self.id,
                 'name': self.name,
                 'author': self.author,
                 'directions': self.directions,
@@ -32,7 +32,7 @@ class Dish:
 
     @property
     def json(self):
-        return {'_id': self.id,
+        return {'id': self.id,
                 'name': self.name,
                 'author': self.author,
                 'directions': self.directions,

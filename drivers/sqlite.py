@@ -140,7 +140,7 @@ def get_dish(query_params):
     for (_id, name, author, directions) in results:
         requirements_data = query("select name, quantity from ingredients join requirements on id = ingredient_id where dish_id = '{}'".format(_id))
         requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
-        data.append({'_id': _id,
+        data.append({'id': _id,
                  'name': name,
                  'author': author,
                  'directions': directions,
@@ -153,7 +153,7 @@ def get_dish_list(query_params):
     data = []
 
     for (_id, name) in results:
-        data.append({'_id': _id,
+        data.append({'id': _id,
                     'name': name})
 
     return data
@@ -175,7 +175,7 @@ def get_ingredient(query_params):
     data = []
 
     for (_id, name) in results:
-        data.append({'_id': _id,
+        data.append({'id': _id,
                  'name': name})
     return data
 

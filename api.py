@@ -3,8 +3,8 @@ from flask import request
 from store import store
 from drivers import sqlite
 import json
-app = Flask(__name__)
 
+app = Flask(__name__)
 back_end = store(sqlite)
 
 @app.route('/dishes/')
@@ -27,7 +27,7 @@ def create_dish():
                              'author': request.form.get('author'),
                              'directions': request.form['directions']})
     valid, error = dish.save()
-    return {'accept': valid, 'dish': dish.params, 'error': error}
+    return {'accept': valid, 'dish': dish.json, 'error': error}
 
 @app.route('/dishes/<hashid>/delete')
 def delete_dish(hashid):
@@ -38,7 +38,7 @@ def delete_dish(hashid):
 def import_dish():
     dish = back_end.create(json.loads(request.form['json']))
     valid, error = dish.save()
-    return {'accept': valid, 'dish': dish.params, 'error': error}
+    return {'accept': valid, 'dish': dish.json, 'error': error}
 
 @app.route('/ingredients/')
 def list_ingredients():

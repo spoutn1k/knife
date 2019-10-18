@@ -5,7 +5,7 @@ class Ingredient:
     _id = 0
 
     def __init__(self, params, store):
-        self._id = params.get("_id")
+        self._id = params.get("id")
         self.name = params["name"]
 
     @property
@@ -16,6 +16,6 @@ class Ingredient:
 
     @property
     def params(self):
-        return {'_id': self.id,
+        return {'id': self.id,
                 'name': self.name,
                 'unit': int(self.default_unit)}
