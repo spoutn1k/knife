@@ -12,15 +12,6 @@ def list_dishes():
     return {'dishes': [{'id': dish.id,
                         'name': dish.name} for dish in back_end.dishes]}
 
-@app.route('/dishes/<hashid>')
-def show_dish(hashid):
-    dish = back_end.load_one({'id': hashid})
-
-    if not dish:
-        return {'accept': False}
-
-    return dish.json
-
 @app.route('/dishes/new', methods=['POST'])
 def create_dish():
     dish = back_end.create({'name': request.form['name'],
@@ -29,7 +20,16 @@ def create_dish():
     valid, error = dish.save()
     return {'accept': valid, 'dish': dish.json, 'error': error}
 
-@app.route('/dishes/<hashid>/delete')
+@app.route('/dishes/<hashid>', methods=['GET'])
+def show_dish(hashid):
+    dish = back_end.load_one({'id': hashid})
+
+    if not dish:
+        return {'accept': False}
+
+    return dish.json
+
+@app.route('/dishes/<hashid>', methods=['DELETE'])
 def delete_dish(hashid):
     valid = back_end.delete({'id': hashid})
     return {'accept': valid}

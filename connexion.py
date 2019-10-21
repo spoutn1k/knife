@@ -41,7 +41,7 @@ class Connexion:
         return (query.json().get('accept'), query.json().get('dish'), query.json().get('error'))
 
     def delete(self, hashid):
-        query = requests.get("{}/dishes/{}/delete".format(self.address, hashid))
+        query = requests.delete("{}/dishes/{}".format(self.address, hashid))
 
         if not query.ok:
             return (False, "HTTP request failed")
