@@ -28,9 +28,9 @@ class store:
         results = self.load(query)
 
         if len(results) == 0:
-            return None
+            return (False, None, "Dish not found")
 
-        return results[0]
+        return (True, results[0], "")
 
     def create(self, params):
         return Dish(params, self)

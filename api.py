@@ -7,7 +7,7 @@ import json
 app = Flask(__name__)
 back_end = store(sqlite)
 
-@app.route('/dishes/')
+@app.route('/dishes', methods=['GET'])
 def list_dishes():
     return {'dishes': [{'id': dish.id,
                         'name': dish.name} for dish in back_end.dishes]}
@@ -22,12 +22,8 @@ def create_dish():
 
 @app.route('/dishes/<hashid>', methods=['GET'])
 def show_dish(hashid):
-    dish = back_end.load_one({'id': hashid})
-
-    if not dish:
-        return {'accept': False}
-
-    return dish.json
+    valid, dish, error = back_end.load_one({'id': hashid})
+    return {'accept': valid, 'dish': dish.json, 'error': error}
 
 @app.route('/dishes/<hashid>', methods=['DELETE'])
 def delete_dish(hashid):
@@ -40,7 +36,7 @@ def import_dish():
     valid, error = dish.save()
     return {'accept': valid, 'dish': dish.json, 'error': error}
 
-@app.route('/ingredients/')
+@app.route('/ingredients', methods=['GET'])
 def list_ingredients():
     return {'ingredients': [{'id': ingredient.id,
                              'name': ingredient.name} for ingredient in back_end.ingredients]}
