@@ -6,9 +6,8 @@ class store:
     def __init__(self, driver):
         self.driver = driver
 
-    @property
-    def dishes(self):
-        return [Dish(params, self) for params in self.driver.get_dish_list({})]
+    def dish_lookup(self, query):
+        return [Dish(params, self) for params in self.driver.lookup_dish(query)]
 
     @property
     def ingredients(self):

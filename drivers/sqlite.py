@@ -68,15 +68,20 @@ def execute(template, values=None, params=None):
     close(CONNEXION)
     return status, error
 
-"""Query wrapper
-We assume all query params keys are sanitized
-"""
-def query(query_string, query_params={}, params=None):
+def query(query_string, query_params={}, params=None, search=False):
+    """
+    Query wrapper
+    We assume all query params keys are sanitized
+    """
     CONNEXION, CURSOR = setup(params)
+    operator = " like " if search else "="
+
+    if search:
+        for (k, v) in query_params.items():
+            query_params[k] = "%{}%".format(v)
 
     if len(query_params) > 0:
-        query_string = query_string + " where " + " and ".join(["{}=:{}".format(key, key) for (key, _) in query_params.items()])
-
+        query_string = query_string + " where " + " and ".join(["{}{}:{}".format(key, operator, key) for (key, _) in query_params.items()])
     try:
         CURSOR.execute(query_string, query_params)
         data = CURSOR.fetchall()
@@ -147,9 +152,9 @@ def get_dish(query_params):
                  'ingredients': requirements})
     return data
 
-def get_dish_list(query_params):
+def lookup_dish(query_params):
     validate_dish_query(query_params)
-    results = query("select id,name from dishes", query_params)
+    results = query("select id, name from dishes", query_params, search=True)
     data = []
 
     for (_id, name) in results:

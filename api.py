@@ -9,8 +9,13 @@ back_end = store(sqlite)
 
 @app.route('/dishes', methods=['GET'])
 def list_dishes():
-    return {'dishes': [{'id': dish.id,
-                        'name': dish.name} for dish in back_end.dishes]}
+    query = {}
+    if request.args.get('name'):
+        query['name'] = request.args.get('name')
+    return {'accept': True,
+            'dishes': [{'id': dish.id,
+                'name': dish.name} for dish in back_end.dish_lookup(query)],
+            'error': None}
 
 @app.route('/dishes/new', methods=['POST'])
 def create_dish():
