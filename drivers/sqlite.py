@@ -6,6 +6,7 @@ DISHES='''
 CREATE TABLE dishes (
     id TEXT,
     name TEXT NOT NULL,
+    simple_name TEXT,
     author TEXT,
     desc TEXT,
     PRIMARY KEY (id))
@@ -82,6 +83,7 @@ def query(query_string, query_params={}, params=None, search=False):
 
     if len(query_params) > 0:
         query_string = query_string + " where " + " and ".join(["{}{}:{}".format(key, operator, key) for (key, _) in query_params.items()])
+
     try:
         CURSOR.execute(query_string, query_params)
         data = CURSOR.fetchall()
@@ -118,13 +120,17 @@ def setup_database():
 # | (_| | \__ \ | | |
 #  \__,_|_|___/_| |_|
 
-valid_dish_queries = ['name', 'id', 'author']
+valid_dish_queries = ['name', 'simple_name', 'id', 'author']
 
 def validate_dish_query(query_params):
     [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_dish_queries]
 
 def put_dish(dish):
-    status, error = execute("INSERT INTO dishes VALUES (?, ?, ?, ?)", (dish.id, dish.name, 'jb', dish.directions))
+    status, error = execute("INSERT INTO dishes VALUES (?, ?, ?, ?, ?)", (dish.id,
+        dish.name,
+        dish.simple_name,
+        dish.author,
+        dish.directions))
     for data in dish.requirements:
         if status:
             put_ingredient(data['ingredient'])
@@ -142,7 +148,7 @@ def get_dish(query_params):
     results = query("select * from dishes", query_params)
     data = []
 
-    for (_id, name, author, directions) in results:
+    for (_id, name, simple_name, author, directions) in results:
         requirements_data = query("select name, quantity from ingredients join requirements on id = ingredient_id where dish_id = '{}'".format(_id))
         requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
         data.append({'id': _id,

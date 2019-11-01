@@ -12,6 +12,8 @@ def list_dishes():
     query = {}
     if request.args.get('name'):
         query['name'] = request.args.get('name')
+    if request.args.get('simple_name'):
+        query['simple_name'] = request.args.get('simple_name')
     return {'accept': True,
             'dishes': [{'id': dish.id,
                 'name': dish.name} for dish in back_end.dish_lookup(query)],

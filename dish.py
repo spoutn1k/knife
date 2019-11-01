@@ -1,3 +1,4 @@
+from unidecode import unidecode
 import hashlib
 
 class Dish:
@@ -23,9 +24,14 @@ class Dish:
         return m.hexdigest()
 
     @property
+    def simple_name(self):
+        return unidecode(self.name.lower()).replace(' ', '_').replace("'", '_')
+
+    @property
     def params(self):
         return {'id': self.id,
                 'name': self.name,
+                'simple_name': self.simple_name,
                 'author': self.author,
                 'directions': self.directions,
                 'ingredients': self.requirements}
