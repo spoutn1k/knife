@@ -1,4 +1,5 @@
 import sqlite3
+import helpers
 
 DBPATH='/var/lib/knife/database.db'
 
@@ -29,7 +30,7 @@ CREATE TABLE dependencies (
 
 INGREDIENTS='''
 CREATE TABLE ingredients (
-    id text primary key, 
+    id text PRIMARY KEY, 
     name text)
 '''
 
@@ -46,6 +47,29 @@ CREATE TABLE requirements (
     CONSTRAINT fk_ingredient
         FOREIGN KEY (ingredient_id)
         REFERENCES ingredients (id) 
+        ON DELETE CASCADE)
+'''
+
+LABELS='''
+CREATE TABLE labels (
+    id TEXT,
+    name TEXT NOT NULL,
+    simple_name TEXT,
+    PRIMARY KEY (id))
+'''
+
+TAGS='''
+CREATE TABLE tags (
+    dish_id TEXT NOT NULL,
+    label_id TEXT NOT NULL,
+    PRIMARY KEY (dish_id, label_id),
+    CONSTRAINT fk_dish
+        FOREIGN KEY (dish_id)
+        REFERENCES dishes (id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_label
+        FOREIGN KEY (label_id)
+        REFERENCES labels (id) 
         ON DELETE CASCADE)
 '''
 
@@ -124,11 +148,13 @@ def translate_dict(query):
 
 
 def setup_database():
-    drop_tables(['dishes', 'ingredients', 'requirements'])
+    drop_tables(['dishes', 'ingredients', 'requirements', 'dependencies', 'labels', 'tags'])
     execute(DISHES)
     execute(INGREDIENTS)
     execute(REQUIREMENTS)
     execute(DEPENDENCIES)
+    execute(LABELS)
+    execute(TAGS)
 
 #      _ _     _     
 #   __| (_)___| |__  
@@ -170,14 +196,18 @@ def get_dish(query_params):
 
     for (_id, name, simple_name, author, directions) in results:
         requirements_data = query("select name, quantity from ingredients join requirements on id = ingredient_id where dish_id = '{}'".format(_id))
-        requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
         dependencies_data = query("SELECT id, name FROM dependencies JOIN dishes on requisite = id where required_by = '{}'".format(_id))
+        tags_data = query("SELECT labels.id, labels.name FROM labels JOIN tags on labels.id = label_id where dish_id = '{}'".format(_id))
+        requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
         dependencies = [{'id': _id, 'name': name} for (_id, name) in dependencies_data]
+        tags = [{'id': _id, 'name': name} for (_id, name) in tags_data]
+
         data.append({'id': _id,
                  'name': name,
                  'author': author,
                  'directions': directions,
                  'ingredients': requirements,
+                 'tags': tags,
                  'dependencies': dependencies})
     return data
 
@@ -191,6 +221,7 @@ def lookup_dish(query_params):
                     'name': name})
 
     return data
+
 #  _                          _ _            _   
 # (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_ 
 # | | '_ \ / _` | '__/ _ \/ _` | |/ _ \ '_ \| __|
@@ -246,11 +277,28 @@ def update_requirement(query, values):
 def delete_requirement(query):
     return execute("DELETE FROM requirements {}".format(translate_dict(query)))
 
-if __name__ == "__main__":
-    setup_database()
+#  _                  
+# | |_ __ _  __ _ ___ 
+# | __/ _` |/ _` / __|
+# | || (_| | (_| \__ \
+#  \__\__,_|\__, |___/
+#           |___/     
+
+def get_labels(stub = ""):
+    results = query("select id, name from labels", {'simple_name': stub}, search=True)
+    data = []
+    for (_id, name) in results:
+        data.append({'name': name, 'id': _id})
+    return data
+
+def put_label(label_name):
+    return execute("INSERT INTO labels VALUES (?, ?, ?)", (helpers.hash256(label_name), label_name, helpers.simplify(label_name)))
 
 def translate_exception(err):
     if str(err) == "IntegrityError('UNIQUE constraint failed: dishes.id')":
         return "Dish already exists"
     else:
         return repr(err)
+
+if __name__ == "__main__":
+    setup_database()

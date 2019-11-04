@@ -11,6 +11,7 @@ class Dish:
         self.requirements = [{'ingredient': store.get_ingredient(data),
                               'quantity': data['quantity']} for data in params.get('ingredients', [])]
         self.dependencies = params.get('dependencies', [])
+        self.tags = params.get('tags', [])
 
     def __str__(self):
         return self.name
@@ -36,6 +37,7 @@ class Dish:
                 'author': self.author,
                 'directions': self.directions,
                 'ingredients': self.requirements,
+                'tags': self.tags,
                 'dependencies': self.dependencies}
 
     @property
@@ -45,6 +47,7 @@ class Dish:
                 'author': self.author,
                 'directions': self.directions,
                 'ingredients': [{'ingredient': data['ingredient'].name, 'quantity': data['quantity']} for data in self.requirements],
+                'tags': [tag.name for tag in self.tags],
                 'dependencies': self.dependencies}
 
     @property

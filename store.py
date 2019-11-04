@@ -68,6 +68,8 @@ class store:
                                                 'ingredient_id': ing.id,
                                                 'quantity': params['quantity']})
 
-if __name__ == "__main__":
-    store = store(drivers.sqlite)
-    store.save(dish({'name': 'Tartare', 'directions': 'A nice dish'}))
+    def labels(self, stub=""):
+        return self.driver.get_labels(stub)
+
+    def new_label(self, name):
+        return self.driver.put_label(name)

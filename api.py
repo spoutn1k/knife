@@ -55,5 +55,15 @@ def add_ingredient(hashid):
                     'quantity': request.form['quantity']})
     return {'accept': valid}
 
+@app.route('/dishes/labels', methods=['GET'])
+def show_labels():
+    stub = request.args.get('name', "")
+    return {'labels': back_end.labels(stub)}
+
+@app.route('/dishes/labels/new', methods=['POST'])
+def add_label():
+    status, error = back_end.new_label(request.form['name'])
+    return {'valid': status, 'error': error}
+
 if __name__ == '__main__':
     app.run()
