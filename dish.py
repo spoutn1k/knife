@@ -10,6 +10,7 @@ class Dish:
         self.store = store
         self.requirements = [{'ingredient': store.get_ingredient(data),
                               'quantity': data['quantity']} for data in params.get('ingredients', [])]
+        self.dependencies = params.get('dependencies', [])
 
     def __str__(self):
         return self.name
@@ -34,7 +35,8 @@ class Dish:
                 'simple_name': self.simple_name,
                 'author': self.author,
                 'directions': self.directions,
-                'ingredients': self.requirements}
+                'ingredients': self.requirements,
+                'dependencies': self.dependencies}
 
     @property
     def json(self):
@@ -42,7 +44,8 @@ class Dish:
                 'name': self.name,
                 'author': self.author,
                 'directions': self.directions,
-                'ingredients': [{'ingredient': data['ingredient'].name, 'quantity': data['quantity']} for data in self.requirements]}
+                'ingredients': [{'ingredient': data['ingredient'].name, 'quantity': data['quantity']} for data in self.requirements],
+                'dependencies': self.dependencies}
 
     @property
     def markdown(self):

@@ -12,6 +12,21 @@ CREATE TABLE dishes (
     PRIMARY KEY (id))
 '''
 
+DEPENDENCIES='''
+CREATE TABLE dependencies (
+    requisite TEXT NOT NULL,
+    required_by TEXT NOT NULL,
+    PRIMARY KEY (requisite, required_by),
+    CONSTRAINT fk_requisite
+        FOREIGN KEY (requisite)
+        REFERENCES dishes (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_requirement
+        FOREIGN KEY (required_by)
+        REFERENCES dishes (id)
+        ON DELETE CASCADE)
+'''
+
 INGREDIENTS='''
 CREATE TABLE ingredients (
     id text primary key, 
@@ -113,6 +128,7 @@ def setup_database():
     execute(DISHES)
     execute(INGREDIENTS)
     execute(REQUIREMENTS)
+    execute(DEPENDENCIES)
 
 #      _ _     _     
 #   __| (_)___| |__  
@@ -137,6 +153,10 @@ def put_dish(dish):
             status = status and put_requirement({'dish_id': dish.id,
                                                 'ingredient_id': data['ingredient'].id,
                                                 'quantity': data['quantity']})
+    for data in dish.dependencies:
+        if status and data.get('id'):
+            status = status and execute("INSERT INTO dependencies VALUES (?, ?)", (data['id'], dish.id))
+
     return status, translate_exception(error)
 
 def delete_dish(query_params):
@@ -151,11 +171,14 @@ def get_dish(query_params):
     for (_id, name, simple_name, author, directions) in results:
         requirements_data = query("select name, quantity from ingredients join requirements on id = ingredient_id where dish_id = '{}'".format(_id))
         requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
+        dependencies_data = query("SELECT id, name FROM dependencies JOIN dishes on requisite = id where required_by = '{}'".format(_id))
+        dependencies = [{'id': _id, 'name': name} for (_id, name) in dependencies_data]
         data.append({'id': _id,
                  'name': name,
                  'author': author,
                  'directions': directions,
-                 'ingredients': requirements})
+                 'ingredients': requirements,
+                 'dependencies': dependencies})
     return data
 
 def lookup_dish(query_params):
