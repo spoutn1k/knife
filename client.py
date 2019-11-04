@@ -5,8 +5,8 @@ from textwrap import wrap
 from connexion import Connexion
 import tempfile
 
-URL='http://192.168.1.1/knife'
-#URL='http://127.0.0.1:5000'
+#URL='http://192.168.1.1/knife'
+URL='http://127.0.0.1:5000'
 
 class ListWindow:
     def __init__(self, parent):
@@ -60,6 +60,7 @@ class ListWindow:
                 ord('n'):           self.parent.create,
                 330:                self.delete,
                 ord('q'):           self.terminate,
+                ord('f'):           self.search,
                 curses.KEY_RIGHT:   self.switch}
 
     @property
@@ -135,11 +136,11 @@ class ListWindow:
         """
         self._scroll(1)
 
-    def refresh_data(self):
+    def refresh_data(self, pattern=""):
         """
         Fetch dish list from the server then redraw and refresh the window.
         """
-        self.dishes = self.parent.dish_list
+        self.dishes = self.parent.dish_list(pattern=pattern)
         self.draw()
         self.window.refresh()
 
@@ -161,6 +162,9 @@ class ListWindow:
         """
         curses.ungetch(ord('q'))
         self.yield_input()
+
+    def search(self):
+        self.parent.prompt("Name:", method=self.refresh_data)
 
     def switch(self):
         """
@@ -245,6 +249,7 @@ class DetailWindow:
                 curses.KEY_DOWN:    self.scroll_down,
                 ord('r'):           self.refresh_data,
                 ord('e'):           self.edit,
+                ord('a'):           self.author,
                 ord('i'):           self.parent.set_ingredient,
                 ord('q'):           self.terminate,
                 curses.KEY_LEFT:    self.switch}
@@ -282,6 +287,15 @@ class DetailWindow:
         self.parent.save()
         self.draw()
         self.window.refresh()
+
+    def author(self):
+        author = self.parent.prompt('Author:')
+
+        if author and author != "":
+            self.parent._fetched_dish_data['author'] = author
+            self.parent.save()
+            self.draw()
+            self.window.refresh()
 
     def save(self):
         status, dish, error = self.parent.save()
@@ -342,18 +356,21 @@ class KnifeScreen:
         identifier = dish_listing.get('id')
 
         if identifier:
-            self._fetched_dish_data = self.connexion.dish(identifier)
+            self._fetched_dish_data, status, error = self.connexion.dish(identifier)
+
+        if not status:
+            self.prompt("Error {}".format(error), wait_input=False)
+            return
 
         self.window_detail.draw()
         self.window_detail.window.refresh()
 
-    @property
-    def dish_list(self):
+    def dish_list(self, pattern=""):
         """
         Outputs a list of dishes, fetching it first from the server, then sorting it.
         Returns an empty list when the fetch was unsuccessful.
         """
-        dishes, status, error = self.connexion.dish_list()
+        dishes, status, error = self.connexion.dish_list(pattern=pattern)
 
         if not status:
             self.prompt(error, wait_input=False)
@@ -386,7 +403,7 @@ class KnifeScreen:
         """
         if self.prompt("Delete {} ? yes/No".format(dish_data.get('name'))) != 'yes':
             return
-        status, error = self.connexion.delete(dish_data.get('id'))
+        _, status, error = self.connexion.delete(dish_data.get('id'))
         if not status:
             self.prompt(error, wait_input=False)
         if status:
@@ -449,7 +466,7 @@ class KnifeScreen:
         self.screen.noutrefresh()
         curses.doupdate()
 
-    def prompt(self, text, wait_input=True):
+    def prompt(self, text, wait_input=True, method=None):
         height, width = self.screen.getmaxyx()
         self.screen.move(height-1, 0)
         self.screen.deleteln()
@@ -459,13 +476,13 @@ class KnifeScreen:
             return None
 
         curses.curs_set(1)
-        user_input = input_edit(self.screen, width)
+        user_input = input_edit(self.screen, width, method=method)
         curses.curs_set(0)
         self.screen.deleteln()
 
         return user_input
 
-def input_edit(window, max_x):
+def input_edit(window, max_x, method=None):
     """
     Creates a text field of with max_x at the position of the cursor
     """
@@ -496,7 +513,7 @@ def input_edit(window, max_x):
                     x -= 1
                 string.pop()
             elif x == orig_x:
-                return ""
+                exited = True
 
         else:
             if x == max_x-1:
@@ -506,6 +523,9 @@ def input_edit(window, max_x):
                 x += 1
             window.addch(key)
             string.append(key)
+
+        if method and not exited:
+            method(pattern=''.join(string))
 
     return ''.join(string)
 
@@ -521,11 +541,16 @@ def format_dish(dish_data, width):
     print_lines.append( (None,  curses.A_NORMAL) )
     print_lines.append( ("Ingredients", curses.A_BOLD) )
     print_lines += [("- {}, {}".format(ingredient['ingredient'], ingredient['quantity']),  curses.A_NORMAL) for ingredient in dish_data.get('ingredients')]
+    if len(dish_data.get('dependencies', [])) > 0:
+        print_lines.append( (None,  curses.A_NORMAL) )
+        print_lines.append( ("Pré-requis", curses.A_BOLD) )
+        print_lines += [("- {}".format(recipe.get('name')),  curses.A_NORMAL) for recipe in dish_data.get('dependencies')]
     print_lines.append( (None,  curses.A_NORMAL) )
     print_lines.append( ("Directions", curses.A_BOLD) )
 
     if dish_data.get('directions'):
         print_lines += [(segment, curses.A_NORMAL) for segment in dish_data.get('directions').split('\n')]
+
 
     formatted_text = []
     for text,attribute in print_lines:
