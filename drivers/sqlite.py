@@ -79,7 +79,7 @@ CREATE TABLE tags (
 # | (_| | (_| | || (_| | |_) | (_| \__ \  __/
 #  \__,_|\__,_|\__\__,_|_.__/ \__,_|___/\___|
 
-def setup(params=None):
+def db_setup(params=None):
     CONNEXION = sqlite3.connect(DBPATH)
     if params:
         CONNEXION.execute(params)
@@ -87,12 +87,12 @@ def setup(params=None):
 
     return CONNEXION, CURSOR
 
-def close(connexion):
+def db_close(connexion):
     connexion.commit()
     connexion.close()
 
-def execute(template, values=None, params=None):
-    CONNEXION, CURSOR = setup(params)
+def db_execute(template, values=None, params=None):
+    CONNEXION, CURSOR = db_setup(params)
 
     try:
         if values:
@@ -105,15 +105,15 @@ def execute(template, values=None, params=None):
         status = False
         error = repr(err)
 
-    close(CONNEXION)
+    db_close(CONNEXION)
     return status, error
 
-def query(query_string, query_params={}, params=None, search=False):
+def db_query(query_string, query_params={}, params=None, search=False):
     """
     Query wrapper
     We assume all query params keys are sanitized
     """
-    CONNEXION, CURSOR = setup(params)
+    CONNEXION, CURSOR = db_setup(params)
     operator = " like " if search else "="
 
     if search:
@@ -129,32 +129,23 @@ def query(query_string, query_params={}, params=None, search=False):
     except sqlite3.IntegrityError as err:
         data = []
 
-    close(CONNEXION)
+    db_close(CONNEXION)
     return data
 
-def drop_tables(tables):
+def db_drop_tables(tables):
     for name in tables:
         try:
-            execute("DROP TABLE {}".format(name))
+            db_execute("DROP TABLE {}".format(name))
         except Exception as err:
             print("Error {}".format(err))
 
-def translate_dict(query):
+def db_translate_dict(query):
     query_string = " and ".join(["{}='{}'".format(key, val) for (key, val) in query.items()])
 
     if query_string:
         return " where " + query_string
     return ""
 
-
-def setup_database():
-    drop_tables(['dishes', 'ingredients', 'requirements', 'dependencies', 'labels', 'tags'])
-    execute(DISHES)
-    execute(INGREDIENTS)
-    execute(REQUIREMENTS)
-    execute(DEPENDENCIES)
-    execute(LABELS)
-    execute(TAGS)
 
 #      _ _     _     
 #   __| (_)___| |__  
@@ -164,40 +155,40 @@ def setup_database():
 
 valid_dish_queries = ['name', 'simple_name', 'id', 'author']
 
-def validate_dish_query(query_params):
+def dish_validate_db_query(query_params):
     [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_dish_queries]
 
-def put_dish(dish):
-    status, error = execute("INSERT INTO dishes VALUES (?, ?, ?, ?, ?)", (dish.id,
+def dish_put(dish):
+    status, error = db_execute("INSERT INTO dishes VALUES (?, ?, ?, ?, ?)", (dish.id,
         dish.name,
         dish.simple_name,
         dish.author,
         dish.directions))
     for data in dish.requirements:
         if status:
-            put_ingredient(data['ingredient'])
-            status = status and put_requirement({'dish_id': dish.id,
+            ingredient_put(data['ingredient'])
+            status = status and requirement_put({'dish_id': dish.id,
                                                 'ingredient_id': data['ingredient'].id,
                                                 'quantity': data['quantity']})
     for data in dish.dependencies:
         if status and data.get('id'):
-            status = status and execute("INSERT INTO dependencies VALUES (?, ?)", (data['id'], dish.id))
+            status = status and db_execute("INSERT INTO dependencies VALUES (?, ?)", (data['id'], dish.id))
 
-    return status, translate_exception(error)
+    return status, db_translate_exception(error)
 
-def delete_dish(query_params):
-    validate_dish_query(query_params)
-    return execute("delete from dishes {}".format(translate_dict(query_params)), params="PRAGMA foreign_keys = 1")
+def dish_delete(query_params):
+    dish_validate_db_query(query_params)
+    return db_execute("delete from dishes {}".format(db_translate_dict(query_params)), params="PRAGMA foreign_keys = 1")
 
-def get_dish(query_params):
-    validate_dish_query(query_params)
-    results = query("select * from dishes", query_params)
+def dish_get(query_params):
+    dish_validate_db_query(query_params)
+    results = db_query("select * from dishes", query_params)
     data = []
 
     for (_id, name, simple_name, author, directions) in results:
-        requirements_data = query("select name, quantity from ingredients join requirements on id = ingredient_id where dish_id = '{}'".format(_id))
-        dependencies_data = query("SELECT id, name FROM dependencies JOIN dishes on requisite = id where required_by = '{}'".format(_id))
-        tags_data = query("SELECT labels.id, labels.name FROM labels JOIN tags on labels.id = label_id where dish_id = '{}'".format(_id))
+        requirements_data = db_query("select name, quantity from ingredients join requirements on id = ingredient_id where dish_id = '{}'".format(_id))
+        dependencies_data = db_query("SELECT id, name FROM dependencies JOIN dishes on requisite = id where required_by = '{}'".format(_id))
+        tags_data = db_query("SELECT labels.id, labels.name FROM labels JOIN tags on labels.id = label_id where dish_id = '{}'".format(_id))
         requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
         dependencies = [{'id': _id, 'name': name} for (_id, name) in dependencies_data]
         tags = [{'id': _id, 'name': name} for (_id, name) in tags_data]
@@ -211,9 +202,9 @@ def get_dish(query_params):
                  'dependencies': dependencies})
     return data
 
-def lookup_dish(query_params):
-    validate_dish_query(query_params)
-    results = query("select id, name from dishes", query_params, search=True)
+def dish_lookup(query_params):
+    dish_validate_db_query(query_params)
+    results = db_query("select id, name from dishes", query_params, search=True)
     data = []
 
     for (_id, name) in results:
@@ -231,12 +222,12 @@ def lookup_dish(query_params):
 
 valid_ingredient_queries = ['name', 'id']
 
-def validate_ingredient_query(query_params):
+def ingredient_validate_db_query(query_params):
     [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_ingredient_queries]
 
-def get_ingredient(query_params):
-    validate_ingredient_query(query_params)
-    results = query("select * from ingredients", query_params)
+def ingredient_get(query_params):
+    ingredient_validate_db_query(query_params)
+    results = db_query("select * from ingredients", query_params)
     data = []
 
     for (_id, name) in results:
@@ -244,8 +235,8 @@ def get_ingredient(query_params):
                  'name': name})
     return data
 
-def put_ingredient(ingredient):
-    return execute("INSERT INTO ingredients VALUES (?, ?)", (ingredient.id, ingredient.name))
+def ingredient_put(ingredient):
+    return db_execute("INSERT INTO ingredients VALUES (?, ?)", (ingredient.id, ingredient.name))
 
 #                       _                               _   
 #  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_ 
@@ -254,8 +245,8 @@ def put_ingredient(ingredient):
 # |_|  \___|\__, |\__,_|_|_|  \___|_| |_| |_|\___|_| |_|\__|
 #              |_|                                          
 
-def get_requirement(query_params):
-    results = query("select * from requirements", query_params)
+def requirement_get(query_params):
+    results = db_query("select * from requirements", query_params)
     data = []
 
     for (dish_id, ingredient_id, quantity) in results:
@@ -264,18 +255,18 @@ def get_requirement(query_params):
                      'quantity': quantity})
     return data
 
-def exists_requirement(query_params):
-    return len(get_requirement(query_params)) > 0
+def requirement_exists(query_params):
+    return len(requirement_get(query_params)) > 0
 
-def put_requirement(requirement):
-    return execute("INSERT INTO requirements VALUES (?, ?, ?)", (requirement['dish_id'], requirement['ingredient_id'], requirement['quantity']))
+def requirement_put(requirement):
+    return db_execute("INSERT INTO requirements VALUES (?, ?, ?)", (requirement['dish_id'], requirement['ingredient_id'], requirement['quantity']))
 
-def update_requirement(query, values):
+def requirement_update(query, values):
     vals = ",".join(["{}='{}'".format(key, val) for (key, val) in values.items()])
-    return execute("UPDATE requirements SET {} {}".format(vals, translate_dict(query)))
+    return db_execute("UPDATE requirements SET {} {}".format(vals, db_translate_dict(query)))
 
-def delete_requirement(query):
-    return execute("DELETE FROM requirements {}".format(translate_dict(query)))
+def requirement_delete(query):
+    return db_execute("DELETE FROM requirements {}".format(db_translate_dict(query)))
 
 #  _                  
 # | |_ __ _  __ _ ___ 
@@ -284,21 +275,28 @@ def delete_requirement(query):
 #  \__\__,_|\__, |___/
 #           |___/     
 
-def get_labels(stub = ""):
-    results = query("select id, name from labels", {'simple_name': stub}, search=True)
+def label_get(stub = ""):
+    results = db_query("select id, name from labels", {'simple_name': stub}, search=True)
     data = []
     for (_id, name) in results:
         data.append({'name': name, 'id': _id})
     return data
 
-def put_label(label_name):
-    return execute("INSERT INTO labels VALUES (?, ?, ?)", (helpers.hash256(label_name), label_name, helpers.simplify(label_name)))
+def label_put(label_name):
+    return db_execute("INSERT INTO labels VALUES (?, ?, ?)", (helpers.hash256(label_name), label_name, helpers.simplify(label_name)))
 
-def translate_exception(err):
+def db_translate_exception(err):
     if str(err) == "IntegrityError('UNIQUE constraint failed: dishes.id')":
         return "Dish already exists"
     else:
         return repr(err)
 
 if __name__ == "__main__":
-    setup_database()
+    db_drop_tables(['dishes', 'ingredients', 'requirements', 'dependencies', 'labels', 'tags'])
+    db_execute(DISHES)
+    db_execute(INGREDIENTS)
+    db_execute(REQUIREMENTS)
+    db_execute(DEPENDENCIES)
+    db_execute(LABELS)
+    db_execute(TAGS)
+
