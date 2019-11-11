@@ -34,13 +34,26 @@ Routes:
     GET             /labels/<tagname>
 '''
 
+def fix_args(dictionnary):
+    """
+    This code exists because python changed the way it translated dictionnaries between versions
+    When request.args was processed to be used later in the code, lists were created in 3.5 and
+    not in 3.7.
+    This function fixes that by parsing the dictionnary first
+    """
+    for (key, value) in dictionnary.items():
+        if isinstance(value, list):
+            dictionnary[key] = value[0]
+    return dictionnary
+
 @APP.route('/ingredients', methods=['GET'])
 def list_ingredients():
     """
     List ingredients recorded in the app
     Search is supported by passing GET arguments to the query
     """
-    status, results, error = BACK_END.ingredient_lookup(dict(request.args))
+    args = fix_args(dict(request.args))
+    status, results, error = BACK_END.ingredient_lookup(args)
     data = [{'id': ingredient.id, 'name': ingredient.name} for ingredient in results]
     return {'accept': status, 'data': data, 'error': error}
 
@@ -72,7 +85,8 @@ def list_dishes():
     List dishes recorded in the app
     Search is supported by passing GET arguments to the query
     """
-    status, results, error = BACK_END.dish_lookup(dict(request.args))
+    args = fix_args(dict(request.args))
+    status, results, error = BACK_END.dish_lookup(args)
     dishes = [{'id': dish.id, 'name': dish.name} for dish in results]
     return {'accept': status, 'data': dishes, 'error': error}
 
