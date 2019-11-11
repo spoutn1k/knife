@@ -1,9 +1,9 @@
 import sqlite3
 import helpers
 
-DBPATH='/var/lib/knife/database.db'
+DBPATH = '/var/lib/knife/database.db'
 
-DISHES='''
+DISHES = '''
 CREATE TABLE dishes (
     id TEXT,
     name TEXT NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE dishes (
     PRIMARY KEY (id))
 '''
 
-DEPENDENCIES='''
+DEPENDENCIES = '''
 CREATE TABLE dependencies (
     requisite TEXT NOT NULL,
     required_by TEXT NOT NULL,
@@ -28,13 +28,13 @@ CREATE TABLE dependencies (
         ON DELETE CASCADE)
 '''
 
-INGREDIENTS='''
+INGREDIENTS = '''
 CREATE TABLE ingredients (
     id text PRIMARY KEY, 
     name text)
 '''
 
-REQUIREMENTS='''
+REQUIREMENTS = '''
 CREATE TABLE requirements (
     dish_id TEXT NOT NULL, 
     ingredient_id TEXT NOT NULL, 
@@ -50,7 +50,7 @@ CREATE TABLE requirements (
         ON DELETE CASCADE)
 '''
 
-LABELS='''
+LABELS = '''
 CREATE TABLE labels (
     id TEXT,
     name TEXT NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE labels (
     PRIMARY KEY (id))
 '''
 
-TAGS='''
+TAGS = '''
 CREATE TABLE tags (
     dish_id TEXT NOT NULL,
     label_id TEXT NOT NULL,
@@ -73,69 +73,70 @@ CREATE TABLE tags (
         ON DELETE CASCADE)
 '''
 
-#      _       _        _                    
-#   __| | __ _| |_ __ _| |__   __ _ ___  ___ 
+#      _       _        _
+#   __| | __ _| |_ __ _| |__   __ _ ___  ___
 #  / _` |/ _` | __/ _` | '_ \ / _` / __|/ _ \
 # | (_| | (_| | || (_| | |_) | (_| \__ \  __/
 #  \__,_|\__,_|\__\__,_|_.__/ \__,_|___/\___|
 
 def db_setup(params=None):
-    CONNEXION = sqlite3.connect(DBPATH)
+    connexion = sqlite3.connect(DBPATH)
     if params:
-        CONNEXION.execute(params)
-    CURSOR = CONNEXION.cursor()
+        connexion.execute(params)
+    cursor = connexion.cursor()
 
-    return CONNEXION, CURSOR
+    return connexion, cursor
 
 def db_close(connexion):
     connexion.commit()
     connexion.close()
 
 def db_execute(template, values=None, params=None):
-    CONNEXION, CURSOR = db_setup(params)
-    print((template, values))
+    connexion, cursor = db_setup(params)
+    #print((template, values))
 
     try:
         if values:
-            CURSOR.execute(template, values)
+            cursor.execute(template, values)
         else:
-            CURSOR.execute(template)
+            cursor.execute(template)
         status = True
         error = None
     except sqlite3.IntegrityError as err:
         status = False
         error = repr(err)
 
-    db_close(CONNEXION)
+    db_close(connexion)
     return status, error
 
-def db_query(query_string, query_params={}, params=None, search=False):
+def db_query(query_string, query_params=None, params=None, search=False):
     """
     Query wrapper
     We assume all query params keys are sanitized
     """
-    CONNEXION, CURSOR = db_setup(params)
+    connexion, cursor = db_setup(params)
     operator = " LIKE " if search else "="
 
     if search:
-        for (k, v) in query_params.items():
-            query_params[k] = "%{}%".format(v)
+        for (key, val) in query_params.items():
+            query_params[key] = "%{}%".format(val)
 
-    if len(query_params) > 0:
-        query_string = query_string + " WHERE " + " AND ".join(["{}{}:{}".format(key, operator, key) for (key, _) in query_params.items()])
+    if query_params:
+        keys = ["{}{}:{}".format(key, operator, key) for (key, _) in query_params.items()]
+        query_string = query_string + " WHERE " + " AND ".join(keys)
 
     try:
-        print((query_string, query_params))
-        CURSOR.execute(query_string, query_params)
+        #print((query_string, query_params))
+        cursor.execute(query_string, query_params)
         status = True
-        data = CURSOR.fetchall()
+        data = cursor.fetchall()
         error = None
     except sqlite3.IntegrityError as err:
         status = False
         data = []
         error = str(err)
 
-    db_close(CONNEXION)
+    db_close(connexion)
     return status, data, error
 
 def db_drop_tables(tables):
@@ -152,16 +153,17 @@ def db_translate_dict(query):
         return " where " + query_string
     return ""
 
-#      _ _     _     
-#   __| (_)___| |__  
-#  / _` | / __| '_ \ 
+#      _ _     _
+#   __| (_)___| |__
+#  / _` | / __| '_ \
 # | (_| | \__ \ | | |
 #  \__,_|_|___/_| |_|
 
-valid_dish_queries = ['name', 'simple_name', 'id', 'author']
-
 def dish_validate_query(query_params):
-    [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_dish_queries]
+    valid_dish_queries = ['name', 'simple_name', 'id', 'author']
+    for k in list(query_params.keys()):
+        if k not in valid_dish_queries:
+            query_params.pop(k)
 
 def dish_lookup(query_params):
     dish_validate_query(query_params)
@@ -171,62 +173,53 @@ def dish_lookup(query_params):
         query_params['simple_name'] = helpers.simplify(query_params.pop('name'))
 
     status, results, error = db_query("SELECT id, name FROM dishes", query_params, search=True)
-    data = []
 
-    for (_id, name) in results:
-        data.append({'id': _id,
-                    'name': name})
+    data = [{'id': _id, 'name': name} for (_id, name) in results]
 
-    return data
+    return status, data, error
 
 def dish_put(dish):
     status, error = db_execute("INSERT INTO dishes VALUES (?, ?, ?, ?, ?)", (dish.id,
-        dish.name,
-        dish.simple_name,
-        dish.author,
-        dish.directions))
+                                                                             dish.name,
+                                                                             dish.simple_name,
+                                                                             dish.author,
+                                                                             dish.directions))
 
     return status, error
 
-def dish_delete(query_params):
-    dish_validate_query(query_params)
-    return db_execute("DELETE FROM dishes {}".format(db_translate_dict(query_params)), params="PRAGMA foreign_keys = 1")
+def dish_delete(dish_id):
+    query = "DELETE FROM dishes"
+    match = {'id': dish_id}
+    param = "PRAGMA foreign_keys = 1"
+    status, _, error = db_query(query, match, params=param)
+
+    return status, error
 
 def dish_get(query_params):
     dish_validate_query(query_params)
     status, results, error = db_query("SELECT * FROM dishes", query_params)
+
     data = []
-
-    for (_id, name, simple_name, author, directions) in results:
-        status, requirements_data, error = db_query("SELECT name, quantity FROM ingredients JOIN requirements ON id = ingredient_id WHERE dish_id = '{}'".format(_id))
-        status, dependencies_data, error = db_query("SELECT id, name FROM dependencies JOIN dishes ON requisite = id WHERE required_by = '{}'".format(_id))
-        status, tags_data, error = db_query("SELECT labels.id, labels.name FROM labels JOIN tags ON labels.id = label_id WHERE dish_id = '{}'".format(_id))
-
-        requirements = [{'ingredient': name, 'quantity': quantity} for (name, quantity) in requirements_data]
-        dependencies = [{'id': _id, 'name': name} for (_id, name) in dependencies_data]
-        tags = [{'id': _id, 'name': name} for (_id, name) in tags_data]
-
+    for (_id, name, _, author, directions) in results:
         data.append({'id': _id,
-                 'tags': tags,
-                 'name': name,
-                 'author': author,
-                 'directions': directions,
-                 'ingredients': requirements,
-                 'dependencies': dependencies})
+                     'name': name,
+                     'author': author,
+                     'directions': directions})
 
-    return data
+    return status, data, error
 
-#  _                          _ _            _   
-# (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_ 
+#  _                          _ _            _
+# (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_
 # | | '_ \ / _` | '__/ _ \/ _` | |/ _ \ '_ \| __|
-# | | | | | (_| | | |  __/ (_| | |  __/ | | | |_ 
+# | | | | | (_| | | |  __/ (_| | |  __/ | | | |_
 # |_|_| |_|\__, |_|  \___|\__,_|_|\___|_| |_|\__|
-#          |___/                                 
-
-valid_ingredient_queries = ['name', 'id']
+#          |___/
 
 def ingredient_validate_query(query_params):
-    [query_params.pop(k) for k in list(query_params.keys()) if k not in valid_ingredient_queries]
+    valid_ingredient_queries = ['name', 'id']
+    for k in list(query_params.keys()):
+        if k not in valid_ingredient_queries:
+            query_params.pop(k)
 
 def ingredient_lookup(args):
     ingredient_validate_query(args)
@@ -234,7 +227,7 @@ def ingredient_lookup(args):
 
     data = [{'id': _id, 'name': name} for (_id, name) in results]
 
-    return True, data, None
+    return status, data, error
 
 def ingredient_get(query_params):
     ingredient_validate_query(query_params)
@@ -248,16 +241,19 @@ def ingredient_put(ingredient):
     return db_execute("INSERT INTO ingredients VALUES (?, ?)", (ingredient.id, ingredient.name))
 
 def ingredient_delete(ingredient_id):
-    status, ingredient, error = db_query("DELETE FROM ingredients", {'id': ingredient_id}, params="PRAGMA foreign_keys = 1")
-    return status, error
-    
+    query = "DELETE FROM ingredients"
+    match = {'id': ingredient_id}
+    param = "PRAGMA foreign_keys = 1"
+    status, _, error = db_query(query, match, params=param)
 
-#                       _                               _   
-#  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_ 
+    return status, error
+
+#                       _                               _
+#  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
 # | '__/ _ \/ _` | | | | | '__/ _ \ '_ ` _ \ / _ \ '_ \| __|
-# | | |  __/ (_| | |_| | | | |  __/ | | | | |  __/ | | | |_ 
+# | | |  __/ (_| | |_| | | | |  __/ | | | | |  __/ | | | |_
 # |_|  \___|\__, |\__,_|_|_|  \___|_| |_| |_|\___|_| |_|\__|
-#              |_|                                          
+#              |_|
 
 def requirement_get(query_params):
     status, results, error = db_query("SELECT * FROM requirements", query_params)
@@ -271,12 +267,15 @@ def requirement_get(query_params):
     return status, data, error
 
 def requirement_exists(query_params):
-    status, results, error = db_query("SELECT COUNT(*) FROM requirements", query_params)
+    _, results, _ = db_query("SELECT COUNT(*) FROM requirements", query_params)
     return results[0][0]
 
 def requirement_put(requirement):
-    status, error = db_execute("INSERT INTO requirements VALUES (?, ?, ?)", (requirement['dish_id'], requirement['ingredient_id'], requirement['quantity']))
-    return status, {'id': requirement['ingredient_id'], 'quantity': requirement['quantity']}, error
+    query = "INSERT INTO requirements VALUES (?, ?, ?)"
+    values = (requirement['dish_id'], requirement['ingredient_id'], requirement['quantity'])
+    status, error = db_execute(query, values)
+    data = {'id': requirement['ingredient_id'], 'quantity': requirement['quantity']}
+    return status, data, error
 
 def requirement_update(query, values):
     vals = ",".join(["{}='{}'".format(key, val) for (key, val) in values.items()])
@@ -285,32 +284,34 @@ def requirement_update(query, values):
 def requirement_delete(query):
     return db_query("DELETE FROM requirements", query)
 
-#  _                  
-# | |_ __ _  __ _ ___ 
+#  _
+# | |_ __ _  __ _ ___
 # | __/ _` |/ _` / __|
 # | || (_| | (_| \__ \
 #  \__\__,_|\__, |___/
-#           |___/     
+#           |___/
 
-def label_get(stub = ""):
-    status, results, error = db_query("SELECT id, name FROM labels", {'simple_name': stub}, search=True)
-    data = []
-    for (_id, name) in results:
-        data.append({'name': name, 'id': _id})
-    return data
+def label_get(stub=""):
+    query_str = "SELECT id, name FROM labels"
+    status, results, error = db_query(query_str, {'simple_name': stub}, search=True)
+    data = [{'name': name, 'id': _id} for (_id, name) in results]
+    return status, data, error
 
 def label_put(label_name):
     _id = helpers.hash256(label_name)
     simple_name = helpers.simplify(label_name)
-    status, error = db_execute("INSERT INTO labels VALUES (?, ?, ?)", (_id, label_name, simple_name))
+    query = "INSERT INTO labels VALUES (?, ?, ?)"
+    values = (_id, label_name, simple_name)
+    status, error = db_execute(query, values)
     return status, {'id': _id, 'name': label_name}, error
 
 def tag(dish_id, tag_id):
     return db_execute("INSERT INTO tags VALUES(?, ?)", (dish_id, tag_id))
 
 def label_show(tag_id):
-    status, results, error = db_query("SELECT dishes.id, dishes.name FROM dishes JOIN tags ON dishes.id = tags.dish_id", {'label_id': tag_id})
-    return True, results, ""
+    query = "SELECT dishes.id, dishes.name FROM dishes JOIN tags ON dishes.id = tags.dish_id"
+    status, results, error = db_query(query, {'label_id': tag_id})
+    return status, results, error
 
 if __name__ == "__main__":
     db_drop_tables(['dishes', 'ingredients', 'requirements', 'dependencies', 'labels', 'tags'])

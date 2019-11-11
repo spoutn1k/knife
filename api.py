@@ -1,10 +1,16 @@
-from flask import Flask, request
-from store import store
-from drivers import sqlite
-import json
+"""
+api.py
 
-app = Flask(__name__)
-back_end = store(sqlite)
+Declaration of routes available in the knife app
+"""
+
+import json
+from flask import Flask, request
+from store import Store
+from drivers import sqlite
+
+APP = Flask(__name__)
+BACK_END = Store(sqlite)
 
 '''
 Routes:
@@ -24,90 +30,151 @@ Routes:
     POST            /dishes/<dishid>/tags/add
     DELETE          /dishes/<dishid>/tags/<tagid>
 
-    GET     /labels
-    GET     /labels/<tagname>
+    GET             /labels
+    GET             /labels/<tagname>
 '''
 
-@app.route('/dishes', methods=['GET'])
+@APP.route('/ingredients', methods=['GET'])
+def list_ingredients():
+    """
+    List ingredients recorded in the app
+    Search is supported by passing GET arguments to the query
+    """
+    status, results, error = BACK_END.ingredient_lookup(dict(request.args))
+    data = [{'id': ingredient.id, 'name': ingredient.name} for ingredient in results]
+    return {'accept': status, 'data': data, 'error': error}
+
+@APP.route('/ingredients/new', methods=['POST'])
+def create_ingredient():
+    """
+    Create a new ingredient from the data in the `json` field of the query
+    """
+    try:
+        ing_data = json.loads(request.form['json'])
+    except json.decoder.JSONDecodeError:
+        return {'accept': False, 'data': None, 'error': 'Invalid json syntax'}
+
+    ingredient = BACK_END.create_ingredient(ing_data)
+    valid, error = ingredient.save()
+    return {'accept': valid, 'data': ingredient.json, 'error': error}
+
+@APP.route('/ingredients/<ingredientid>', methods=['DELETE'])
+def delete_ingredient(ingredientid):
+    """
+    Delete the specified ingredient
+    """
+    status, ingredient, error = BACK_END.delete_ingredient(ingredientid)
+    return {'accept': status, 'data': ingredient, 'error': error}
+
+@APP.route('/dishes', methods=['GET'])
 def list_dishes():
-    return {'accept': True,
-            'dishes': [{'id': dish.id,
-                'name': dish.name} for dish in back_end.dish_lookup(dict(request.args))],
-            'error': None}
+    """
+    List dishes recorded in the app
+    Search is supported by passing GET arguments to the query
+    """
+    status, results, error = BACK_END.dish_lookup(dict(request.args))
+    dishes = [{'id': dish.id, 'name': dish.name} for dish in results]
+    return {'accept': status, 'data': dishes, 'error': error}
 
-@app.route('/dishes/new', methods=['POST'])
+@APP.route('/dishes/new', methods=['POST'])
 def create_dish():
-    dish = back_end.create(json.loads(request.form['json']))
+    """
+    Create dish from data passed in the `json` field of the query
+    """
+    try:
+        dish_data = json.loads(request.form['json'])
+    except json.decoder.JSONDecodeError:
+        return {'accept': False, 'data': None, 'error': 'Invalid json syntax'}
+
+    dish = BACK_END.create_dish(dish_data)
     valid, error = dish.save()
-    return {'accept': valid, 'dish': dish.json, 'error': error}
+    return {'accept': valid, 'data': dish.json, 'error': error}
 
-@app.route('/dishes/<dishid>', methods=['GET'])
+@APP.route('/dishes/<dishid>', methods=['GET'])
 def show_dish(dishid):
-    valid, dish, error = back_end.get_dish(dishid)
-    return {'accept': valid, 'dish': dish, 'error': error}
+    """
+    Show the dish of id `dishid`
+    """
+    valid, dish, error = BACK_END.get_dish(dishid)
+    return {'accept': valid, 'data': dish, 'error': error}
 
-@app.route('/dishes/<dishid>', methods=['DELETE'])
+@APP.route('/dishes/<dishid>', methods=['DELETE'])
 def delete_dish(dishid):
-    valid, dish, error = back_end.delete(dishid)
-    return {'accept': valid, 'dish': dish, 'error': error}
+    """
+    Delete specified dish
+    """
+    valid, dish, error = BACK_END.delete_dish(dishid)
+    return {'accept': valid, 'data': dish, 'error': error}
 
-@app.route('/dishes/<dishid>/ingredients', methods=['GET'])
+@APP.route('/dishes/<dishid>/ingredients', methods=['GET'])
 def show_requirements(dishid):
-    status, dish, error = back_end.get_dish(dishid)
+    """
+    Load a dish and show its requirements
+    """
+    status, dish, error = BACK_END.get_dish(dishid)
     data = dish.get('ingredients') if dish else None
     return {'accept': status, 'data': data, 'error': error}
 
-@app.route('/dishes/<dishid>/ingredients/add', methods=['POST'])
+@APP.route('/dishes/<dishid>/ingredients/add', methods=['POST'])
 def add_requirement(dishid):
-    valid, requirement, error = back_end.add_requirement(dishid, request.form.get('ingredient'), request.form.get('quantity'))
+    """
+    Add a ingredient requirement to a dish
+    """
+    ingredientid = request.form.get('ingredient')
+    quantity = request.form.get('quantity')
+    valid, requirement, error = BACK_END.add_requirement(dishid, ingredientid, quantity)
     return {'accept': valid, 'data': requirement, 'error': error}
 
-@app.route('/dishes/<dishid>/ingredients/<ingredientid>', methods=['PUT'])
+@APP.route('/dishes/<dishid>/ingredients/<ingredientid>', methods=['PUT'])
 def edit_requirement(dishid, ingredientid):
-    status, error = back_end.edit_requirement(dishid, ingredientid, request.form.get('quantity'))
+    """
+    Modify an ingredient's required quantity
+    """
+    status, error = BACK_END.edit_requirement(dishid, ingredientid, request.form.get('quantity'))
     return {'accept': status, 'data': None, 'error': error}
 
-@app.route('/dishes/<dishid>/ingredients/<ingredientid>', methods=['DELETE'])
+@APP.route('/dishes/<dishid>/ingredients/<ingredientid>', methods=['DELETE'])
 def delete_requirement(dishid, ingredientid):
-    status, requirement, error = back_end.delete_requirement(dishid, ingredientid)
+    """
+    Delete a requirement
+    """
+    status, requirement, error = BACK_END.delete_requirement(dishid, ingredientid)
     return {'accept': status, 'data': requirement, 'error': error}
 
-@app.route('/dishes/<dishid>/tags', methods=['GET'])
+@APP.route('/dishes/<dishid>/tags', methods=['GET'])
 def show_dish_tags(dishid):
-    valid, dish, error = back_end.get_dish(dishid)
-    return {'accept': valid, 'labels': dish.get('tags'), 'error': error}
+    """
+    List a recipe's tags
+    """
+    status, dish, error = BACK_END.get_dish(dishid)
+    data = dish.get('tags') if dish else None
+    return {'accept': status, 'data': data, 'error': error}
 
-@app.route('/dishes/<dishid>/tags/add', methods=['POST'])
+@APP.route('/dishes/<dishid>/tags/add', methods=['POST'])
 def tag(dishid):
+    """
+    Tag a dish with a label
+    """
     tagname = request.form.get('name')
-    status, error = back_end.tag_dish(dishid, tagname)
+    status, error = BACK_END.tag_dish(dishid, tagname)
     return {'accept': status, 'error': error}
 
-@app.route('/ingredients', methods=['GET'])
-def list_ingredients():
-    return {'ingredients': [{'id': ingredient.id,
-                             'name': ingredient.name} for ingredient in back_end.ingredient_lookup(dict(request.args))]}
-
-@app.route('/ingredients/add', methods=['POST'])
-def create_ingredient():
-    ingredient = back_end.create_ingredient(json.loads(request.form['json']))
-    valid, error = ingredient.save()
-    return {'accept': valid, 'dish': ingredient.json, 'error': error}
-
-@app.route('/ingredients/<ingredientid>', methods=['DELETE'])
-def delete_ingredient(ingredientid):
-    status, ingredient, error = back_end.delete_ingredient(ingredientid)
-    return {'accept': status, 'data': ingredient, 'error': error}
-
-@app.route('/labels', methods=['GET'])
+@APP.route('/labels', methods=['GET'])
 def show_labels():
+    """
+    Return a list of all recorded labels
+    """
     stub = request.args.get('name', "")
-    return {'labels': back_end.labels(stub)}
+    status, data, error = BACK_END.labels(stub)
+    return {'accept': status, 'data': data, 'error': error}
 
-@app.route('/labels/<tagname>', methods=['GET'])
+@APP.route('/labels/<tagname>', methods=['GET'])
 def show_label(tagname):
-    status, dishes, error = back_end.show_label(tagname)
-    return {'accept': status, 'dishes': dishes, 'error': error}
+    """
+    Show all the dishes tagged with a label
+    """
+    status, dishes, error = BACK_END.show_label(tagname)
+    return {'accept': status, 'data': dishes, 'error': error}
 
 if __name__ == '__main__':
-    app.run()
+    APP.run()
