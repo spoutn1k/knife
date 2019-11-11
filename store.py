@@ -126,7 +126,7 @@ class Store:
             return False, None, "Dish not found"
 
         status, error = self.driver.dish_delete(dish_id)
-        return status, Dish(results[0], self).json, error
+        return status, Dish(results[0], self).serializable, error
 
     def get_dish(self, dish_id):
         """
@@ -155,7 +155,7 @@ class Store:
         #status, tags_data, error = db_query("SELECT labels.id, labels.name FRO
         #M labels JOIN tags ON labels.id = label_id WHERE dish_id = '{}'".format(_id))
 
-        return True, Dish(dish_data, self).json, ""
+        return True, Dish(dish_data, self).serializable, ""
 
     def tag_dish(self, dish_id, tagname):
         """
