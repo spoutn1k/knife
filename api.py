@@ -56,7 +56,7 @@ def create_ingredient():
 
     ingredient = BACK_END.create_ingredient(ing_data)
     valid, error = ingredient.save()
-    return {'accept': valid, 'data': ingredient.json, 'error': error}
+    return {'accept': valid, 'data': ingredient.serializable, 'error': error}
 
 @APP.route('/ingredients/<ingredientid>', methods=['DELETE'])
 def delete_ingredient(ingredientid):
@@ -88,7 +88,7 @@ def create_dish():
 
     dish = BACK_END.create_dish(dish_data)
     valid, error = dish.save()
-    return {'accept': valid, 'data': dish.json, 'error': error}
+    return {'accept': valid, 'data': dish.serializable, 'error': error}
 
 @APP.route('/dishes/<dishid>', methods=['GET'])
 def show_dish(dishid):
@@ -112,7 +112,7 @@ def show_requirements(dishid):
     Load a dish and show its requirements
     """
     status, dish, error = BACK_END.get_dish(dishid)
-    data = dish.get('ingredients') if dish else None
+    data = dish.get('requirements') if dish else None
     return {'accept': status, 'data': data, 'error': error}
 
 @APP.route('/dishes/<dishid>/ingredients/add', methods=['POST'])

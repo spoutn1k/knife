@@ -22,8 +22,8 @@ class Ingredient:
                 'name': self.name}
 
     @property
-    def json(self):
-        return json.dumps(self.params)
+    def serializable(self):
+        return self.params
 
     def save(self):
         return self.store.save_ingredient(self)
