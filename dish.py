@@ -17,7 +17,7 @@ class Dish:
         return self.name
 
     def save(self):
-        return self.store.save(self)
+        return self.store.save_dish(self)
 
     @property
     def id(self):
@@ -46,10 +46,6 @@ class Dish:
                 'name': self.name,
                 'author': self.author,
                 'directions': self.directions,
-                'ingredients': [{'ingredient': data['ingredient'].name, 'quantity': data['quantity']} for data in self.requirements],
-                'tags': [tag.name for tag in self.tags],
+                'ingredients': [{'ingredient': {'id': data['ingredient'].id, 'name': data['ingredient'].name}, 'quantity': data['quantity']} for data in self.requirements],
+                'tags': [tag.get('name') for tag in self.tags],
                 'dependencies': self.dependencies}
-
-    @property
-    def markdown(self):
-        return "# %s\n\n## Ingredients\n" % self.name + '\n'.join([" - %s (%s)" % (req[0].name, str(req[1])) for req in self.requirements]) + "\n\n## Directions\n" + self.directions

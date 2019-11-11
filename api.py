@@ -1,5 +1,4 @@
-from flask import Flask
-from flask import request
+from flask import Flask, request
 from store import store
 from drivers import sqlite
 import json
@@ -7,63 +6,108 @@ import json
 app = Flask(__name__)
 back_end = store(sqlite)
 
+'''
+Routes:
+    GET             /ingredients
+    POST            /ingredients/new
+    DELETE          /ingredients/<ingredientid>
+
+    GET             /dishes
+    POST            /dishes/new
+    GET,DELETE      /dishes/<dishid>
+
+    GET             /dishes/<dishid>/ingredients
+    POST            /dishes/<dishid>/ingredients/add
+    PUT,DELETE      /dishes/<dishid>/ingredients/<ingredientid>
+
+    GET             /dishes/<dishid>/tags
+    POST            /dishes/<dishid>/tags/add
+    DELETE          /dishes/<dishid>/tags/<tagid>
+
+    GET     /labels
+    GET     /labels/<tagname>
+'''
+
 @app.route('/dishes', methods=['GET'])
 def list_dishes():
-    query = {}
-    if request.args.get('name'):
-        query['name'] = request.args.get('name')
-    if request.args.get('simple_name'):
-        query['simple_name'] = request.args.get('simple_name')
     return {'accept': True,
             'dishes': [{'id': dish.id,
-                'name': dish.name} for dish in back_end.dish_lookup(query)],
+                'name': dish.name} for dish in back_end.dish_lookup(dict(request.args))],
             'error': None}
 
 @app.route('/dishes/new', methods=['POST'])
 def create_dish():
-    dish = back_end.create({'name': request.form['name'],
-                             'author': request.form.get('author'),
-                             'directions': request.form['directions']})
-    valid, error = dish.save()
-    return {'accept': valid, 'dish': dish.json, 'error': error}
-
-@app.route('/dishes/<hashid>', methods=['GET'])
-def show_dish(hashid):
-    valid, dish, error = back_end.load_one({'id': hashid})
-    return {'accept': valid, 'dish': dish.json, 'error': error}
-
-@app.route('/dishes/<hashid>', methods=['DELETE'])
-def delete_dish(hashid):
-    valid = back_end.delete({'id': hashid})
-    return {'accept': valid}
-
-@app.route('/dishes/import', methods=['POST'])
-def import_dish():
     dish = back_end.create(json.loads(request.form['json']))
     valid, error = dish.save()
     return {'accept': valid, 'dish': dish.json, 'error': error}
 
+@app.route('/dishes/<dishid>', methods=['GET'])
+def show_dish(dishid):
+    valid, dish, error = back_end.get_dish(dishid)
+    return {'accept': valid, 'dish': dish, 'error': error}
+
+@app.route('/dishes/<dishid>', methods=['DELETE'])
+def delete_dish(dishid):
+    valid, dish, error = back_end.delete(dishid)
+    return {'accept': valid, 'dish': dish, 'error': error}
+
+@app.route('/dishes/<dishid>/ingredients', methods=['GET'])
+def show_requirements(dishid):
+    status, dish, error = back_end.get_dish(dishid)
+    data = dish.get('ingredients') if dish else None
+    return {'accept': status, 'data': data, 'error': error}
+
+@app.route('/dishes/<dishid>/ingredients/add', methods=['POST'])
+def add_requirement(dishid):
+    valid, requirement, error = back_end.add_requirement(dishid, request.form.get('ingredient'), request.form.get('quantity'))
+    return {'accept': valid, 'data': requirement, 'error': error}
+
+@app.route('/dishes/<dishid>/ingredients/<ingredientid>', methods=['PUT'])
+def edit_requirement(dishid, ingredientid):
+    status, error = back_end.edit_requirement(dishid, ingredientid, request.form.get('quantity'))
+    return {'accept': status, 'data': None, 'error': error}
+
+@app.route('/dishes/<dishid>/ingredients/<ingredientid>', methods=['DELETE'])
+def delete_requirement(dishid, ingredientid):
+    status, requirement, error = back_end.delete_requirement(dishid, ingredientid)
+    return {'accept': status, 'data': requirement, 'error': error}
+
+@app.route('/dishes/<dishid>/tags', methods=['GET'])
+def show_dish_tags(dishid):
+    valid, dish, error = back_end.get_dish(dishid)
+    return {'accept': valid, 'labels': dish.get('tags'), 'error': error}
+
+@app.route('/dishes/<dishid>/tags/add', methods=['POST'])
+def tag(dishid):
+    tagname = request.form.get('name')
+    status, error = back_end.tag_dish(dishid, tagname)
+    return {'accept': status, 'error': error}
+
 @app.route('/ingredients', methods=['GET'])
 def list_ingredients():
     return {'ingredients': [{'id': ingredient.id,
-                             'name': ingredient.name} for ingredient in back_end.ingredients]}
+                             'name': ingredient.name} for ingredient in back_end.ingredient_lookup(dict(request.args))]}
 
-@app.route('/dishes/<hashid>/ingredient', methods=['POST'])
-def add_ingredient(hashid):
-    valid = back_end.add({'dish': hashid,
-                    'ingredient': request.form['ingredient'],
-                    'quantity': request.form['quantity']})
-    return {'accept': valid}
+@app.route('/ingredients/add', methods=['POST'])
+def create_ingredient():
+    ingredient = back_end.create_ingredient(json.loads(request.form['json']))
+    valid, error = ingredient.save()
+    return {'accept': valid, 'dish': ingredient.json, 'error': error}
 
-@app.route('/dishes/labels', methods=['GET'])
+@app.route('/ingredients/<ingredientid>', methods=['DELETE'])
+def delete_ingredient(ingredientid):
+    status, ingredient, error = back_end.delete_ingredient(ingredientid)
+    return {'accept': status, 'data': ingredient, 'error': error}
+
+@app.route('/labels', methods=['GET'])
 def show_labels():
     stub = request.args.get('name', "")
     return {'labels': back_end.labels(stub)}
 
-@app.route('/dishes/labels/new', methods=['POST'])
-def add_label():
-    status, error = back_end.new_label(request.form['name'])
-    return {'valid': status, 'error': error}
+@app.route('/labels/<tagname>', methods=['GET'])
+def show_label(tagname):
+    status, dishes, error = back_end.show_label(tagname)
+    return {'accept': status, 'dishes': dishes, 'error': error}
 
 if __name__ == '__main__':
     app.run()

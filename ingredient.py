@@ -1,3 +1,4 @@
+import json
 import hashlib
 
 class Ingredient:
@@ -7,6 +8,7 @@ class Ingredient:
     def __init__(self, params, store):
         self._id = params.get("id")
         self.name = params["name"]
+        self.store = store
 
     @property
     def id(self):
@@ -17,5 +19,11 @@ class Ingredient:
     @property
     def params(self):
         return {'id': self.id,
-                'name': self.name,
-                'unit': int(self.default_unit)}
+                'name': self.name}
+
+    @property
+    def json(self):
+        return json.dumps(self.params)
+
+    def save(self):
+        return self.store.save_ingredient(self)
