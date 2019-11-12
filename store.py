@@ -104,13 +104,17 @@ class Store:
         if not status:
             return False, error
 
-        for data in dish.requirements:
-            self.driver.ingredient_put(data.get('ingredient'))
+        for requirement in dish.requirements:
+            self.driver.ingredient_put(requirement.get('ingredient'))
             self.driver.requirement_put({'dish_id': dish.id,
-                                         'ingredient_id': data['ingredient'].id,
-                                         'quantity': data['quantity']})
-        #for data in dish.dependencies:
-        #for data in dish.tags:
+                                         'ingredient_id': requirement['ingredient'].id,
+                                         'quantity': requirement['quantity']})
+
+        for label_name in dish.tags:
+            _, label, _ = self.driver.label_put(label_name)
+            self.driver.dish_tag(dish.id, label.get('id'))
+
+        #for dependency in dish.dependencies:
 
         return status, error
 
@@ -150,25 +154,31 @@ class Store:
 
         dish_data['requirements'] = requirement_list
 
+        _, tag_list, _ = self.driver.tag_get({'dish_id': dish_id})
+        dish_data['tags'] = tag_list
+
         #status, dependencies_data, error = db_query("SELECT id, name FROM depe
         #ndencies JOIN dishes ON requisite = id WHERE required_by = '{}'".format(_id))
-        #status, tags_data, error = db_query("SELECT labels.id, labels.name FRO
-        #M labels JOIN tags ON labels.id = label_id WHERE dish_id = '{}'".format(_id))
 
         return True, Dish(dish_data, self).serializable, ""
 
-    def tag_dish(self, dish_id, tagname):
+    def tag_dish(self, dish_id, labelname):
         """
         Tag a dish with a label
         """
-        test = self.labels(tagname)
+        if labelname in [""] or " " in labelname:
+            return False, "Invalid label name"
+        _, label, _ = self.driver.label_put(labelname)
+        return self.driver.dish_tag(dish_id, label.get('id'))
 
-        if not test:
-            _, label, _ = self.new_label(tagname)
-        else:
-            label = test[0]
-
-        return self.driver.tag(dish_id, label.get('id'))
+    def untag_dish(self, dish_id, tagname):
+        """
+        Untag a dish with a label
+        """
+        _, label_list, _ = self.driver.label_get({'name': tagname})
+        if not label_list:
+            return False, "Label not found"
+        return self.driver.dish_untag(dish_id, label_list[0].get('id'))
 
 #                       _                               _
 #  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
@@ -225,23 +235,32 @@ class Store:
 # | | (_| | |_) |  __/ |
 # |_|\__,_|_.__/ \___|_|
 
-    def labels(self, stub=""):
+    def label_lookup(self, args):
         """
-        Get all labels which names contain stub
+        Get all labels which match the parameters in args
         """
-        return self.driver.label_get(stub)
+        return self.driver.label_get(args)
 
-    def new_label(self, name):
+    def new_label(self, label_name):
         """
         Create a new label
         """
-        return self.driver.label_put(name)
+        if tagname in [""] or " " in tagname:
+            return False, "Invalid label name"
+        return self.driver.label_put(label_name)
 
-    def show_label(self, tagname):
+    def delete_label(self, labelid):
+        """
+        Create a new label
+        """
+        return self.driver.label_delete(labelid)
+
+    def show_label(self, labelid):
         """
         Show dishes tagged with the label `tagname`
         """
-        test = self.labels(tagname)
-        if not test:
-            return True, [], ""
-        return self.driver.label_show(test[0].get('id'))
+        _, label_list, _ = self.driver.label_get({'id': labelid})
+        if not label_list:
+            return False, None, "Label not found"
+        status, dish_list, error = self.driver.tag_show(label_list[0].get('id'))
+        return status, {label_list[0].get('name'): dish_list}, error

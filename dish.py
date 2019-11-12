@@ -49,5 +49,5 @@ class Dish:
                 'requirements': [{'ingredient': {'id': data['ingredient'].id,
                                                  'name': data['ingredient'].name},
                                   'quantity': data['quantity']} for data in self.requirements],
-                'tags': [tag.get('name') for tag in self.tags],
+                'tags': self.tags,
                 'dependencies': self.dependencies}

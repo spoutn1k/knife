@@ -2,6 +2,14 @@ import sqlite3
 import helpers
 
 DBPATH = '/var/lib/knife/database.db'
+LOGFILE = 'queries.log'
+LOGGING = True
+
+def log(*args, **kwargs):
+    if not LOGGING:
+        return
+    with open(LOGFILE, 'a') as log:
+        log.write("{} {}\n".format(*args, dict(**kwargs)))
 
 DISHES = '''
 CREATE TABLE dishes (
@@ -93,9 +101,9 @@ def db_close(connexion):
 
 def db_execute(template, values=None, params=None):
     connexion, cursor = db_setup(params)
-    #print((template, values))
 
     try:
+        log(template, values)
         if values:
             cursor.execute(template, values)
         else:
@@ -126,7 +134,7 @@ def db_query(query_string, query_params=None, params=None, search=False):
         query_string = query_string + " WHERE " + " AND ".join(keys)
 
     try:
-        #print((query_string, query_params))
+        log(query_string, query_params)
         cursor.execute(query_string, query_params)
         status = True
         data = cursor.fetchall()
@@ -192,7 +200,6 @@ def dish_delete(dish_id):
     match = {'id': dish_id}
     param = "PRAGMA foreign_keys = 1"
     status, _, error = db_query(query, match, params=param)
-
     return status, error
 
 def dish_get(query_params):
@@ -208,6 +215,16 @@ def dish_get(query_params):
 
     return status, data, error
 
+def dish_tag(dish_id, label_id):
+    return db_execute("INSERT INTO tags VALUES(?, ?)", (dish_id, label_id))
+
+def dish_untag(dish_id, label_id):
+    query = "DELETE FROM tags"
+    match = {'label_id': label_id, 'dish_id': dish_id}
+    param = "PRAGMA foreign_keys = 1"
+    status, _, error = db_query(query, match, params=param)
+    return status, error
+
 #  _                          _ _            _
 # (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_
 # | | '_ \ / _` | '__/ _ \/ _` | |/ _ \ '_ \| __|
@@ -217,9 +234,9 @@ def dish_get(query_params):
 
 def ingredient_validate_query(query_params):
     valid_ingredient_queries = ['name', 'id']
-    for k in list(query_params.keys()):
-        if k not in valid_ingredient_queries:
-            query_params.pop(k)
+    for key in list(query_params.keys()):
+        if key not in valid_ingredient_queries:
+            query_params.pop(key)
 
 def ingredient_lookup(args):
     ingredient_validate_query(args)
@@ -291,9 +308,41 @@ def requirement_delete(query):
 #  \__\__,_|\__, |___/
 #           |___/
 
-def label_get(stub=""):
+def tag_validate_query(query_params):
+    valid_tag_queries = ['dish_id', 'label_id']
+    for key in list(query_params.keys()):
+        if key not in valid_tag_queries:
+            query_params.pop(key)
+
+def tag_get(query_params):
+    tag_validate_query(query_params)
+    query_str = "SELECT id, name FROM labels JOIN tags ON tags.label_id = labels.id"
+    status, results, error = db_query(query_str, query_params, search=True)
+    data = [{'name': name, 'id': _id} for (_id, name) in results]
+    return status, data, error
+
+def tag_show(tag_id):
+    query = "SELECT dishes.id, dishes.name FROM dishes JOIN tags ON dishes.id = tags.dish_id"
+    status, results, error = db_query(query, {'label_id': tag_id})
+    data = [{'name': name, 'id': _id} for (_id, name) in results]
+    return status, data, error
+
+#  _       _          _
+# | | __ _| |__   ___| |___
+# | |/ _` | '_ \ / _ \ / __|
+# | | (_| | |_) |  __/ \__ \
+# |_|\__,_|_.__/ \___|_|___/
+
+def label_validate_query(query_params):
+    valid_label_queries = ['name', 'id']
+    for key in list(query_params.keys()):
+        if key not in valid_label_queries:
+            query_params.pop(key)
+
+def label_get(query_params):
+    label_validate_query(query_params)
     query_str = "SELECT id, name FROM labels"
-    status, results, error = db_query(query_str, {'simple_name': stub}, search=True)
+    status, results, error = db_query(query_str, query_params, search=True)
     data = [{'name': name, 'id': _id} for (_id, name) in results]
     return status, data, error
 
@@ -305,13 +354,12 @@ def label_put(label_name):
     status, error = db_execute(query, values)
     return status, {'id': _id, 'name': label_name}, error
 
-def tag(dish_id, tag_id):
-    return db_execute("INSERT INTO tags VALUES(?, ?)", (dish_id, tag_id))
-
-def label_show(tag_id):
-    query = "SELECT dishes.id, dishes.name FROM dishes JOIN tags ON dishes.id = tags.dish_id"
-    status, results, error = db_query(query, {'label_id': tag_id})
-    return status, results, error
+def label_delete(label_id):
+    query = "DELETE FROM labels"
+    match = {'id': label_id}
+    param = "PRAGMA foreign_keys = 1"
+    status, _, error = db_query(query, match, params=param)
+    return status, error
 
 if __name__ == "__main__":
     db_drop_tables(['dishes', 'ingredients', 'requirements', 'dependencies', 'labels', 'tags'])

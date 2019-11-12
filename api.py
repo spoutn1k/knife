@@ -28,10 +28,10 @@ Routes:
 
     GET             /dishes/<dishid>/tags
     POST            /dishes/<dishid>/tags/add
-    DELETE          /dishes/<dishid>/tags/<tagid>
+    DELETE          /dishes/<dishid>/tags/<labelname>
 
     GET             /labels
-    GET             /labels/<tagname>
+    GET,DELETE      /labels/<labelid>
 '''
 
 def fix_args(dictionnary):
@@ -165,7 +165,7 @@ def show_dish_tags(dishid):
     return {'accept': status, 'data': data, 'error': error}
 
 @APP.route('/dishes/<dishid>/tags/add', methods=['POST'])
-def tag(dishid):
+def tag_dish(dishid):
     """
     Tag a dish with a label
     """
@@ -173,22 +173,38 @@ def tag(dishid):
     status, error = BACK_END.tag_dish(dishid, tagname)
     return {'accept': status, 'error': error}
 
+@APP.route('/dishes/<dishid>/tags/<labelname>', methods=['DELETE'])
+def untag_dish(dishid, labelname):
+    """
+    Untag a dish with a label
+    """
+    status, error = BACK_END.untag_dish(dishid, labelname)
+    return {'accept': status, 'error': error}
+
 @APP.route('/labels', methods=['GET'])
-def show_labels():
+def list_labels():
     """
     Return a list of all recorded labels
     """
-    stub = request.args.get('name', "")
-    status, data, error = BACK_END.labels(stub)
+    args = fix_args(dict(request.args))
+    status, data, error = BACK_END.label_lookup(args)
     return {'accept': status, 'data': data, 'error': error}
 
-@APP.route('/labels/<tagname>', methods=['GET'])
-def show_label(tagname):
+@APP.route('/labels/<labelid>', methods=['GET'])
+def show_label(labelid):
     """
     Show all the dishes tagged with a label
     """
-    status, dishes, error = BACK_END.show_label(tagname)
+    status, dishes, error = BACK_END.show_label(labelid)
     return {'accept': status, 'data': dishes, 'error': error}
+
+@APP.route('/labels/<labelid>', methods=['DELETE'])
+def delete_label(labelid):
+    """
+    Delete all records of a label
+    """
+    status, error = BACK_END.delete_label(labelid)
+    return {'accept': status, 'data': None, 'error': error}
 
 if __name__ == '__main__':
     APP.run()
