@@ -22,13 +22,17 @@ Routes:
     POST            /dishes/new
     GET,DELETE      /dishes/<dishid>
 
-    GET             /dishes/<dishid>/ingredients
-    POST            /dishes/<dishid>/ingredients/add
-    PUT,DELETE      /dishes/<dishid>/ingredients/<ingredientid>
+    GET             /dishes/<dishid>/requirements
+    POST            /dishes/<dishid>/requirements/add
+    PUT,DELETE      /dishes/<dishid>/requirements/<ingredientid>
+
+    GET             /dishes/<dishid>/dependencies
+    POST            /dishes/<dishid>/dependencies/add
+    DELETE          /dishes/<dishid>/dependencies/<requiredid>
 
     GET             /dishes/<dishid>/tags
     POST            /dishes/<dishid>/tags/add
-    DELETE          /dishes/<dishid>/tags/<labelname>
+    DELETE          /dishes/<dishid>/tags/<labelid>
 
     GET             /labels
     GET,DELETE      /labels/<labelid>
@@ -120,7 +124,7 @@ def delete_dish(dishid):
     valid, dish, error = BACK_END.delete_dish(dishid)
     return {'accept': valid, 'data': dish, 'error': error}
 
-@APP.route('/dishes/<dishid>/ingredients', methods=['GET'])
+@APP.route('/dishes/<dishid>/requirements', methods=['GET'])
 def show_requirements(dishid):
     """
     Load a dish and show its requirements
@@ -129,7 +133,7 @@ def show_requirements(dishid):
     data = dish.get('requirements') if dish else None
     return {'accept': status, 'data': data, 'error': error}
 
-@APP.route('/dishes/<dishid>/ingredients/add', methods=['POST'])
+@APP.route('/dishes/<dishid>/requirements/add', methods=['POST'])
 def add_requirement(dishid):
     """
     Add a ingredient requirement to a dish
@@ -139,7 +143,7 @@ def add_requirement(dishid):
     valid, requirement, error = BACK_END.add_requirement(dishid, ingredientid, quantity)
     return {'accept': valid, 'data': requirement, 'error': error}
 
-@APP.route('/dishes/<dishid>/ingredients/<ingredientid>', methods=['PUT'])
+@APP.route('/dishes/<dishid>/requirements/<ingredientid>', methods=['PUT'])
 def edit_requirement(dishid, ingredientid):
     """
     Modify an ingredient's required quantity
@@ -154,6 +158,31 @@ def delete_requirement(dishid, ingredientid):
     """
     status, requirement, error = BACK_END.delete_requirement(dishid, ingredientid)
     return {'accept': status, 'data': requirement, 'error': error}
+
+@APP.route('/dishes/<dishid>/dependencies', methods=['GET'])
+def show_dependencies(dishid):
+    """
+    Show a dish's dependencies
+    """
+    status, dish, error = BACK_END.get_dish(dishid)
+    data = dish.get('dependencies') if dish else None
+    return {'accept': status, 'data': data, 'error': error}
+
+@APP.route('/dishes/<dishid>/dependencies/add', methods=['POST'])
+def add_dependency(dishid):
+    """
+    Add a pre-requisite to a dish
+    """
+    status, error = BACK_END.link_dish(dishid, request.form.get('required'))
+    return {'accept': status, 'data': None, 'error': error}
+
+@APP.route('/dishes/<dishid>/dependencies/<requiredid>', methods=['DELETE'])
+def delete_dependency(dishid, requiredid):
+    """
+    Delete a pre-requisite from a dish
+    """
+    status, error = BACK_END.unlink_dish(dishid, requiredid)
+    return {'accept': status, 'data': None, 'error': error}
 
 @APP.route('/dishes/<dishid>/tags', methods=['GET'])
 def show_dish_tags(dishid):
@@ -173,12 +202,12 @@ def tag_dish(dishid):
     status, error = BACK_END.tag_dish(dishid, tagname)
     return {'accept': status, 'error': error}
 
-@APP.route('/dishes/<dishid>/tags/<labelname>', methods=['DELETE'])
-def untag_dish(dishid, labelname):
+@APP.route('/dishes/<dishid>/tags/<labelid>', methods=['DELETE'])
+def untag_dish(dishid, labelid):
     """
     Untag a dish with a label
     """
-    status, error = BACK_END.untag_dish(dishid, labelname)
+    status, error = BACK_END.untag_dish(dishid, labelid)
     return {'accept': status, 'error': error}
 
 @APP.route('/labels', methods=['GET'])

@@ -3,13 +3,13 @@ import helpers
 
 DBPATH = '/var/lib/knife/database.db'
 LOGFILE = 'queries.log'
-LOGGING = True
+LOGGING = False
 
 def log(*args, **kwargs):
     if not LOGGING:
         return
-    with open(LOGFILE, 'a') as log:
-        log.write("{} {}\n".format(*args, dict(**kwargs)))
+    with open(LOGFILE, 'a') as logfile:
+        logfile.write("{} {}\n".format(*args, dict(**kwargs)))
 
 DISHES = '''
 CREATE TABLE dishes (
@@ -224,6 +224,30 @@ def dish_untag(dish_id, label_id):
     param = "PRAGMA foreign_keys = 1"
     status, _, error = db_query(query, match, params=param)
     return status, error
+
+#      _                           _                 _
+#   __| | ___ _ __   ___ _ __   __| | ___ _ __   ___(_) ___  ___
+#  / _` |/ _ \ '_ \ / _ \ '_ \ / _` |/ _ \ '_ \ / __| |/ _ \/ __|
+# | (_| |  __/ |_) |  __/ | | | (_| |  __/ | | | (__| |  __/\__ \
+#  \__,_|\___| .__/ \___|_| |_|\__,_|\___|_| |_|\___|_|\___||___/
+#            |_|
+
+def dish_link(dependent_id, requisite_id):
+    query = "INSERT INTO dependencies VALUES (?, ?)"
+    values = (requisite_id, dependent_id)
+    return db_execute(query, values)
+
+def dish_unlink(dependent_id, requisite_id):
+    query = "DELETE FROM dependencies"
+    match = {'required_by': dependent_id, 'requisite': requisite_id}
+    status, _, error = db_query(query, match)
+    return status, error
+
+def dish_requires(dish_id):
+    query = "SELECT id, name FROM dishes JOIN dependencies ON dishes.id = dependencies.requisite"
+    status, results, error = db_query(query, {'required_by': dish_id})
+    data = [{'id': _id, 'name': name} for (_id, name) in results]
+    return status, data, error
 
 #  _                          _ _            _
 # (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_

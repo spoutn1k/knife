@@ -11,9 +11,13 @@
 |`POST`|`/dishes/new`|Create a new dish|
 |`GET,DELETE`|`/dishes/<dishid>`|Methods on dish objects|
 |-|-|-|
-|`GET`|`/dishes/<dishid>/ingredients`|Get a dish's requirements|
-|`POST`|`/dishes/<dishid>/ingredients/add`|Add a requirement to a recipe|
-|`PUT,DELETE`|`/dishes/<dishid>/ingredients/<ingredientid>`|Modify or delete a requirement|
+|`GET`|`/dishes/<dishid>/requirements`|Get a dish's requirements|
+|`POST`|`/dishes/<dishid>/requirements/add`|Add a requirement to a recipe|
+|`PUT,DELETE`|`/dishes/<dishid>/requirements/<ingredientid>`|Modify or delete a requirement|
+|-|-|-|
+|`GET`|`/dishes/<dishid>/dependencies`|List a dish's dependencies|
+|`POST`|`/dishes/<dishid>/dependencies/add`|Add a pre-requisite recipe to the dish|
+|`DELETE`|`/dishes/<dishid>/dependencies/<requiredid>`|Delete a dependency from a recipe|
 |-|-|-|
 |`GET`|`/dishes/<dishid>/tags`|List a dish's labels|
 |`POST`|`/dishes/<dishid>/tags/add`|Tag a dish with a label|

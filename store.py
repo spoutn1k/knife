@@ -110,11 +110,12 @@ class Store:
                                          'ingredient_id': requirement['ingredient'].id,
                                          'quantity': requirement['quantity']})
 
-        for label_name in dish.tags:
-            _, label, _ = self.driver.label_put(label_name)
+        for label_data in dish.tags:
+            _, label, _ = self.driver.label_put(label_data.get('name'))
             self.driver.dish_tag(dish.id, label.get('id'))
 
-        #for dependency in dish.dependencies:
+        for dependency_data in dish.dependencies:
+            self.driver.dish_link(dish.id, dependency_data.get('id'))
 
         return status, error
 
@@ -157,8 +158,8 @@ class Store:
         _, tag_list, _ = self.driver.tag_get({'dish_id': dish_id})
         dish_data['tags'] = tag_list
 
-        #status, dependencies_data, error = db_query("SELECT id, name FROM depe
-        #ndencies JOIN dishes ON requisite = id WHERE required_by = '{}'".format(_id))
+        _, dependency_list, _ = self.driver.dish_requires(dish_id)
+        dish_data['dependencies'] = dependency_list
 
         return True, Dish(dish_data, self).serializable, ""
 
@@ -171,14 +172,26 @@ class Store:
         _, label, _ = self.driver.label_put(labelname)
         return self.driver.dish_tag(dish_id, label.get('id'))
 
-    def untag_dish(self, dish_id, tagname):
+    def untag_dish(self, dish_id, labelid):
         """
         Untag a dish with a label
         """
-        _, label_list, _ = self.driver.label_get({'name': tagname})
+        _, label_list, _ = self.driver.label_get({'id': labelid})
         if not label_list:
             return False, "Label not found"
         return self.driver.dish_untag(dish_id, label_list[0].get('id'))
+
+    def link_dish(self, dish_id, required_id):
+        """
+        Specify a recipe requirement for a recipe
+        """
+        return self.driver.dish_link(dish_id, required_id)
+
+    def unlink_dish(self, dish_id, required_id):
+        """
+        Delete a recipe requirement for a recipe
+        """
+        return self.driver.dish_unlink(dish_id, required_id)
 
 #                       _                               _
 #  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
@@ -241,13 +254,13 @@ class Store:
         """
         return self.driver.label_get(args)
 
-    def new_label(self, label_name):
+    def new_label(self, labelname):
         """
         Create a new label
         """
-        if tagname in [""] or " " in tagname:
+        if labelname in [""] or " " in labelname:
             return False, "Invalid label name"
-        return self.driver.label_put(label_name)
+        return self.driver.label_put(labelname)
 
     def delete_label(self, labelid):
         """
