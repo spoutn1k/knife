@@ -6,6 +6,24 @@ Implementation of the Store class
 
 from dish import Dish
 from ingredient import Ingredient
+from exceptions import *
+
+def validate_query(args_dict, authorized_keys):
+    for key in list(args_dict.keys()):
+        if key not in authorized_keys:
+            raise InvalidQuery(key)
+
+def dish_validate_query(query_params):
+    validate_query(query_params, ['name', 'simple_name', 'id', 'author'])
+
+def ingredient_validate_query(query_params):
+    validate_query(query_params, ['name', 'id'])
+
+def tag_validate_query(query_params):
+    validate_query(query_params, ['dish_id', 'label_id'])
+
+def label_validate_query(query_params):
+    validate_query(query_params, ['name', 'id'])
 
 class Store:
     """
@@ -32,49 +50,31 @@ class Store:
         """
         Get an ingredient list, matching the parameters passed in args
         """
-        status, stored, error = self.driver.ingredient_lookup(args)
-        return status, [Ingredient(params, self) for params in stored], error
-
-    def get_ingredient(self, ingredient_id):
-        """
-        Get an ingredient from an id
-        """
-        status, stored, error = self.driver.ingredient_get({'id': ingredient_id})
-
-        if not status:
-            return status, None, error
-        if not stored:
-            return False, None, "Ingredient not found"
-
-        return True, Ingredient(stored[0], self), None
+        ingredient_validate_query(args)
+        stored = self.driver.ingredient_get(args, match=True)
+        return [Ingredient(params, self) for params in stored]
 
     def save_ingredient(self, ingredient):
         """
         Record an ingredient object
         """
-        status, error = self.driver.ingredient_put(ingredient)
-        return status, error
+        if self.driver.ingredient_get({'id': ingredient.id}):
+            raise IngredientAlreadyExists(ingredient.id)
+        self.driver.ingredient_put(ingredient)
 
     def delete_ingredient(self, ingredient_id):
         """
         Delete an ingredient from an id
         """
-        status, stored, error = self.driver.ingredient_get({'id': ingredient_id})
-
-        if not status:
-            return status, None, error
+        stored = self.driver.ingredient_get({'id': ingredient_id})
         if not stored:
-            return False, None, "Ingredient not found"
+            raise IngredientNotFound(ingredient_id)
 
-        status, stored, error = self.driver.requirement_get({'ingredient_id': ingredient_id})
-
-        if not status:
-            return status, None, error
+        stored = self.driver.requirement_get({'ingredient_id': ingredient_id})
         if stored:
-            return False, None, "Ingredient in used in {} recipes".format(len(stored))
+            raise IngredientInUse(len(stored))
 
-        status, error = self.driver.ingredient_delete(ingredient_id)
-        return status, None, error
+        self.driver.ingredient_delete(ingredient_id)
 
 #      _ _     _
 #   __| (_)___| |__
@@ -92,99 +92,104 @@ class Store:
         """
         Get a dish list, matching the parameters passed in args
         """
-        status, stored, error = self.driver.dish_lookup(args)
-        return status, [Dish(params, self) for params in stored], error
+        dish_validate_query(args)
+        stored = self.driver.dish_lookup(args)
+        return [Dish(params, self) for params in stored]
 
     def save_dish(self, dish):
         """
         Record a dish object
         """
-        status, error = self.driver.dish_put(dish)
-
-        if not status:
-            return False, error
+        if self.driver.dish_get({'id': dish.id}):
+            raise DishAlreadyExists(dish.id)
+        
+        self.driver.dish_put(dish)
 
         for requirement in dish.requirements:
-            self.driver.ingredient_put(requirement.get('ingredient'))
+            ingredient = requirement.get('ingredient')
+            if not self.driver.ingredient_get(ingredient.serializable):
+                self.driver.ingredient_put(ingredient)
             self.driver.requirement_put({'dish_id': dish.id,
                                          'ingredient_id': requirement['ingredient'].id,
                                          'quantity': requirement['quantity']})
-
         for label_data in dish.tags:
-            _, label, _ = self.driver.label_put(label_data.get('name'))
-            self.driver.dish_tag(dish.id, label.get('id'))
+            if not self.driver.label_get({'name': label_data.get('name')}):
+                self.driver.label_put(label_data.get('name'))
+            self.driver.dish_tag(dish.id, label_data.get('id'))
 
         for dependency_data in dish.dependencies:
             self.driver.dish_link(dish.id, dependency_data.get('id'))
-
-        return status, error
 
     def delete_dish(self, dish_id):
         """
         Delete a dish from an id
         """
-        status, results, error = self.driver.dish_get({'id': dish_id})
-
-        if not status:
-            return status, None, error
-        if not results:
-            return False, None, "Dish not found"
-
-        status, error = self.driver.dish_delete(dish_id)
-        return status, Dish(results[0], self).serializable, error
+        if not self.driver.dish_get({'id': dish_id}):
+            raise DishNotFound(dish_id)
+        self.driver.dish_delete(dish_id)
 
     def get_dish(self, dish_id):
         """
         Get full details about the dish of the specified id
         """
-        status, results, error = self.driver.dish_get({'id': dish_id})
-
-        if not status:
-            return False, None, error
+        results = self.driver.dish_get({'id': dish_id})
         if not results:
-            return False, None, "Dish not found"
-
+            raise DishNotFound(dish_id)
         dish_data = results[0]
 
         requirement_list = []
-        _, requirements_data, _ = self.driver.requirement_get({'dish_id': dish_id})
+        requirements_data = self.driver.requirement_get({'dish_id': dish_id})
         for raw_data in requirements_data:
-            _, results, _ = self.driver.ingredient_get({'id': raw_data.get('ingredient_id')})
+            results = self.driver.ingredient_get({'id': raw_data.get('ingredient_id')})
             req = {'ingredient': results[0], 'quantity': raw_data.get('quantity')}
             requirement_list.append(req)
 
         dish_data['requirements'] = requirement_list
 
-        _, tag_list, _ = self.driver.tag_get({'dish_id': dish_id})
-        dish_data['tags'] = tag_list
+        dish_data['tags'] = self.driver.tag_get({'dish_id': dish_id})
+        dish_data['dependencies'] = self.driver.dish_requires(dish_id)
 
-        _, dependency_list, _ = self.driver.dish_requires(dish_id)
-        dish_data['dependencies'] = dependency_list
-
-        return True, Dish(dish_data, self).serializable, ""
+        return Dish(dish_data, self).serializable
 
     def tag_dish(self, dish_id, labelname):
         """
         Tag a dish with a label
         """
+        if not self.driver.dish_get({'id': dish_id}):
+            raise DishNotFound(dish_id)
+
         if labelname in [""] or " " in labelname:
-            return False, "Invalid label name"
-        _, label, _ = self.driver.label_put(labelname)
+            raise LabelInvalid(labelname)
+
+        label_list = self.driver.label_get({'name': labelname})
+        if not label_list:
+            label = self.driver.label_put(labelname)
+        else:
+            label = label_list[0]
+
+        if self.driver.tag_get({'dish_id': dish_id, 'label_id': label.get('id')}):
+            raise TagAlreadyExists(dish_id, label.get('id'))
+
         return self.driver.dish_tag(dish_id, label.get('id'))
 
     def untag_dish(self, dish_id, labelid):
         """
         Untag a dish with a label
         """
-        _, label_list, _ = self.driver.label_get({'id': labelid})
-        if not label_list:
-            return False, "Label not found"
-        return self.driver.dish_untag(dish_id, label_list[0].get('id'))
+        if not self.driver.label_get({'id': labelid}):
+            raise LabelNotFound(labelid)
+        if not self.driver.tag_get({'dish_id': dish_id, 'label_id': labelid}):
+            raise TagNotFound(dish_id, labelid)
+        return self.driver.dish_untag(dish_id, labelid)
 
     def link_dish(self, dish_id, required_id):
         """
         Specify a recipe requirement for a recipe
         """
+        if not self.driver.dish_get({'id': dish_id}):
+            raise DishNotFound(dish_id)
+        if not self.driver.dish_get({'id': required_id}):
+            raise DishNotFound(required_id)
         return self.driver.dish_link(dish_id, required_id)
 
     def unlink_dish(self, dish_id, required_id):
@@ -204,34 +209,37 @@ class Store:
         """
         Add a requirement to a dish
         """
-        status, ing_list, error = self.driver.ingredient_get({'id': ingredient_id})
+        if not self.driver.dish_get({'id': dish_id}):
+            raise DishNotFound(dish_id)
 
-        if not status:
-            return status, None, error
+        ing_list = self.driver.ingredient_get({'id': ingredient_id})
+
         if not ing_list:
-            return False, None, "Ingredient does not exist"
+            raise IngredientNotFound(ingredient_id)
 
         if self.driver.requirement_exists({'dish_id': dish_id,
                                            'ingredient_id': ingredient_id}):
-            return False, None, "Requirement aleady exists"
+            raise RequirementAlreadyExists(dish_id, ingredient_id)
 
-        return self.driver.requirement_put({'dish_id': dish_id,
-                                            'ingredient_id': ingredient_id,
-                                            'quantity': quantity})
+        self.driver.requirement_put({'dish_id': dish_id,
+                                     'ingredient_id': ingredient_id,
+                                     'quantity': quantity})
 
     def get_requirement(self, dish_id, ingredient_id):
         """
         Get a requirement from both the dish and the required ingredient
         """
         stored = self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id})
-        if len(stored) != 1:
-            return False, {}, "Requirement not found"
-        return True, stored[0], ""
+        if not stored:
+            raise RequirementNotFound(dish_id, ingredient_id)
+        return stored[0]
 
     def edit_requirement(self, dish_id, ingredient_id, quantity):
         """
         Modify the quantity of a required ingredient
         """
+        if not self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id}):
+            raise RequirementNotFound(dish_id, ingredient_id)
         return self.driver.requirement_update({'dish_id': dish_id,
                                                'ingredient_id': ingredient_id},
                                               {'quantity': quantity})
@@ -240,6 +248,8 @@ class Store:
         """
         Remove a requirement
         """
+        if not self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id}):
+            raise RequirementNotFound(dish_id, ingredient_id)
         return self.driver.requirement_delete({'dish_id': dish_id, 'ingredient_id': ingredient_id})
 
 #  _       _          _
@@ -252,28 +262,23 @@ class Store:
         """
         Get all labels which match the parameters in args
         """
+        label_validate_query(args)
         return self.driver.label_get(args)
-
-    def new_label(self, labelname):
-        """
-        Create a new label
-        """
-        if labelname in [""] or " " in labelname:
-            return False, "Invalid label name"
-        return self.driver.label_put(labelname)
 
     def delete_label(self, labelid):
         """
         Create a new label
         """
+        if not self.driver.label_get({'id':labelid}):
+            raise LabelNotFound(labelid)
         return self.driver.label_delete(labelid)
 
     def show_label(self, labelid):
         """
-        Show dishes tagged with the label `tagname`
+        Show dishes tagged with the label
         """
-        _, label_list, _ = self.driver.label_get({'id': labelid})
+        label_list = self.driver.label_get({'id': labelid})
         if not label_list:
-            return False, None, "Label not found"
-        status, dish_list, error = self.driver.tag_show(label_list[0].get('id'))
-        return status, {label_list[0].get('name'): dish_list}, error
+            raise LabelNotFound(labelid)
+        dish_list = self.driver.tag_show(labelid)
+        return {label_list[0].get('name'): dish_list}
