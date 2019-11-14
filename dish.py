@@ -1,9 +1,9 @@
-from unidecode import unidecode
+import time
 import helpers
 
 class Dish:
     def __init__(self, params, store=None):
-        self._id = params.get('id', None)
+        self._id = params.get('id')
         self.name = params.get('name')
         self.author = params.get('author')
         self.directions = params.get('directions')
@@ -23,7 +23,9 @@ class Dish:
 
     @property
     def id(self):
-        return helpers.hash256(self.name)
+        if not self._id:
+            self._id = helpers.hash256("{}{}".format(self.name, time.time()))
+        return self._id
 
     @property
     def simple_name(self):

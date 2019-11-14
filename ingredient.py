@@ -1,5 +1,5 @@
-import json
-import hashlib
+import time
+import helpers
 
 class Ingredient:
     name = ''
@@ -7,14 +7,14 @@ class Ingredient:
 
     def __init__(self, params, store):
         self._id = params.get("id")
-        self.name = params["name"]
+        self.name = params.get("name")
         self.store = store
 
     @property
     def id(self):
-        m = hashlib.sha256()
-        m.update(self.name.encode())
-        return m.hexdigest()
+        if not self._id:
+            self._id = helpers.hash256("{}{}".format(self.name, time.time()))
+        return self._id
 
     @property
     def params(self):
