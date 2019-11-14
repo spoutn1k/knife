@@ -1,5 +1,6 @@
 import time
 import helpers
+from ingredient import Ingredient
 
 class Dish:
     def __init__(self, params, store=None):
@@ -10,7 +11,7 @@ class Dish:
         self.store = store
         self.requirements = []
         for data in params.get('requirements', []):
-            ing = store.create_ingredient(data.get('ingredient'))
+            ing = Ingredient(data.get('ingredient'), store)
             self.requirements.append({'ingredient': ing, 'quantity': data['quantity']})
         self.dependencies = params.get('dependencies', [])
         self.tags = params.get('tags', [])

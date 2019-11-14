@@ -68,15 +68,11 @@ def list_ingredients():
 @APP.route('/ingredients/new', methods=['POST'])
 def create_ingredient():
     """
-    Create a new ingredient from the data in the `json` field of the query
+    Create a new ingredient from the form passed in the request
     """
+    ingredient_data = fix_args(dict(request.form))
     try:
-        ing_data = json.loads(request.form['json'])
-    except json.decoder.JSONDecodeError:
-        return {'accept': False, 'error': 'Invalid json syntax'}
-
-    ingredient = BACK_END.create_ingredient(ing_data)
-    try:
+        ingredient = BACK_END.create_ingredient(ingredient_data)
         ingredient.save()
     except KnifeError as kerr:
         return {'accept': False, 'error': str(kerr)}
@@ -110,15 +106,11 @@ def list_dishes():
 @APP.route('/dishes/new', methods=['POST'])
 def create_dish():
     """
-    Create dish from data passed in the `json` field of the query
+    Create dish from data passed in the form
     """
+    dish_data = fix_args(dict(request.form))
     try:
-        dish_data = json.loads(request.form['json'])
-    except json.decoder.JSONDecodeError:
-        return {'accept': False, 'error': 'Invalid json syntax'}
-
-    dish = BACK_END.create_dish(dish_data)
-    try:
+        dish = BACK_END.create_dish(dish_data)
         dish.save()
     except KnifeError as kerr:
         return {'accept': False, 'error': str(kerr)}

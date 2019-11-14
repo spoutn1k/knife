@@ -14,7 +14,7 @@ def validate_query(args_dict, authorized_keys):
             raise InvalidQuery(key)
 
 def dish_validate_query(query_params):
-    validate_query(query_params, ['name', 'simple_name', 'id', 'author'])
+    validate_query(query_params, ['name', 'simple_name', 'id', 'author', 'directions'])
 
 def ingredient_validate_query(query_params):
     validate_query(query_params, ['name', 'id'])
@@ -44,6 +44,9 @@ class Store:
         """
         Create a ingredient object from the params in arguments. Does not record anything yet.
         """
+        validate_query(params, ['name'])
+        if 'name' not in params.keys():
+            raise InvalidQuery(params)
         return Ingredient(params, self)
 
     def ingredient_lookup(self, args):
@@ -86,6 +89,9 @@ class Store:
         """
         Create a dish object from the params in arguments. Does not record anything yet.
         """
+        validate_query(params, ['name', 'author', 'directions'])
+        if 'name' not in params.keys():
+            raise InvalidQuery(params)
         return Dish(params, self)
 
     def dish_lookup(self, args):
@@ -100,25 +106,9 @@ class Store:
         """
         Record a dish object
         """
-        if self.driver.dish_get({'id': dish.id}):
-            raise DishAlreadyExists(dish.id)
-        
+        if self.driver.dish_get({'simple_name': dish.simple_name}):
+            raise DishAlreadyExists(dish.name)
         self.driver.dish_put(dish)
-
-        for requirement in dish.requirements:
-            ingredient = requirement.get('ingredient')
-            if not self.driver.ingredient_get(ingredient.serializable):
-                self.driver.ingredient_put(ingredient)
-            self.driver.requirement_put({'dish_id': dish.id,
-                                         'ingredient_id': requirement['ingredient'].id,
-                                         'quantity': requirement['quantity']})
-        for label_data in dish.tags:
-            if not self.driver.label_get({'name': label_data.get('name')}):
-                self.driver.label_put(label_data.get('name'))
-            self.driver.dish_tag(dish.id, label_data.get('id'))
-
-        for dependency_data in dish.dependencies:
-            self.driver.dish_link(dish.id, dependency_data.get('id'))
 
     def delete_dish(self, dish_id):
         """
