@@ -61,8 +61,9 @@ class Store:
         """
         Record an ingredient object
         """
-        if self.driver.ingredient_get({'simple_name': ingredient.simple_name}):
-            raise IngredientAlreadyExists(ingredient.id)
+        stored = self.driver.ingredient_get({'simple_name': ingredient.simple_name})
+        if stored:
+            raise IngredientAlreadyExists(stored[0])
         self.driver.ingredient_put(ingredient)
 
     def delete_ingredient(self, ingredient_id):

@@ -75,7 +75,7 @@ def create_ingredient():
         ingredient = BACK_END.create_ingredient(ingredient_data)
         ingredient.save()
     except KnifeError as kerr:
-        return {'accept': False, 'error': str(kerr)}
+        return {'accept': False, 'error': str(kerr), 'data': kerr.data}
     return {'accept': True, 'data': ingredient.serializable}
 
 @APP.route('/ingredients/<ingredientid>', methods=['DELETE'])
