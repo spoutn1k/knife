@@ -2,13 +2,9 @@ import time
 import helpers
 
 class Ingredient:
-    name = ''
-    _id = 0
-
-    def __init__(self, params, store):
+    def __init__(self, params):
         self._id = params.get("id")
         self.name = params.get("name")
-        self.store = store
 
     @property
     def id(self):
@@ -28,6 +24,3 @@ class Ingredient:
     @property
     def serializable(self):
         return self.params
-
-    def save(self):
-        return self.store.save_ingredient(self)

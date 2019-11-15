@@ -3,24 +3,20 @@ import helpers
 from ingredient import Ingredient
 
 class Dish:
-    def __init__(self, params, store=None):
+    def __init__(self, params):
         self._id = params.get('id')
         self.name = params.get('name')
         self.author = params.get('author')
         self.directions = params.get('directions')
-        self.store = store
         self.requirements = []
         for data in params.get('requirements', []):
-            ing = Ingredient(data.get('ingredient'), store)
+            ing = Ingredient(data.get('ingredient'))
             self.requirements.append({'ingredient': ing, 'quantity': data['quantity']})
         self.dependencies = params.get('dependencies', [])
         self.tags = params.get('tags', [])
 
     def __str__(self):
         return self.name
-
-    def save(self):
-        return self.store.save_dish(self)
 
     @property
     def id(self):
