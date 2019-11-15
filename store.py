@@ -61,7 +61,7 @@ class Store:
         """
         Record an ingredient object
         """
-        if self.driver.ingredient_get({'id': ingredient.id}):
+        if self.driver.ingredient_get({'simple_name': ingredient.simple_name}):
             raise IngredientAlreadyExists(ingredient.id)
         self.driver.ingredient_put(ingredient)
 

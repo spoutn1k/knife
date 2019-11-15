@@ -38,8 +38,10 @@ CREATE TABLE dependencies (
 
 INGREDIENTS = '''
 CREATE TABLE ingredients (
-    id TEXT PRIMARY KEY, 
-    name TEXT)
+    id TEXT,
+    name TEXT NOT NULL,
+    simple_name TEXT,
+    PRIMARY KEY (id))
 '''
 
 REQUIREMENTS = '''
@@ -233,7 +235,7 @@ def ingredient_get(args, match=False):
     return [{'id': _id, 'name': name} for (_id, name) in results]
 
 def ingredient_put(ingredient):
-    db_execute("INSERT INTO ingredients VALUES (?, ?)", (ingredient.id, ingredient.name))
+    db_execute("INSERT INTO ingredients VALUES (?, ?, ?)", (ingredient.id, ingredient.name, ingredient.simple_name))
 
 def ingredient_delete(ingredient_id):
     query = "DELETE FROM ingredients"

@@ -17,6 +17,10 @@ class Ingredient:
         return self._id
 
     @property
+    def simple_name(self):
+        return helpers.simplify(self.name)
+
+    @property
     def params(self):
         return {'id': self.id,
                 'name': self.name}
