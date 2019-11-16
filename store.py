@@ -340,3 +340,12 @@ class Store:
             raise LabelNotFound(labelid)
         dish_list = self.driver.tag_show(labelid)
         return {label_list[0].get('name'): dish_list}
+
+    @format_output
+    def edit_label(self, label_id, args):
+        if not self.driver.label_get({'id': label_id}):
+            raise LabelNotFound(label_id)
+        validate_query(args, ['name'])
+        if 'name' in args:
+            args['simple_name'] = helpers.simplify(args['name'])
+        return self.driver.label_update(label_id, args)

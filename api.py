@@ -218,6 +218,14 @@ def show_label(labelid):
     """
     return BACK_END.show_label(labelid)
 
+@APP.route('/labels/<labelid>', methods=['PUT'])
+def edit_label(labelid):
+    """
+    Show all the dishes tagged with a label
+    """
+    args = fix_args(dict(request.form))
+    return BACK_END.edit_label(labelid, args)
+
 @APP.route('/labels/<labelid>', methods=['DELETE'])
 def delete_label(labelid):
     """

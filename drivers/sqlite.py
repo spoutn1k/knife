@@ -346,6 +346,9 @@ def label_delete(label_id):
     params = "PRAGMA foreign_keys = 1"
     db_query(query, match, params)
 
+def label_update(label_id, label_data):
+    db_update('labels', label_data, {'id': label_id})
+
 if __name__ == "__main__":
     db_drop_tables(['dishes', 'ingredients', 'requirements', 'dependencies', 'labels', 'tags'])
     db_execute(TAGS)
