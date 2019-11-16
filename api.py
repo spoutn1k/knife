@@ -193,8 +193,8 @@ def tag_dish(dishid):
     """
     Tag a dish with a label
     """
-    tagname = request.form.get('name')
-    return BACK_END.tag_dish(dishid, tagname)
+    args = fix_args(dict(request.form))
+    return BACK_END.tag_dish(dishid, args)
 
 @APP.route('/dishes/<dishid>/tags/<labelid>', methods=['DELETE'])
 def untag_dish(dishid, labelid):

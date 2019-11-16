@@ -335,13 +335,10 @@ def label_get(query_params, match=False):
     results = db_query(query_str, query_params, match)
     return [{'name': name, 'id': _id} for (_id, name) in results]
 
-def label_put(label_name):
-    _id = helpers.hash256(label_name)
-    simple_name = helpers.simplify(label_name)
+def label_put(label):
     query = "INSERT INTO labels VALUES (?, ?, ?)"
-    values = (_id, label_name, simple_name)
+    values = (label.id, label.name, label.simple_name)
     db_execute(query, values)
-    return {'id': _id, 'name': label_name}
 
 def label_delete(label_id):
     query = "DELETE FROM labels"

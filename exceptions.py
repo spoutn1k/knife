@@ -69,9 +69,9 @@ class LabelInvalid(KnifeError):
         return "Invalid label name: {}".format(self.label_name)
 
 class LabelAlreadyExists(KnifeError):
-    def __init__(self, labelname):
+    def __init__(self, label_data):
         super().__init__()
-        self.labelname = labelname
+        self.data = label_data
     def __str__(self):
         return "Label already exists"
 

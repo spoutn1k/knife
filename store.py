@@ -6,6 +6,7 @@ Implementation of the Store class
 
 import helpers
 from dish import Dish
+from label import Label
 from ingredient import Ingredient
 from exceptions import *
 
@@ -84,7 +85,7 @@ class Store:
     @format_output
     def edit_ingredient(self, ingredient_id, args):
         if not self.driver.ingredient_get({'id': ingredient_id}):
-            raise DishNotFound(dish_id)
+            raise IngredientNotFound(ingredient_id)
         validate_query(args, ['name'])
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
@@ -173,21 +174,14 @@ class Store:
         return self.driver.tag_get({'dish_id': dish_id})
 
     @format_output
-    def tag_dish(self, dish_id, labelname):
+    def tag_dish(self, dish_id, args):
         """
         Tag a dish with a label
         """
         if not self.driver.dish_get({'id': dish_id}):
             raise DishNotFound(dish_id)
-        if labelname in [""] or " " in labelname:
-            raise LabelInvalid(labelname)
 
-        label_list = self.driver.label_get({'name': labelname})
-        if not label_list:
-            label = self.driver.label_put(labelname)
-        else:
-            label = label_list[0]
-
+        label = self.create_label(args).get('data')
         if self.driver.tag_get({'dish_id': dish_id, 'label_id': label.get('id')}):
             raise TagAlreadyExists(dish_id, label.get('id'))
 
@@ -321,6 +315,20 @@ class Store:
         if not self.driver.label_get({'id':labelid}):
             raise LabelNotFound(labelid)
         return self.driver.label_delete(labelid)
+
+    @format_output
+    def create_label(self, args):
+        validate_query(args, ['name'])
+        label = Label(args)
+        if label.name in ["", None] or " " in label.name:
+            raise LabelInvalid(labelname)
+
+        label_list = self.driver.label_get({'name': label.name})
+        if label_list:
+            raise LabelAlreadyExists(label_list[0])
+
+        self.driver.label_put(label)
+        return label.serializable
 
     @format_output
     def show_label(self, labelid):
