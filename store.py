@@ -4,6 +4,7 @@ store.py
 Implementation of the Store class
 """
 
+import helpers
 from dish import Dish
 from ingredient import Ingredient
 from exceptions import *
@@ -44,7 +45,7 @@ class Store:
     @format_output
     def create_ingredient(self, params):
         """
-        Create a ingredient object from the params in arguments. Does not record anything yet.
+        Create a ingredient object from the params in arguments
         """
         validate_query(params, ['name'])
         if 'name' not in params.keys():
@@ -80,6 +81,15 @@ class Store:
 
         self.driver.ingredient_delete(ingredient_id)
 
+    @format_output
+    def edit_ingredient(self, ingredient_id, args):
+        if not self.driver.ingredient_get({'id': ingredient_id}):
+            raise DishNotFound(dish_id)
+        validate_query(args, ['name'])
+        if 'name' in args:
+            args['simple_name'] = helpers.simplify(args['name'])
+        return self.driver.ingredient_update(ingredient_id, args)
+
 #      _ _     _
 #   __| (_)___| |__
 #  / _` | / __| '_ \
@@ -89,7 +99,7 @@ class Store:
     @format_output
     def create_dish(self, params):
         """
-        Create a dish object from the params in arguments. Does not record anything yet.
+        Create a dish object from the params in arguments
         """
         validate_query(params, ['name', 'author', 'directions'])
         if 'name' not in params.keys():
@@ -108,9 +118,10 @@ class Store:
         """
         Get a dish list, matching the parameters passed in args
         """
-        validate_query(args, ['name', 'simple_name', 'id', 'author', 'directions'])
-        stored = self.driver.dish_lookup(args)
-        return [{'id': params.get('id'), 'name': params.get('name')} for params in stored]
+        validate_query(args, ['name', 'id', 'author', 'directions'])
+        if args.get('name'):
+            args['simple_name'] = helpers.simplify(args.pop('name'))
+        return self.driver.dish_lookup(args)
 
     @format_output
     def delete_dish(self, dish_id):
@@ -136,6 +147,15 @@ class Store:
         dish_data['dependencies'] = self.driver.dish_requires(dish_id)
 
         return Dish(dish_data).serializable
+
+    @format_output
+    def edit_dish(self, dish_id, args):
+        if not self.driver.dish_get({'id': dish_id}):
+            raise DishNotFound(dish_id)
+        validate_query(args, ['name', 'author', 'directions'])
+        if 'name' in args:
+            args['simple_name'] = helpers.simplify(args['name'])
+        return self.driver.dish_update(dish_id, args)
 
     @format_output
     def get_tags(self, dish_id):
@@ -251,15 +271,15 @@ class Store:
         return stored[0]
 
     @format_output
-    def edit_requirement(self, dish_id, ingredient_id, quantity):
+    def edit_requirement(self, dish_id, ingredient_id, args):
         """
         Modify the quantity of a required ingredient
         """
+        validate_query(args, ['quantity'])
         if not self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id}):
             raise RequirementNotFound(dish_id, ingredient_id)
         return self.driver.requirement_update({'dish_id': dish_id,
-                                               'ingredient_id': ingredient_id},
-                                              {'quantity': quantity})
+                                               'ingredient_id': ingredient_id}, args)
 
     @format_output
     def delete_requirement(self, dish_id, ingredient_id):
@@ -281,7 +301,7 @@ class Store:
         """
         Get all labels which match the parameters in args
         """
-        validate_query(query_params, ['name', 'id'])
+        validate_query(args, ['name', 'id'])
         return self.driver.label_get(args)
 
     @format_output

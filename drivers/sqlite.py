@@ -17,7 +17,7 @@ CREATE TABLE dishes (
     name TEXT NOT NULL,
     simple_name TEXT,
     author TEXT,
-    desc TEXT,
+    directions TEXT,
     PRIMARY KEY (id))
 '''
 
@@ -101,15 +101,12 @@ def db_close(connexion):
     connexion.commit()
     connexion.close()
 
-def db_execute(template, values=None, params=None):
+def db_execute(template, values={}, params=None):
     connexion, cursor = db_setup(params)
 
     log(template, values)
     try:
-        if values:
-            cursor.execute(template, values)
-        else:
-            cursor.execute(template)
+        cursor.execute(template, values)
     finally:
         db_close(connexion)
 
@@ -139,6 +136,34 @@ def db_query(query_string, query_params=None, params=None, match=False):
 
     return data
 
+def db_update(table, updated_vals={}, matching_vals={}, params=None, match=False):
+    """
+    Query wrapper
+    We assume all query params keys are sanitized
+    """
+    connexion, cursor = db_setup(params)
+
+    # The query is a matching one, we change the operator from '=' to ' like '
+    operator = " LIKE " if match else "="
+    if match:
+        for (key, val) in matching_vals.items():
+            matching_vals[key] = "%{}%".format(val)
+
+    if matching_vals:
+        replace = ["{}{}:{}".format(key, '=', key) for (key, _) in updated_vals.items()]
+        match = ["{}{}:{}".format(key, operator, key) for (key, _) in matching_vals.items()]
+        query_string = "UPDATE {} SET {} WHERE {}".format(table, ','.join(replace), ' AND '.join(match))
+
+    updated_vals.update(matching_vals)
+    log(query_string, updated_vals)
+    try:
+        cursor.execute(query_string, updated_vals)
+        data = cursor.fetchall()
+    finally:
+        db_close(connexion)
+
+    return data
+
 def db_drop_tables(tables):
     for name in tables:
         try:
@@ -160,10 +185,6 @@ def db_translate_dict(query):
 #  \__,_|_|___/_| |_|
 
 def dish_lookup(query_params, match=True):
-    # Transform a name query into a simple_name match
-    if query_params.get('name'):
-        query_params['simple_name'] = helpers.simplify(query_params.pop('name'))
-
     results = db_query("SELECT id, name FROM dishes", query_params, match=match)
     return [{'id': _id, 'name': name} for (_id, name) in results]
 
@@ -177,8 +198,8 @@ def dish_put(dish):
 def dish_delete(dish_id):
     query = "DELETE FROM dishes"
     match = {'id': dish_id}
-    param = "PRAGMA foreign_keys = 1"
-    db_query(query, match, params=param)
+    params = "PRAGMA foreign_keys = 1"
+    db_query(query, match, params)
 
 def dish_get(query_params):
     results = db_query("SELECT * FROM dishes", query_params)
@@ -191,14 +212,17 @@ def dish_get(query_params):
                      'directions': directions})
     return data
 
+def dish_update(dish_id, dish_data):
+    db_update('dishes', dish_data, {'id': dish_id})
+
 def dish_tag(dish_id, label_id):
     return db_execute("INSERT INTO tags VALUES(?, ?)", (dish_id, label_id))
 
 def dish_untag(dish_id, label_id):
     query = "DELETE FROM tags"
     match = {'label_id': label_id, 'dish_id': dish_id}
-    param = "PRAGMA foreign_keys = 1"
-    db_query(query, match, params=param)
+    params = "PRAGMA foreign_keys = 1"
+    db_query(query, match, params)
 
 #      _                           _                 _
 #   __| | ___ _ __   ___ _ __   __| | ___ _ __   ___(_) ___  ___
@@ -240,8 +264,11 @@ def ingredient_put(ingredient):
 def ingredient_delete(ingredient_id):
     query = "DELETE FROM ingredients"
     match = {'id': ingredient_id}
-    param = "PRAGMA foreign_keys = 1"
-    db_query(query, match, params=param)
+    params = "PRAGMA foreign_keys = 1"
+    db_query(query, match, params)
+
+def ingredient_update(ingredient_id, ingredient_data):
+    db_update('ingredients', ingredient_data, {'id': ingredient_id})
 
 #                       _                               _
 #  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
@@ -272,8 +299,7 @@ def requirement_put(requirement):
     return data
 
 def requirement_update(query, values):
-    vals = ",".join(["{}='{}'".format(key, val) for (key, val) in values.items()])
-    return db_execute("UPDATE requirements SET {} {}".format(vals, db_translate_dict(query)))
+    return db_update('requirements', values, query)
 
 def requirement_delete(query):
     return db_query("DELETE FROM requirements", query)
@@ -319,8 +345,8 @@ def label_put(label_name):
 def label_delete(label_id):
     query = "DELETE FROM labels"
     match = {'id': label_id}
-    param = "PRAGMA foreign_keys = 1"
-    db_query(query, match, params=param)
+    params = "PRAGMA foreign_keys = 1"
+    db_query(query, match, params)
 
 if __name__ == "__main__":
     db_drop_tables(['dishes', 'ingredients', 'requirements', 'dependencies', 'labels', 'tags'])

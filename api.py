@@ -15,11 +15,11 @@ BACK_END = Store(sqlite)
 Routes:
     GET             /ingredients
     POST            /ingredients/new
-    DELETE          /ingredients/<ingredientid>
+    PUT,DELETE      /ingredients/<ingredientid>
 
     GET             /dishes
     POST            /dishes/new
-    GET,DELETE      /dishes/<dishid>
+    GET,PUT,DELETE  /dishes/<dishid>
 
     GET             /dishes/<dishid>/requirements
     POST            /dishes/<dishid>/requirements/add
@@ -73,6 +73,14 @@ def delete_ingredient(ingredientid):
     """
     return BACK_END.delete_ingredient(ingredientid)
 
+@APP.route('/ingredients/<ingredientid>', methods=['PUT'])
+def edit_ingredient(ingredientid):
+    """
+    Edit the specified ingredient
+    """
+    ingredient_data = fix_args(dict(request.form))
+    return BACK_END.edit_ingredient(ingredientid, ingredient_data)
+
 @APP.route('/dishes', methods=['GET'])
 def list_dishes():
     """
@@ -96,6 +104,14 @@ def show_dish(dishid):
     Show the dish of id `dishid`
     """
     return BACK_END.get_dish(dishid)
+
+@APP.route('/dishes/<dishid>', methods=['PUT'])
+def edit_dish(dishid):
+    """
+    Show the dish of id `dishid`
+    """
+    dish_data = fix_args(dict(request.form))
+    return BACK_END.edit_dish(dishid, dish_data)
 
 @APP.route('/dishes/<dishid>', methods=['DELETE'])
 def delete_dish(dishid):
@@ -125,7 +141,8 @@ def edit_requirement(dishid, ingredientid):
     """
     Modify an ingredient's required quantity
     """
-    return BACK_END.edit_requirement(dishid, ingredientid, request.form.get('quantity'))
+    args = fix_args(dict(request.form))
+    return BACK_END.edit_requirement(dishid, ingredientid, args)
 
 @APP.route('/dishes/<dishid>/requirements/<ingredientid>', methods=['DELETE'])
 def delete_requirement(dishid, ingredientid):
