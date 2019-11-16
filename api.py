@@ -16,6 +16,7 @@ Routes:
     GET             /ingredients
     POST            /ingredients/new
     PUT,DELETE      /ingredients/<ingredientid>
+    PUT             /ingredients/<ingredientid>/merge
 
     GET             /dishes
     POST            /dishes/new
@@ -80,6 +81,14 @@ def edit_ingredient(ingredientid):
     """
     ingredient_data = fix_args(dict(request.form))
     return BACK_END.edit_ingredient(ingredientid, ingredient_data)
+
+@APP.route('/ingredients/<ingredientid>/merge', methods=['PUT'])
+def merge_ingredient(ingredientid):
+    """
+    Merge the specified ingredients
+    """
+    target_id = request.form['id']
+    return BACK_END.merge_ingredient(ingredientid, target_id)
 
 @APP.route('/dishes', methods=['GET'])
 def list_dishes():

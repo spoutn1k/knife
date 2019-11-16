@@ -151,10 +151,11 @@ def db_update(table, updated_vals={}, matching_vals={}, params=None, match=False
 
     if matching_vals:
         replace = ["{}{}:{}".format(key, '=', key) for (key, _) in updated_vals.items()]
-        match = ["{}{}:{}".format(key, operator, key) for (key, _) in matching_vals.items()]
+        match = ["{}{}:{}_match".format(key, operator, key) for (key, _) in matching_vals.items()]
         query_string = "UPDATE {} SET {} WHERE {}".format(table, ','.join(replace), ' AND '.join(match))
 
-    updated_vals.update(matching_vals)
+    for (key, value) in matching_vals.items():
+        updated_vals["{}_match".format(key)] = value
     log(query_string, updated_vals)
     try:
         cursor.execute(query_string, updated_vals)

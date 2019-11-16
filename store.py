@@ -90,6 +90,15 @@ class Store:
             args['simple_name'] = helpers.simplify(args['name'])
         return self.driver.ingredient_update(ingredient_id, args)
 
+    @format_output
+    def merge_ingredient(self, dest_id, target_id):
+        if not self.driver.ingredient_get({'id': dest_id}):
+            raise IngredientNotFound(dest_id)
+        if not self.driver.ingredient_get({'id': target_id}):
+            raise IngredientNotFound(target_id)
+        self.driver.requirement_update({'ingredient_id': target_id}, {'ingredient_id': dest_id})
+        self.delete_ingredient(target_id)
+
 #      _ _     _
 #   __| (_)___| |__
 #  / _` | / __| '_ \

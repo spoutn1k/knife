@@ -6,6 +6,7 @@
 |`GET`|`/ingredients`|Returns a list of ingredients, with search on GET arguments|
 |`POST`|`/ingredients/new`|Creates a new ingredient|
 |`PUT,DELETE`|`/ingredients/<ingredientid>`|Methods on ingredient objects|
+|`PUT`|`/ingredients/<ingredientid>/merge`|Merges two ingredient by associating every requirement to `ingredientid`|
 |-|-|-|
 |`GET`|`/dishes`|Lists recorded dishes, search available with GET arguments|
 |`POST`|`/dishes/new`|Creates a new dish|
@@ -25,4 +26,4 @@
 |-|-|-|
 |`GET`|`/labels`|Lists available labels|
 |`GET`|`/labels/<labelid>`|Lists the dishes associated with a specific label|
-|`PUT,DELETE`|`/labels/<labelid>`|Methods on label objects|
+|`DELETE`|`/labels/<labelid>`|Deletes a label and associated tags|
