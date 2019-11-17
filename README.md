@@ -5,7 +5,8 @@
 |-|-|-|
 |`GET`|`/ingredients`|Returns a list of ingredients, with search on GET arguments|
 |`POST`|`/ingredients/new`|Creates a new ingredient|
-|`PUT,DELETE`|`/ingredients/<ingredientid>`|Methods on ingredient objects|
+|`PUT`|`/ingredients/<ingredientid>`|Modifies an ingredient object|
+|`DELETE`|`/ingredients/<ingredientid>`|Deletes an ingredient object|
 |`PUT`|`/ingredients/<ingredientid>/merge`|Merges two ingredient by associating every requirement to `ingredientid`|
 |-|-|-|
 |`GET`|`/dishes`|Lists recorded dishes, search available with GET arguments|
@@ -14,7 +15,8 @@
 |-|-|-|
 |`GET`|`/dishes/<dishid>/requirements`|Get a dish's requirements|
 |`POST`|`/dishes/<dishid>/requirements/add`|Adds a requirement to a recipe|
-|`PUT,DELETE`|`/dishes/<dishid>/requirements/<ingredientid>`|Modify or delete a requirement|
+|`PUT`|`/dishes/<dishid>/requirements/<ingredientid>`|Modifies a requirements quantity|
+|`DELETE`|`/dishes/<dishid>/requirements/<ingredientid>`|Deletes a requirement|
 |-|-|-|
 |`GET`|`/dishes/<dishid>/dependencies`|Lists a dish's dependencies|
 |`POST`|`/dishes/<dishid>/dependencies/add`|Adds a pre-requisite recipe to the dish|
@@ -26,4 +28,5 @@
 |-|-|-|
 |`GET`|`/labels`|Lists available labels|
 |`GET`|`/labels/<labelid>`|Lists the dishes associated with a specific label|
+|`PUT`|`/labels/<labelid>`|Modifies a label name|
 |`DELETE`|`/labels/<labelid>`|Deletes a label and associated tags|

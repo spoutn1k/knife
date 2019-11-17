@@ -35,7 +35,7 @@ Routes:
     DELETE          /dishes/<dishid>/tags/<labelid>
 
     GET             /labels
-    GET,DELETE      /labels/<labelid>
+    GET,PUT,DELETE  /labels/<labelid>
 '''
 
 def fix_args(dictionnary):

@@ -89,7 +89,7 @@ class Store:
         validate_query(args, ['name'])
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
-        return self.driver.ingredient_update(ingredient_id, args)
+        self.driver.ingredient_update(ingredient_id, args)
 
     @format_output
     def merge_ingredient(self, dest_id, target_id):
@@ -165,7 +165,7 @@ class Store:
         validate_query(args, ['name', 'author', 'directions'])
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
-        return self.driver.dish_update(dish_id, args)
+        self.driver.dish_update(dish_id, args)
 
     @format_output
     def get_tags(self, dish_id):
@@ -185,7 +185,7 @@ class Store:
         if self.driver.tag_get({'dish_id': dish_id, 'label_id': label.get('id')}):
             raise TagAlreadyExists(dish_id, label.get('id'))
 
-        return self.driver.dish_tag(dish_id, label.get('id'))
+        self.driver.dish_tag(dish_id, label.get('id'))
 
     @format_output
     def untag_dish(self, dish_id, labelid):
@@ -196,7 +196,7 @@ class Store:
             raise LabelNotFound(labelid)
         if not self.driver.tag_get({'dish_id': dish_id, 'label_id': labelid}):
             raise TagNotFound(dish_id, labelid)
-        return self.driver.dish_untag(dish_id, labelid)
+        self.driver.dish_untag(dish_id, labelid)
 
     @format_output
     def get_deps(self, dish_id):
@@ -213,14 +213,14 @@ class Store:
             raise DishNotFound(dish_id)
         if not self.driver.dish_get({'id': required_id}):
             raise DishNotFound(required_id)
-        return self.driver.dish_link(dish_id, required_id)
+        self.driver.dish_link(dish_id, required_id)
 
     @format_output
     def unlink_dish(self, dish_id, required_id):
         """
         Delete a recipe requirement for a recipe
         """
-        return self.driver.dish_unlink(dish_id, required_id)
+        self.driver.dish_unlink(dish_id, required_id)
 
 #                       _                               _
 #  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
@@ -281,8 +281,8 @@ class Store:
         validate_query(args, ['quantity'])
         if not self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id}):
             raise RequirementNotFound(dish_id, ingredient_id)
-        return self.driver.requirement_update({'dish_id': dish_id,
-                                               'ingredient_id': ingredient_id}, args)
+        self.driver.requirement_update({'dish_id': dish_id,
+                                        'ingredient_id': ingredient_id}, args)
 
     @format_output
     def delete_requirement(self, dish_id, ingredient_id):
@@ -291,7 +291,7 @@ class Store:
         """
         if not self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id}):
             raise RequirementNotFound(dish_id, ingredient_id)
-        return self.driver.requirement_delete({'dish_id': dish_id, 'ingredient_id': ingredient_id})
+        self.driver.requirement_delete({'dish_id': dish_id, 'ingredient_id': ingredient_id})
 
 #  _       _          _
 # | | __ _| |__   ___| |
@@ -314,7 +314,7 @@ class Store:
         """
         if not self.driver.label_get({'id':labelid}):
             raise LabelNotFound(labelid)
-        return self.driver.label_delete(labelid)
+        self.driver.label_delete(labelid)
 
     @format_output
     def create_label(self, args):
@@ -348,4 +348,4 @@ class Store:
         validate_query(args, ['name'])
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
-        return self.driver.label_update(label_id, args)
+        self.driver.label_update(label_id, args)
