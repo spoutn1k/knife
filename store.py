@@ -305,7 +305,7 @@ class Store:
         Get all labels which match the parameters in args
         """
         validate_query(args, ['name', 'id'])
-        return self.driver.label_get(args)
+        return self.driver.label_get(args, match=True)
 
     @format_output
     def delete_label(self, labelid):
@@ -335,11 +335,10 @@ class Store:
         """
         Show dishes tagged with the label
         """
-        label_list = self.driver.label_get({'id': labelid})
-        if not label_list:
+        if not self.driver.label_get({'id': labelid}):
             raise LabelNotFound(labelid)
         dish_list = self.driver.tag_show(labelid)
-        return {label_list[0].get('name'): dish_list}
+        return dish_list
 
     @format_output
     def edit_label(self, label_id, args):

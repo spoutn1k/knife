@@ -314,7 +314,7 @@ def requirement_delete(query):
 
 def tag_get(query_params, match=False):
     query_str = "SELECT id, name FROM labels JOIN tags ON tags.label_id = labels.id"
-    results = db_query(query_str, query_params, match)
+    results = db_query(query_str, query_params, match=match)
     data = [{'name': name, 'id': _id} for (_id, name) in results]
     return data
 
@@ -332,7 +332,7 @@ def tag_show(tag_id):
 
 def label_get(query_params, match=False):
     query_str = "SELECT id, name FROM labels"
-    results = db_query(query_str, query_params, match)
+    results = db_query(query_str, query_params, match=match)
     return [{'name': name, 'id': _id} for (_id, name) in results]
 
 def label_put(label):
