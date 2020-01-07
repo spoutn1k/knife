@@ -4,12 +4,13 @@ api.py
 Declaration of routes available in the knife app
 """
 
+import os
 from flask import Flask, request
 from store import Store
-from drivers import sqlite
+from drivers import sqlite, pgsql
 
 APP = Flask(__name__)
-BACK_END = Store(sqlite)
+BACK_END = Store(pgsql)
 
 '''
 Routes:
