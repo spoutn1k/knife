@@ -5,9 +5,9 @@ from ingredient import Ingredient
 class Dish:
     def __init__(self, params):
         self._id = params.get('id')
-        self.name = params.get('name')
-        self.author = params.get('author')
-        self.directions = params.get('directions')
+        self.name = params.get('name', '').rstrip()
+        self.author = params.get('author', '').rstrip()
+        self.directions = params.get('directions', '').rstrip()
         self.requirements = []
         for data in params.get('requirements', []):
             ing = Ingredient(data.get('ingredient'))

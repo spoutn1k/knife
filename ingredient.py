@@ -4,7 +4,7 @@ import helpers
 class Ingredient:
     def __init__(self, params):
         self._id = params.get("id")
-        self.name = params.get("name")
+        self.name = params.get("name", '').rstrip()
 
     @property
     def id(self):
