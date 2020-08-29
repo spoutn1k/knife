@@ -1,7 +1,7 @@
 import sqlite3
-import helpers
+from knife import helpers
 
-DBPATH = '/var/lib/knife/database.db'
+DBPATH = '/tmp/database.db'
 LOGFILE = 'queries.log'
 LOGGING = False
 

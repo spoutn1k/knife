@@ -1,7 +1,7 @@
 import time
-import helpers
+from knife import helpers
 
-class Label:
+class Ingredient:
     def __init__(self, params):
         self._id = params.get("id")
         self.name = params.get("name", '').rstrip()

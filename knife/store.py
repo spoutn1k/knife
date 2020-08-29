@@ -4,16 +4,16 @@ store.py
 Implementation of the Store class
 """
 
-import helpers
-from dish import Dish
-from label import Label
-from ingredient import Ingredient
-from exceptions import *
+from knife import helpers
+from knife.models import Dish, Label, Ingredient
+from knife.exceptions import *
+
 
 def validate_query(args_dict, authorized_keys):
     for key in list(args_dict.keys()):
         if key not in authorized_keys:
             raise InvalidQuery(key)
+
 
 def format_output(func):
     """
@@ -26,7 +26,9 @@ def format_output(func):
         except KnifeError as kerr:
             return {'accept': False, 'error': str(kerr), 'data': kerr.data}
         return {'accept': True, 'data': data}
+
     return wrapper
+
 
 class Store:
     """
@@ -49,12 +51,17 @@ class Store:
         Create a ingredient object from the params in arguments
         """
         validate_query(params, ['name'])
+
         if 'name' not in params.keys():
             raise InvalidQuery(params)
+
         ingredient = Ingredient(params)
-        stored = self.driver.ingredient_get({'simple_name': ingredient.simple_name})
+        stored = self.driver.ingredient_get(
+            {'simple_name': ingredient.simple_name})
+
         if stored:
             raise IngredientAlreadyExists(stored[0])
+
         self.driver.ingredient_put(ingredient)
         return ingredient.serializable
 
@@ -97,7 +104,8 @@ class Store:
             raise IngredientNotFound(dest_id)
         if not self.driver.ingredient_get({'id': target_id}):
             raise IngredientNotFound(target_id)
-        self.driver.requirement_update({'ingredient_id': target_id}, {'ingredient_id': dest_id})
+        self.driver.requirement_update({'ingredient_id': target_id},
+                                       {'ingredient_id': dest_id})
         self.delete_ingredient(target_id)
 
 #      _ _     _
@@ -152,7 +160,8 @@ class Store:
             raise DishNotFound(dish_id)
         dish_data = results[0]
 
-        dish_data['requirements'] = self.show_requirements(dish_id).get('data', [])
+        dish_data['requirements'] = self.show_requirements(dish_id).get(
+            'data', [])
         dish_data['tags'] = self.driver.tag_get({'dish_id': dish_id})
         dish_data['dependencies'] = self.driver.dish_requires(dish_id)
 
@@ -182,7 +191,10 @@ class Store:
             raise DishNotFound(dish_id)
 
         label = self.create_label(args).get('data')
-        if self.driver.tag_get({'dish_id': dish_id, 'label_id': label.get('id')}):
+        if self.driver.tag_get({
+                'dish_id': dish_id,
+                'label_id': label.get('id')
+        }):
             raise TagAlreadyExists(dish_id, label.get('id'))
 
         self.driver.dish_tag(dish_id, label.get('id'))
@@ -233,8 +245,12 @@ class Store:
     def show_requirements(self, dish_id):
         requirement_list = []
         for raw_data in self.driver.requirement_get({'dish_id': dish_id}):
-            results = self.driver.ingredient_get({'id': raw_data.get('ingredient_id')})
-            req = {'ingredient': results[0], 'quantity': raw_data.get('quantity')}
+            results = self.driver.ingredient_get(
+                {'id': raw_data.get('ingredient_id')})
+            req = {
+                'ingredient': results[0],
+                'quantity': raw_data.get('quantity')
+            }
             requirement_list.append(req)
 
         return requirement_list
@@ -255,20 +271,27 @@ class Store:
         if not ing_list:
             raise IngredientNotFound(ingredient_id)
 
-        if self.driver.requirement_exists({'dish_id': dish_id,
-                                           'ingredient_id': ingredient_id}):
+        if self.driver.requirement_exists({
+                'dish_id': dish_id,
+                'ingredient_id': ingredient_id
+        }):
             raise RequirementAlreadyExists(dish_id, ingredient_id)
 
-        self.driver.requirement_put({'dish_id': dish_id,
-                                     'ingredient_id': ingredient_id,
-                                     'quantity': quantity})
+        self.driver.requirement_put({
+            'dish_id': dish_id,
+            'ingredient_id': ingredient_id,
+            'quantity': quantity
+        })
 
     @format_output
     def get_requirement(self, dish_id, ingredient_id):
         """
         Get a requirement from both the dish and the required ingredient
         """
-        stored = self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id})
+        stored = self.driver.requirement_get({
+            'dish_id': dish_id,
+            'ingredient_id': ingredient_id
+        })
         if not stored:
             raise RequirementNotFound(dish_id, ingredient_id)
         return stored[0]
@@ -279,19 +302,32 @@ class Store:
         Modify the quantity of a required ingredient
         """
         validate_query(args, ['quantity'])
-        if not self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id}):
+        if not self.driver.requirement_get({
+                'dish_id': dish_id,
+                'ingredient_id': ingredient_id
+        }):
             raise RequirementNotFound(dish_id, ingredient_id)
-        self.driver.requirement_update({'dish_id': dish_id,
-                                        'ingredient_id': ingredient_id}, args)
+        self.driver.requirement_update(
+            {
+                'dish_id': dish_id,
+                'ingredient_id': ingredient_id
+            }, args)
 
     @format_output
     def delete_requirement(self, dish_id, ingredient_id):
         """
         Remove a requirement
         """
-        if not self.driver.requirement_get({'dish_id': dish_id, 'ingredient_id': ingredient_id}):
+        if not self.driver.requirement_get({
+                'dish_id': dish_id,
+                'ingredient_id': ingredient_id
+        }):
             raise RequirementNotFound(dish_id, ingredient_id)
-        self.driver.requirement_delete({'dish_id': dish_id, 'ingredient_id': ingredient_id})
+        self.driver.requirement_delete({
+            'dish_id': dish_id,
+            'ingredient_id': ingredient_id
+        })
+
 
 #  _       _          _
 # | | __ _| |__   ___| |
@@ -312,7 +348,7 @@ class Store:
         """
         Create a new label
         """
-        if not self.driver.label_get({'id':labelid}):
+        if not self.driver.label_get({'id': labelid}):
             raise LabelNotFound(labelid)
         self.driver.label_delete(labelid)
 

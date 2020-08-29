@@ -1,6 +1,6 @@
 import time
-import helpers
-from ingredient import Ingredient
+from knife import helpers
+from knife.models import Ingredient
 
 class Dish:
     def __init__(self, params):

@@ -1,8 +1,8 @@
 import os
 import psycopg2
-import helpers
+from knife import helpers
 
-DBURL = os.environ['DATABASE_URL']
+DBURL = os.environ.get('DATABASE_URL')
 LOGFILE = 'queries.log'
 LOGGING = False
 

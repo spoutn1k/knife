@@ -1,1 +1,1 @@
-web: gunicorn api:APP
+web: gunicorn knife.api:APP
