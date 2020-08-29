@@ -1,6 +1,8 @@
 import sqlite3
 from knife import helpers
 
+DRIVER_NAME = 'sqlite'
+
 DBPATH = '/tmp/database.db'
 LOGFILE = 'queries.log'
 LOGGING = False

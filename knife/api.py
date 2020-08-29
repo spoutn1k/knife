@@ -7,10 +7,11 @@ Declaration of routes available in the knife app
 import os
 from flask import Flask, request
 from knife.store import Store
-from knife.drivers import sqlite, pgsql
+from knife.drivers import DRIVERS
 
 APP = Flask(__name__)
-BACK_END = Store(pgsql)
+BACK_END = Store(DRIVERS['pgsql'])
+
 '''
 Routes:
     GET             /ingredients
