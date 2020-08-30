@@ -2,6 +2,9 @@ import sys
 from importlib import import_module
 from pkgutil import walk_packages
 
+class AbstractDriver(object):
+    pass
+
 DRIVERS = {}
 
 for _, module_name, _ in walk_packages(path=__path__, prefix=__name__ + '.'):

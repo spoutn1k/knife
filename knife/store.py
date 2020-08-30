@@ -8,6 +8,7 @@ from flask import request
 from knife import helpers
 from knife.models import Dish, Label, Ingredient
 from knife.exceptions import *
+from knife.drivers.sqlite import SqliteDriver, DISHES, INGREDIENTS
 
 
 def validate_query(args_dict, authorized_keys):
@@ -74,8 +75,9 @@ class Store:
         Get an ingredient list, matching the parameters passed in args
         """
         args = helpers.fix_args(dict(request.args))
-        validate_query(args, ['name', 'id'])
-        stored = self.driver.ingredient_get(args, match=True)
+        validate_query(args, ['id', 'name'])
+        data = SqliteDriver().select(INGREDIENTS, filters=[args], columns=['id', 'name'], exact=False)
+        stored = [{'id': id, 'name': name} for id, name in data]
         return [Ingredient(params).serializable for params in stored]
 
     @format_output
@@ -126,6 +128,7 @@ class Store:
 # | (_| | \__ \ | | |
 #  \__,_|_|___/_| |_|
 
+
     @format_output
     def create_dish(self):
         """
@@ -154,7 +157,10 @@ class Store:
         validate_query(args, ['name', 'id', 'author', 'directions'])
         if args.get('name'):
             args['simple_name'] = helpers.simplify(args.pop('name'))
-        return self.driver.dish_lookup(args)
+
+        data = SqliteDriver().select(DISHES, filters=[args], columns=('id', 'name'), exact=False)
+
+        return [{'id': id, 'name': name} for id, name in data]
 
     @format_output
     def delete_dish(self, dish_id):
