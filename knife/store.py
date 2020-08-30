@@ -20,13 +20,14 @@ def format_output(func):
     Decoration, encasing the output of the function into a dict for it to be sent via the api.
     Exceptions are caught and parsed to have a clear error message
     """
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         try:
-            data = func(*args)
+            data = func(*args, **kwargs)
         except KnifeError as kerr:
             return {'accept': False, 'error': str(kerr), 'data': kerr.data}
         return {'accept': True, 'data': data}
 
+    wrapper.__name__ = func.__name__
     return wrapper
 
 
@@ -200,15 +201,15 @@ class Store:
         self.driver.dish_tag(dish_id, label.get('id'))
 
     @format_output
-    def untag_dish(self, dish_id, labelid):
+    def untag_dish(self, dish_id, label_id):
         """
         Untag a dish with a label
         """
-        if not self.driver.label_get({'id': labelid}):
-            raise LabelNotFound(labelid)
-        if not self.driver.tag_get({'dish_id': dish_id, 'label_id': labelid}):
-            raise TagNotFound(dish_id, labelid)
-        self.driver.dish_untag(dish_id, labelid)
+        if not self.driver.label_get({'id': label_id}):
+            raise LabelNotFound(label_id)
+        if not self.driver.tag_get({'dish_id': dish_id, 'label_id': label_id}):
+            raise TagNotFound(dish_id, label_id)
+        self.driver.dish_untag(dish_id, label_id)
 
     @format_output
     def get_deps(self, dish_id):
