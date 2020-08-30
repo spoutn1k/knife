@@ -4,6 +4,7 @@ store.py
 Implementation of the Store class
 """
 
+from flask import request
 from knife import helpers
 from knife.models import Dish, Label, Ingredient
 from knife.exceptions import *
@@ -47,10 +48,11 @@ class Store:
 #          |___/
 
     @format_output
-    def create_ingredient(self, params):
+    def create_ingredient(self):
         """
         Create a ingredient object from the params in arguments
         """
+        params = helpers.fix_args(dict(request.form))
         validate_query(params, ['name'])
 
         if 'name' not in params.keys():
@@ -67,10 +69,11 @@ class Store:
         return ingredient.serializable
 
     @format_output
-    def ingredient_lookup(self, args):
+    def ingredient_lookup(self):
         """
         Get an ingredient list, matching the parameters passed in args
         """
+        args = helpers.fix_args(dict(request.args))
         validate_query(args, ['name', 'id'])
         stored = self.driver.ingredient_get(args, match=True)
         return [Ingredient(params).serializable for params in stored]
@@ -91,22 +94,30 @@ class Store:
         self.driver.ingredient_delete(ingredient_id)
 
     @format_output
-    def edit_ingredient(self, ingredient_id, args):
+    def edit_ingredient(self, ingredient_id):
+        args = helpers.fix_args(dict(request.form))
+
         if not self.driver.ingredient_get({'id': ingredient_id}):
             raise IngredientNotFound(ingredient_id)
+
         validate_query(args, ['name'])
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
+
         self.driver.ingredient_update(ingredient_id, args)
 
     @format_output
-    def merge_ingredient(self, dest_id, target_id):
+    def merge_ingredient(self, dest_id):
+        target_id = request.form['id']
+
         if not self.driver.ingredient_get({'id': dest_id}):
             raise IngredientNotFound(dest_id)
         if not self.driver.ingredient_get({'id': target_id}):
             raise IngredientNotFound(target_id)
+
         self.driver.requirement_update({'ingredient_id': target_id},
                                        {'ingredient_id': dest_id})
+
         self.delete_ingredient(target_id)
 
 #      _ _     _
@@ -116,10 +127,11 @@ class Store:
 #  \__,_|_|___/_| |_|
 
     @format_output
-    def create_dish(self, params):
+    def create_dish(self):
         """
         Create a dish object from the params in arguments
         """
+        params = helpers.fix_args(dict(request.form))
         validate_query(params, ['name', 'author', 'directions'])
         if 'name' not in params.keys():
             raise InvalidQuery(params)
@@ -133,10 +145,12 @@ class Store:
         return dish.serializable
 
     @format_output
-    def dish_lookup(self, args):
+    def dish_lookup(self):
         """
         Get a dish list, matching the parameters passed in args
         """
+        args = helpers.fix_args(dict(request.args))
+
         validate_query(args, ['name', 'id', 'author', 'directions'])
         if args.get('name'):
             args['simple_name'] = helpers.simplify(args.pop('name'))
@@ -169,7 +183,8 @@ class Store:
         return Dish(dish_data).serializable
 
     @format_output
-    def edit_dish(self, dish_id, args):
+    def edit_dish(self, dish_id):
+        args = helpers.fix_args(dict(request.form))
         if not self.driver.dish_get({'id': dish_id}):
             raise DishNotFound(dish_id)
         validate_query(args, ['name', 'author', 'directions'])
@@ -184,10 +199,12 @@ class Store:
         return self.driver.tag_get({'dish_id': dish_id})
 
     @format_output
-    def tag_dish(self, dish_id, args):
+    def tag_dish(self, dish_id):
         """
         Tag a dish with a label
         """
+        args = helpers.fix_args(dict(request.form))
+
         if not self.driver.dish_get({'id': dish_id}):
             raise DishNotFound(dish_id)
 
@@ -218,14 +235,18 @@ class Store:
         return self.driver.dish_requires(dish_id)
 
     @format_output
-    def link_dish(self, dish_id, required_id):
+    def link_dish(self, dish_id):
         """
         Specify a recipe requirement for a recipe
         """
+        required_id = request.form.get('required')
+
         if not self.driver.dish_get({'id': dish_id}):
             raise DishNotFound(dish_id)
+
         if not self.driver.dish_get({'id': required_id}):
             raise DishNotFound(required_id)
+
         self.driver.dish_link(dish_id, required_id)
 
     @format_output
@@ -257,10 +278,14 @@ class Store:
         return requirement_list
 
     @format_output
-    def add_requirement(self, dish_id, ingredient_id, quantity):
+    def add_requirement(self, dish_id):
         """
         Add a requirement to a dish
         """
+
+        ingredient_id = request.form.get('ingredient')
+        quantity = request.form.get('quantity')
+
         if not ingredient_id or not quantity:
             raise InvalidQuery("Missing parameter")
 
@@ -298,10 +323,11 @@ class Store:
         return stored[0]
 
     @format_output
-    def edit_requirement(self, dish_id, ingredient_id, args):
+    def edit_requirement(self, dish_id, ingredient_id):
         """
         Modify the quantity of a required ingredient
         """
+        args = helpers.fix_args(dict(request.form))
         validate_query(args, ['quantity'])
         if not self.driver.requirement_get({
                 'dish_id': dish_id,
@@ -337,21 +363,22 @@ class Store:
 # |_|\__,_|_.__/ \___|_|
 
     @format_output
-    def label_lookup(self, args):
+    def label_lookup(self):
         """
         Get all labels which match the parameters in args
         """
+        args = helpers.fix_args(dict(request.args))
         validate_query(args, ['name', 'id'])
         return self.driver.label_get(args, match=True)
 
     @format_output
-    def delete_label(self, labelid):
+    def delete_label(self, label_id):
         """
         Create a new label
         """
-        if not self.driver.label_get({'id': labelid}):
-            raise LabelNotFound(labelid)
-        self.driver.label_delete(labelid)
+        if not self.driver.label_get({'id': label_id}):
+            raise LabelNotFound(label_id)
+        self.driver.label_delete(label_id)
 
     @format_output
     def create_label(self, args):
@@ -368,17 +395,18 @@ class Store:
         return label.serializable
 
     @format_output
-    def show_label(self, labelid):
+    def show_label(self, label_id):
         """
         Show dishes tagged with the label
         """
-        if not self.driver.label_get({'id': labelid}):
-            raise LabelNotFound(labelid)
-        dish_list = self.driver.tag_show(labelid)
+        if not self.driver.label_get({'id': label_id}):
+            raise LabelNotFound(label_id)
+        dish_list = self.driver.tag_show(label_id)
         return dish_list
 
     @format_output
-    def edit_label(self, label_id, args):
+    def edit_label(self, label_id):
+        args = helpers.fix_args(dict(request.form))
         if not self.driver.label_get({'id': label_id}):
             raise LabelNotFound(label_id)
         validate_query(args, ['name'])
