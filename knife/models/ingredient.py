@@ -19,8 +19,10 @@ class Ingredient:
     @property
     def params(self):
         return {'id': self.id,
-                'name': self.name}
+                'name': self.name,
+                'simple_name': self.simple_name}
 
     @property
     def serializable(self):
-        return self.params
+        return {'id': self.id,
+                'name': self.name}

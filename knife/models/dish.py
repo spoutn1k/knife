@@ -34,10 +34,7 @@ class Dish:
                 'name': self.name,
                 'simple_name': self.simple_name,
                 'author': self.author,
-                'directions': self.directions,
-                'requirements': self.requirements,
-                'tags': self.tags,
-                'dependencies': self.dependencies}
+                'directions': self.directions}
 
     @property
     def serializable(self):
