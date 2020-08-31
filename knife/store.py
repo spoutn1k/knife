@@ -122,23 +122,6 @@ class Store:
                                  'id': ingredient_id
                              }])
 
-    @format_output
-    def merge_ingredient(self, dest_id):
-        target_id = request.form['id']
-
-        if not SqliteDriver().read(INGREDIENTS, filters=[{'id': dest_id}]):
-            raise IngredientNotFound(dest_id)
-
-        if not SqliteDriver().read(INGREDIENTS, filters=[{'id': target_id}]):
-            raise IngredientNotFound(target_id)
-
-        SqliteDriver().write(REQUIREMENTS, {'ingredient_id': dest_id},
-                             filters=[{
-                                 'ingredient_id': target_id
-                             }])
-
-        SqliteDriver().erase(INGREDIENTS, filters=[{'id': target_id}])
-
 #      _ _     _
 #   __| (_)___| |__
 #  / _` | / __| '_ \
