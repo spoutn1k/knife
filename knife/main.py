@@ -11,7 +11,7 @@ from knife.store import Store
 from knife.drivers import DRIVERS
 
 APP = Flask(__name__)
-BACK_END = Store(DRIVERS['pgsql'])
+BACK_END = Store(DRIVERS['sqlite'])
 
 
 ROUTES = (
@@ -27,6 +27,7 @@ ROUTES = (
     (['DELETE'], BACK_END.delete_dish, '/dishes/<dish_id>'),
 
     (['GET'], BACK_END.label_lookup, '/labels'),
+    (['POST'], BACK_END.create_label, '/labels/new'),
     (['GET'], BACK_END.show_label, '/labels/<label_id>'),
     (['PUT'], BACK_END.edit_label, '/labels/<label_id>'),
     (['DELETE'], BACK_END.delete_label, '/labels/<label_id>'),

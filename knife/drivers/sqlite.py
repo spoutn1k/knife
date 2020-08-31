@@ -1,6 +1,6 @@
 import sqlite3
 from knife import helpers
-from knife.drivers import AbstractDriver
+from knife.drivers import AbstractDriver, DISHES_STRUCTURE, INGREDIENTS_STRUCTURE, LABELS_STRUCTURE, REQUIREMENTS_STRUCTURE, TAGS_STRUCTURE
 
 DRIVER_NAME = 'sqlite'
 
@@ -85,7 +85,15 @@ REQUIREMENTS = 'requirements'
 LABELS = 'labels'
 TAGS = 'tags'
 
-TABLES = [DISHES, DEPENDENCIES, INGREDIENTS, REQUIREMENTS, LABELS, TAGS]
+TABLES = {
+    DISHES: DISHES_STRUCTURE,
+    DEPENDENCIES: None,
+    INGREDIENTS: INGREDIENTS_STRUCTURE,
+    REQUIREMENTS: REQUIREMENTS_STRUCTURE,
+    LABELS: LABELS_STRUCTURE,
+    TAGS: TAGS_STRUCTURE
+}
+
 
 class SqliteDriver(AbstractDriver):
     def setup(self, params=None):
@@ -101,24 +109,41 @@ class SqliteDriver(AbstractDriver):
         self.connexion.close()
 
     def select(self, table, filters=[{}], columns=['*'], exact=True):
+        if table not in TABLES.keys():
+            raise ValueError(table)
+
         template = 'SELECT %s FROM %s' % (', '.join(columns), table)
+        parameters = {}
 
         if valid_filters := list(filter(lambda x: x, filters)):
             match_operator = '=' if exact else 'LIKE'
             template += ' WHERE '
-            
+
             rules = []
             for f in valid_filters:
-                rules += " AND ".join(["%s %s %s" % (column, match_operator, value) for column, value in f])
+                rule = []
+                for column, value in f.items():
+                    if not exact:
+                        value = "%%%s%%" % value
+                    parameters.update({column: value})
+                    rule.append("%s %s :%s" % (column, match_operator, column))
+                rules.append(" AND ".join(rule))
 
             template += " OR ".join(rules)
-
+        
         self.setup()
-        self.cursor.execute(template)
+        # TODO log dat
+        print(template, parameters)
+        self.cursor.execute(template, parameters)
         data = self.cursor.fetchall()
         self.close()
 
-        return data
+        # TODO factorize this at the common level
+        if columns == ['*']:
+            structure = TABLES.get(table)
+            columns = [field[0] for field in structure[1]] 
+
+        return [dict(zip(columns, record)) for record in data]
 
 
 #      _       _        _

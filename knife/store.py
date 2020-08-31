@@ -8,7 +8,7 @@ from flask import request
 from knife import helpers
 from knife.models import Dish, Label, Ingredient
 from knife.exceptions import *
-from knife.drivers.sqlite import SqliteDriver, DISHES, INGREDIENTS
+from knife.drivers.sqlite import SqliteDriver, DISHES, INGREDIENTS, LABELS, REQUIREMENTS
 
 
 def validate_query(args_dict, authorized_keys):
@@ -60,11 +60,12 @@ class Store:
             raise InvalidQuery(params)
 
         ingredient = Ingredient(params)
-        stored = self.driver.ingredient_get(
-            {'simple_name': ingredient.simple_name})
 
-        if stored:
-            raise IngredientAlreadyExists(stored[0])
+        if SqliteDriver().select(INGREDIENTS,
+                                 filters=[{
+                                     'simple_name': ingredient.simple_name
+                                 }]):
+            raise IngredientAlreadyExists(params)
 
         self.driver.ingredient_put(ingredient)
         return ingredient.serializable
@@ -76,20 +77,26 @@ class Store:
         """
         args = helpers.fix_args(dict(request.args))
         validate_query(args, ['id', 'name'])
-        data = SqliteDriver().select(INGREDIENTS, filters=[args], columns=['id', 'name'], exact=False)
-        stored = [{'id': id, 'name': name} for id, name in data]
-        return [Ingredient(params).serializable for params in stored]
+        return SqliteDriver().select(INGREDIENTS,
+                                     filters=[args],
+                                     columns=['id', 'name'],
+                                     exact=False)
 
     @format_output
     def delete_ingredient(self, ingredient_id):
         """
         Delete an ingredient from an id
         """
-        stored = self.driver.ingredient_get({'id': ingredient_id})
-        if not stored:
+        if not SqliteDriver().select(INGREDIENTS,
+                                     filters=[{
+                                         'id': ingredient_id
+                                     }]):
             raise IngredientNotFound(ingredient_id)
 
-        stored = self.driver.requirement_get({'ingredient_id': ingredient_id})
+        stored = SqliteDriver().select(REQUIREMENTS,
+                                       filters=[{
+                                           'ingredient_id': ingredient_id
+                                       }])
         if stored:
             raise IngredientInUse(len(stored))
 
@@ -99,7 +106,10 @@ class Store:
     def edit_ingredient(self, ingredient_id):
         args = helpers.fix_args(dict(request.form))
 
-        if not self.driver.ingredient_get({'id': ingredient_id}):
+        if not SqliteDriver().select(INGREDIENTS,
+                                     filters=[{
+                                         'id': ingredient_id
+                                     }]):
             raise IngredientNotFound(ingredient_id)
 
         validate_query(args, ['name'])
@@ -112,9 +122,10 @@ class Store:
     def merge_ingredient(self, dest_id):
         target_id = request.form['id']
 
-        if not self.driver.ingredient_get({'id': dest_id}):
+        if not SqliteDriver().select(INGREDIENTS, filters=[{'id': dest_id}]):
             raise IngredientNotFound(dest_id)
-        if not self.driver.ingredient_get({'id': target_id}):
+
+        if not SqliteDriver().select(INGREDIENTS, filters=[{'id': target_id}]):
             raise IngredientNotFound(target_id)
 
         self.driver.requirement_update({'ingredient_id': target_id},
@@ -128,7 +139,6 @@ class Store:
 # | (_| | \__ \ | | |
 #  \__,_|_|___/_| |_|
 
-
     @format_output
     def create_dish(self):
         """
@@ -141,7 +151,10 @@ class Store:
 
         dish = Dish(params)
 
-        if self.driver.dish_get({'simple_name': dish.simple_name}):
+        if SqliteDriver().select(DISHES,
+                                 filters=[{
+                                     'simple_name': dish.simple_name
+                                 }]):
             raise DishAlreadyExists(dish.name)
 
         self.driver.dish_put(dish)
@@ -158,17 +171,19 @@ class Store:
         if args.get('name'):
             args['simple_name'] = helpers.simplify(args.pop('name'))
 
-        data = SqliteDriver().select(DISHES, filters=[args], columns=('id', 'name'), exact=False)
-
-        return [{'id': id, 'name': name} for id, name in data]
+        return SqliteDriver().select(DISHES,
+                                     filters=[args],
+                                     columns=('id', 'name'),
+                                     exact=False)
 
     @format_output
     def delete_dish(self, dish_id):
         """
         Delete a dish from an id
         """
-        if not self.driver.dish_get({'id': dish_id}):
+        if not SqliteDriver().select(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
+
         self.driver.dish_delete(dish_id)
 
     @format_output
@@ -176,9 +191,11 @@ class Store:
         """
         Get full details about the dish of the specified id
         """
-        results = self.driver.dish_get({'id': dish_id})
+        results = SqliteDriver().select(DISHES, filters=[{'id': dish_id}])
+
         if not results:
             raise DishNotFound(dish_id)
+
         dish_data = results[0]
 
         dish_data['requirements'] = self.show_requirements(dish_id).get(
@@ -191,17 +208,23 @@ class Store:
     @format_output
     def edit_dish(self, dish_id):
         args = helpers.fix_args(dict(request.form))
-        if not self.driver.dish_get({'id': dish_id}):
+
+        if not SqliteDriver().select(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
+
         validate_query(args, ['name', 'author', 'directions'])
+
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
+
         self.driver.dish_update(dish_id, args)
 
     @format_output
     def get_tags(self, dish_id):
-        if not self.driver.dish_get({'id': dish_id}):
+
+        if not SqliteDriver().select(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
+
         return self.driver.tag_get({'dish_id': dish_id})
 
     @format_output
@@ -211,10 +234,10 @@ class Store:
         """
         args = helpers.fix_args(dict(request.form))
 
-        if not self.driver.dish_get({'id': dish_id}):
+        if not SqliteDriver().select(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
 
-        label = self.create_label(args).get('data')
+        label = self.create_label(args)
         if self.driver.tag_get({
                 'dish_id': dish_id,
                 'label_id': label.get('id')
@@ -228,16 +251,18 @@ class Store:
         """
         Untag a dish with a label
         """
-        if not self.driver.label_get({'id': label_id}):
+        if not SqliteDriver().select(LABELS, filters=[{'id': label_id}]):
             raise LabelNotFound(label_id)
+
         if not self.driver.tag_get({'dish_id': dish_id, 'label_id': label_id}):
             raise TagNotFound(dish_id, label_id)
         self.driver.dish_untag(dish_id, label_id)
 
     @format_output
     def get_deps(self, dish_id):
-        if not self.driver.dish_get({'id': dish_id}):
+        if not SqliteDriver().select(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
+
         return self.driver.dish_requires(dish_id)
 
     @format_output
@@ -247,10 +272,10 @@ class Store:
         """
         required_id = request.form.get('required')
 
-        if not self.driver.dish_get({'id': dish_id}):
+        if not SqliteDriver().select(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
 
-        if not self.driver.dish_get({'id': required_id}):
+        if not SqliteDriver().select(DISHES, filters=[{'id': required_id}]):
             raise DishNotFound(required_id)
 
         self.driver.dish_link(dish_id, required_id)
@@ -272,9 +297,15 @@ class Store:
     @format_output
     def show_requirements(self, dish_id):
         requirement_list = []
-        for raw_data in self.driver.requirement_get({'dish_id': dish_id}):
-            results = self.driver.ingredient_get(
-                {'id': raw_data.get('ingredient_id')})
+        for raw_data in SqliteDriver().select(REQUIREMENTS,
+                                              filters=[{
+                                                  'dish_id': dish_id
+                                              }]):
+            results = SqliteDriver().select(INGREDIENTS,
+                                            filters=[{
+                                                'id':
+                                                raw_data.get('ingredient_id')
+                                            }])
             req = {
                 'ingredient': results[0],
                 'quantity': raw_data.get('quantity')
@@ -295,18 +326,20 @@ class Store:
         if not ingredient_id or not quantity:
             raise InvalidQuery("Missing parameter")
 
-        if not self.driver.dish_get({'id': dish_id}):
+        if not SqliteDriver().select(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
 
-        ing_list = self.driver.ingredient_get({'id': ingredient_id})
-
-        if not ing_list:
+        if not SqliteDriver().select(INGREDIENTS,
+                                     filters=[{
+                                         'id': ingredient_id
+                                     }]):
             raise IngredientNotFound(ingredient_id)
 
-        if self.driver.requirement_exists({
-                'dish_id': dish_id,
-                'ingredient_id': ingredient_id
-        }):
+        if SqliteDriver().select(REQUIREMENTS,
+                                 filters=[{
+                                     'dish_id': dish_id,
+                                     'ingredient_id': ingredient_id
+                                 }]):
             raise RequirementAlreadyExists(dish_id, ingredient_id)
 
         self.driver.requirement_put({
@@ -320,10 +353,11 @@ class Store:
         """
         Get a requirement from both the dish and the required ingredient
         """
-        stored = self.driver.requirement_get({
-            'dish_id': dish_id,
-            'ingredient_id': ingredient_id
-        })
+        stored = SqliteDriver().select(REQUIREMENTS,
+                                       filters=[{
+                                           'dish_id': dish_id,
+                                           'ingredient_id': ingredient_id
+                                       }])
         if not stored:
             raise RequirementNotFound(dish_id, ingredient_id)
         return stored[0]
@@ -335,11 +369,13 @@ class Store:
         """
         args = helpers.fix_args(dict(request.form))
         validate_query(args, ['quantity'])
-        if not self.driver.requirement_get({
-                'dish_id': dish_id,
-                'ingredient_id': ingredient_id
-        }):
+        if not SqliteDriver().select(REQUIREMENTS,
+                                     filters=[{
+                                         'dish_id': dish_id,
+                                         'ingredient_id': ingredient_id
+                                     }]):
             raise RequirementNotFound(dish_id, ingredient_id)
+
         self.driver.requirement_update(
             {
                 'dish_id': dish_id,
@@ -351,10 +387,11 @@ class Store:
         """
         Remove a requirement
         """
-        if not self.driver.requirement_get({
-                'dish_id': dish_id,
-                'ingredient_id': ingredient_id
-        }):
+        if not SqliteDriver().select(REQUIREMENTS,
+                                     filters=[{
+                                         'dish_id': dish_id,
+                                         'ingredient_id': ingredient_id
+                                     }]):
             raise RequirementNotFound(dish_id, ingredient_id)
         self.driver.requirement_delete({
             'dish_id': dish_id,
@@ -375,14 +412,17 @@ class Store:
         """
         args = helpers.fix_args(dict(request.args))
         validate_query(args, ['name', 'id'])
-        return self.driver.label_get(args, match=True)
+        return SqliteDriver().select(LABELS,
+                                     filters=[args],
+                                     columns=('id', 'name'),
+                                     exact=False)
 
     @format_output
     def delete_label(self, label_id):
         """
         Create a new label
         """
-        if not self.driver.label_get({'id': label_id}):
+        if not SqliteDriver().select(LABELS, filters=[{'id': label_id}]):
             raise LabelNotFound(label_id)
         self.driver.label_delete(label_id)
 
@@ -393,11 +433,11 @@ class Store:
         if label.name in ["", None] or " " in label.name:
             raise LabelInvalid(labelname)
 
-        label_list = self.driver.label_get({'name': label.name})
-        if label_list:
-            raise LabelAlreadyExists(label_list[0])
+        if not SqliteDriver().select(LABELS, filters=[{'name': label.name}]):
+            self.driver.label_put(label)
+        #else:
+        #raise LabelAlreadyExists("Too bad")
 
-        self.driver.label_put(label)
         return label.serializable
 
     @format_output
@@ -405,17 +445,21 @@ class Store:
         """
         Show dishes tagged with the label
         """
-        if not self.driver.label_get({'id': label_id}):
+        if not SqliteDriver().select(LABELS, filters=[{'id': label_id}]):
             raise LabelNotFound(label_id)
+
         dish_list = self.driver.tag_show(label_id)
         return dish_list
 
     @format_output
     def edit_label(self, label_id):
         args = helpers.fix_args(dict(request.form))
-        if not self.driver.label_get({'id': label_id}):
+
+        if not SqliteDriver().select(LABELS, filters=[{'id': label_id}]):
             raise LabelNotFound(label_id)
+
         validate_query(args, ['name'])
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
+
         self.driver.label_update(label_id, args)
