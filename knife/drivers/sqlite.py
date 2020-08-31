@@ -191,7 +191,6 @@ class SqliteDriver(AbstractDriver):
         # TODO log dat
         print(template, parameters)
         self.cursor.execute(template, parameters)
-        data = self.cursor.fetchall()
         self.close()
 
     def erase(self, table: str, filters=[]) -> None:
@@ -209,17 +208,4 @@ class SqliteDriver(AbstractDriver):
         # TODO log dat
         print(template + addendum, parameters)
         self.cursor.execute(template + addendum, parameters)
-        data = self.cursor.fetchall()
         self.close()
-
-if __name__ == "__main__":
-    db_drop_tables([
-        'dishes', 'ingredients', 'requirements', 'dependencies', 'labels',
-        'tags'
-    ])
-    db_execute(TAGS_DEFINITION)
-    db_execute(LABELS_DEFINITION)
-    db_execute(DISHES_DEFINITION)
-    db_execute(INGREDIENTS_DEFINITION)
-    db_execute(REQUIREMENTS_DEFINITION)
-    db_execute(DEPENDENCIES_DEFINITION)
