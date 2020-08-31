@@ -116,7 +116,11 @@ class Store:
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
 
-        SqliteDriver().update(INGREDIENTS, args, filters=[{'id': ingredient_id}])
+        SqliteDriver().write(INGREDIENTS,
+                             args,
+                             filters=[{
+                                 'id': ingredient_id
+                             }])
 
     @format_output
     def merge_ingredient(self, dest_id):
@@ -128,8 +132,10 @@ class Store:
         if not SqliteDriver().read(INGREDIENTS, filters=[{'id': target_id}]):
             raise IngredientNotFound(target_id)
 
-        self.driver.requirement_update({'ingredient_id': target_id},
-                                       {'ingredient_id': dest_id})
+        SqliteDriver().write(REQUIREMENTS, {'ingredient_id': dest_id},
+                             filters=[{
+                                 'ingredient_id': target_id
+                             }])
 
         SqliteDriver().erase(INGREDIENTS, filters=[{'id': target_id}])
 
@@ -228,7 +234,7 @@ class Store:
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
 
-        SqliteDriver().update(DISHES, args, filters=[{'id': dish_id}])
+        SqliteDriver().write(DISHES, args, filters=[{'id': dish_id}])
 
     @format_output
     def get_tags(self, dish_id):
@@ -412,11 +418,12 @@ class Store:
                                    }]):
             raise RequirementNotFound(dish_id, ingredient_id)
 
-        SqliteDriver().update(
-            REQUIREMENTS, args, filters=[{
-                'dish_id': dish_id,
-                'ingredient_id': ingredient_id
-            }])
+        SqliteDriver().write(REQUIREMENTS,
+                             args,
+                             filters=[{
+                                 'dish_id': dish_id,
+                                 'ingredient_id': ingredient_id
+                             }])
 
     @format_output
     def delete_requirement(self, dish_id, ingredient_id):
@@ -508,4 +515,4 @@ class Store:
         if 'name' in args:
             args['simple_name'] = helpers.simplify(args['name'])
 
-        SqliteDriver().update(LABELS, args, filters=[{'id': label_id}])
+        SqliteDriver().write(LABELS, args, filters=[{'id': label_id}])

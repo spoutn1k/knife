@@ -157,15 +157,35 @@ class SqliteDriver(AbstractDriver):
 
         return [dict(zip(columns, record)) for record in data]
 
-    def write(self, table: str, record: dict) -> None:
+    def write(self, table: str, record: dict, filters=[]) -> None:
         if table not in TABLES.keys():
             raise ValueError(table)
 
-        columns = ', '.join(record.keys())
-        values = ', '.join([":%s" % key for key in record.keys()])
+        if filters:
+            # if filters are there, we update values
 
-        template = 'INSERT INTO %s (%s) VALUES (%s)' % (table, columns, values)
-        parameters = record
+            # Put a stamp in case a key is both a filter and a target
+            values = ', '.join(["%s = :record_%s" % (k, k) for k in record.keys()])
+            stamped_record = dict([('record_' + k, v)
+                               for (k, v) in record.items()])
+
+            template = 'UPDATE %s SET %s' % (table, values)
+
+            addendum, parameters = match_string(filters, True)
+
+            if not addendum:
+                raise ValueError(filters)
+
+            template += addendum
+            parameters.update(stamped_record)
+
+        else:
+            # if not, a simple insert
+            columns = ', '.join(record.keys())
+            values = ', '.join([":%s" % key for key in record.keys()])
+
+            template = 'INSERT INTO %s (%s) VALUES (%s)' % (table, columns, values)
+            parameters = record
 
         self.setup()
         # TODO log dat
@@ -181,31 +201,6 @@ class SqliteDriver(AbstractDriver):
         template = 'DELETE FROM %s' % table
 
         addendum, parameters = match_string(filters, True)
-
-        if not addendum:
-            raise ValueError(filters)
-
-        self.setup()
-        # TODO log dat
-        print(template + addendum, parameters)
-        self.cursor.execute(template + addendum, parameters)
-        data = self.cursor.fetchall()
-        self.close()
-
-    def update(self, table: str, record: dict, filters=[]) -> None:
-        if table not in TABLES.keys():
-            raise ValueError(table)
-
-        values = ', '.join(["%s = :record_%s" % (k, k) for k in record.keys()])
-        # Put a stamp in case a key is both a filter and a target
-        stamped_record = dict([('record_' + k, v)
-                               for (k, v) in record.items()])
-
-        template = 'UPDATE %s SET %s' % (table, values)
-
-        addendum, parameters = match_string(filters, True)
-
-        parameters.update(stamped_record)
 
         if not addendum:
             raise ValueError(filters)
