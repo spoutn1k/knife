@@ -117,7 +117,12 @@ def transaction(func):
         template, parameters = func(*args, **kwargs)
         print(template, parameters)
         driver.cursor.execute(template, parameters)
-        data = driver.cursor.fetchall()
+
+        try:
+            data = driver.cursor.fetchall()
+        except psycopg2.ProgrammingError:
+            data = []
+
         driver.close()
 
         if 'columns' in func.__code__.co_varnames:
