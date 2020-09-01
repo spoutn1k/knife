@@ -53,7 +53,7 @@ class Store:
         Create a ingredient object from the params in arguments
         """
         params = helpers.fix_args(dict(request.form))
-        validate_query(params, ['name'])
+        validate_query(params, [Ingredient.fields.name])
 
         if 'name' not in params.keys():
             raise InvalidQuery(params)
@@ -76,7 +76,7 @@ class Store:
         Get an ingredient list, matching the parameters passed in args
         """
         args = helpers.fix_args(dict(request.args))
-        validate_query(args, ['id', 'name'])
+        validate_query(args, [Ingredient.fields.id, Ingredient.fields.name])
         return self.driver.read(
             Ingredient,
             filters=[args],
@@ -88,30 +88,45 @@ class Store:
         """
         Delete an ingredient from an id
         """
-        if not self.driver.read(Ingredient, filters=[{'id': ingredient_id}]):
+        if not self.driver.read(Ingredient,
+                                filters=[{
+                                    Ingredient.fields.id: ingredient_id
+                                }]):
             raise IngredientNotFound(ingredient_id)
 
         stored = self.driver.read(Requirement,
                                   filters=[{
-                                      'ingredient_id': ingredient_id
+                                      Requirement.fields.ingredient_id:
+                                      ingredient_id
                                   }])
         if stored:
             raise IngredientInUse(len(stored))
 
-        self.driver.erase(Ingredient, filters=[{'id': ingredient_id}])
+        self.driver.erase(Ingredient,
+                          filters=[{
+                              Ingredient.fields.id: ingredient_id
+                          }])
 
     @format_output
     def edit_ingredient(self, ingredient_id):
         args = helpers.fix_args(dict(request.form))
 
-        if not self.driver.read(Ingredient, filters=[{'id': ingredient_id}]):
+        if not self.driver.read(Ingredient,
+                                filters=[{
+                                    Ingredient.fields.id: ingredient_id
+                                }]):
             raise IngredientNotFound(ingredient_id)
 
-        validate_query(args, ['name'])
-        if 'name' in args:
-            args['simple_name'] = helpers.simplify(args['name'])
+        validate_query(args, [Ingredient.fields.name])
+        if Ingredient.fields.name in args:
+            args[Ingredient.fields.simple_name] = helpers.simplify(
+                args[Ingredient.fields.name])
 
-        self.driver.write(Ingredient, args, filters=[{'id': ingredient_id}])
+        self.driver.write(Ingredient,
+                          args,
+                          filters=[{
+                              Ingredient.fields.id: ingredient_id
+                          }])
 
 #      _ _     _
 #   __| (_)___| |__
@@ -149,9 +164,13 @@ class Store:
         """
         args = helpers.fix_args(dict(request.args))
 
-        validate_query(args, [Dish.fields.name, Dish.fields.id, Dish.fields.author, Dish.fields.directions])
+        validate_query(args, [
+            Dish.fields.name, Dish.fields.id, Dish.fields.author,
+            Dish.fields.directions
+        ])
         if args.get(Dish.fields.name):
-            args[Dish.fields.simple_name] = helpers.simplify(args.pop(Dish.fields.name))
+            args[Dish.fields.simple_name] = helpers.simplify(
+                args.pop(Dish.fields.name))
 
         return self.driver.read(Dish,
                                 filters=[args],
@@ -173,7 +192,7 @@ class Store:
         """
         Get full details about the dish of the specified id
         """
-        results = self.driver.read(Dish, filters=[{'id': dish_id}])
+        results = self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}])
 
         if not results:
             raise DishNotFound(dish_id)
@@ -183,16 +202,16 @@ class Store:
         dish_data['requirements'] = self.show_requirements(dish_id).get('data')
 
         dish_data['tags'] = self.driver.read(
-            (Tag, Label, 'label_id', 'id'),
+            (Tag, Label, Tag.fields.label_id, Label.fields.id),
             filters=[{
-                'dish_id': dish_id
+                Tag.fields.dish_id: dish_id
             }],
             columns=[Label.fields.id, Label.fields.name])
 
         dish_data['dependencies'] = self.driver.read(
             (Dish, Dependency, Dish.fields.id, Dependency.fields.requisite),
             filters=[{
-                'required_by': dish_id
+                Dependency.fields.required_by: dish_id
             }],
             columns=[Dish.fields.id, Dish.fields.name])
 
@@ -325,20 +344,25 @@ class Store:
     @format_output
     def show_requirements(self, dish_id):
         requirement_list = []
-        for raw_data in self.driver.read(Requirement,
-                                         filters=[{
-                                             'dish_id': dish_id
-                                         }]):
-            results = self.driver.read(Ingredient,
-                                       filters=[{
-                                           'id':
-                                           raw_data.get('ingredient_id')
-                                       }])
-            req = {
-                'ingredient': results[0],
-                'quantity': raw_data.get('quantity')
-            }
-            requirement_list.append(req)
+
+        matches = self.driver.read(
+            (Requirement, Ingredient, Requirement.fields.ingredient_id,
+             Ingredient.fields.id),
+            columns=(Ingredient.fields.name, Requirement.fields.quantity,
+                     Ingredient.fields.id),
+            filters=[{
+                Requirement.fields.dish_id: dish_id
+            }])
+
+        for record in matches:
+            requirement_list.append({
+                'ingredient': {
+                    Ingredient.fields.id: record[Ingredient.fields.id],
+                    Ingredient.fields.name: record[Ingredient.fields.name],
+                },
+                Requirement.fields.quantity:
+                record[Requirement.fields.quantity]
+            })
 
         return requirement_list
 

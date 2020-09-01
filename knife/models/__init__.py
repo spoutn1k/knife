@@ -18,11 +18,13 @@ class Field():
     def __str__(self):
         return self.appearance
 
+
 class FieldList():
     def __init__(self, *fields):
         self.index = 0
         self.fields = [Field(*f) for f in fields]
-        [self.__setattr__(str(f), f) for f in self.fields]
+        [self.__setattr__(str(f), str(f)) for f in self.fields]
+        [self.__setattr__(str(f) + '_type', f.datatypes) for f in self.fields]
 
     def __iter__(self):
         return self

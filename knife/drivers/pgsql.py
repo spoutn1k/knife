@@ -1,7 +1,7 @@
 import os
 import psycopg2
 from knife import helpers
-from knife.drivers import AbstractDriver, Tables
+from knife.drivers import AbstractDriver
 
 DRIVER_NAME = 'pgsql'
 DBURL = os.environ.get('DATABASE_URL')

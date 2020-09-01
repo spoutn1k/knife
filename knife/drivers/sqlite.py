@@ -111,18 +111,11 @@ def transaction(func):
 
         if isinstance(obj_class, tuple):
             table_name = (obj_class[0].table_name, obj_class[1].table_name,
-                          str(obj_class[2]), str(obj_class[3]))
+                          obj_class[2], obj_class[3])
         else:
             table_name = obj_class.table_name
 
         args = (driver, table_name, *args[2:])
-
-        if 'columns' in func.__code__.co_varnames:
-            if kwargs.get('columns', ['*']) == ['*']:
-                columns = list(Dish.fields)
-            else:
-                columns = [str(c) for c in kwargs.get('columns')]
-            kwargs['columns'] = columns
 
         driver.setup()
         template, parameters = func(*args, **kwargs)
@@ -132,6 +125,8 @@ def transaction(func):
         driver.close()
 
         if 'columns' in func.__code__.co_varnames:
+            if (columns := kwargs.get('columns', ['*'])) == ['*']:
+                columns = list(Dish.fields)
             data = [dict(zip(columns, record)) for record in data]
 
         return data
