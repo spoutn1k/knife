@@ -39,10 +39,29 @@ TAGS_STRUCTURE = ('tags', (('dish_id', Datatypes.text, Datatypes.primary_key),
                            ('label_id', Datatypes.text,
                             Datatypes.primary_key)))
 
-DEPENDENCIES_STRUCTURE = ('dependencies',
-                          (('requisite', Datatypes.text, Datatypes.primary_key),
-                           ('required_by', Datatypes.text,
-                            Datatypes.primary_key)))
+DEPENDENCIES_STRUCTURE = ('dependencies', (('requisite', Datatypes.text,
+                                            Datatypes.primary_key),
+                                           ('required_by', Datatypes.text,
+                                            Datatypes.primary_key)))
+
+
+class Tables():
+    dishes = 0
+    ingredients = 1
+    labels = 2
+
+    dependencies = 3
+    requirements = 4
+    tags = 5
+
+    tokens = {
+        dishes: DISHES_STRUCTURE,
+        dependencies: DEPENDENCIES_STRUCTURE,
+        ingredients: INGREDIENTS_STRUCTURE,
+        requirements: REQUIREMENTS_STRUCTURE,
+        labels: LABELS_STRUCTURE,
+        tags: TAGS_STRUCTURE
+    }
 
 
 class AbstractDriver(object):
@@ -56,4 +75,4 @@ for _, module_name, _ in walk_packages(path=__path__, prefix=__name__ + '.'):
     driver_module = sys.modules[module_name]
 
     if name := driver_module.__getattribute__('DRIVER_NAME'):
-        DRIVERS[name] = driver_module
+        DRIVERS[name] = driver_module.__getattribute__('DRIVER')

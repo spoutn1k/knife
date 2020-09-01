@@ -11,7 +11,7 @@ from knife.store import Store
 from knife.drivers import DRIVERS
 
 APP = Flask(__name__)
-BACK_END = Store(DRIVERS['sqlite'])
+BACK_END = Store(DRIVERS['pgsql'])
 
 
 ROUTES = (

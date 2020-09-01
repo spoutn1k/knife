@@ -1,9 +1,8 @@
 import sqlite3
 from knife import helpers
-from knife.drivers import AbstractDriver, DISHES_STRUCTURE, INGREDIENTS_STRUCTURE, LABELS_STRUCTURE, REQUIREMENTS_STRUCTURE, TAGS_STRUCTURE, DEPENDENCIES_STRUCTURE
+from knife.drivers import AbstractDriver, Tables
 
 DRIVER_NAME = 'sqlite'
-
 DBPATH = '/tmp/database.db'
 
 DISHES_DEFINITION = '''
@@ -78,22 +77,6 @@ CREATE TABLE tags (
         ON DELETE CASCADE)
 '''
 
-DISHES = 'dishes'
-DEPENDENCIES = 'dependencies'
-INGREDIENTS = 'ingredients'
-REQUIREMENTS = 'requirements'
-LABELS = 'labels'
-TAGS = 'tags'
-
-TABLES = {
-    DISHES: DISHES_STRUCTURE,
-    DEPENDENCIES: DEPENDENCIES_STRUCTURE,
-    INGREDIENTS: INGREDIENTS_STRUCTURE,
-    REQUIREMENTS: REQUIREMENTS_STRUCTURE,
-    LABELS: LABELS_STRUCTURE,
-    TAGS: TAGS_STRUCTURE
-}
-
 
 def match_string(filters: list, exact: bool):
     parameters = {}
@@ -120,7 +103,16 @@ def match_string(filters: list, exact: bool):
 
 def transaction(func):
     def wrapper(*args, **kwargs):
-        driver, table = args[:2]
+        driver, table_ref = args[:2]
+
+        if isinstance(table_ref, tuple):
+            table = (Tables.tokens.get(table_ref[0])[0],
+                     Tables.tokens.get(table_ref[1])[0], *table_ref[2:])
+        else:
+            table = Tables.tokens.get(table_ref)[0]
+
+        args = (driver, table, *args[2:])
+
         driver.setup()
         template, parameters = func(*args, **kwargs)
         print(template, parameters)
@@ -130,7 +122,7 @@ def transaction(func):
 
         if 'columns' in func.__code__.co_varnames:
             if kwargs.get('columns', ['*']) == ['*']:
-                structure = TABLES.get(table)
+                structure = Tables.tokens.get(table_ref)
                 columns = [field[0] for field in structure[1]]
             else:
                 columns = kwargs['columns']
@@ -160,9 +152,6 @@ class SqliteDriver(AbstractDriver):
         if isinstance(table, tuple) and len(table) == 4:
             table = "%s JOIN %s ON %s.%s = %s.%s" % (
                 table[0], table[1], table[0], table[2], table[1], table[3])
-        else:
-            if table not in TABLES.keys():
-                raise ValueError(table)
 
         template = 'SELECT %s FROM %s' % (', '.join(columns), table)
 
@@ -172,9 +161,6 @@ class SqliteDriver(AbstractDriver):
 
     @transaction
     def write(self, table: str, record: dict, filters=[]) -> None:
-        if table not in TABLES.keys():
-            raise ValueError(table)
-
         if filters:
             # if filters are there, we update values
 
@@ -207,9 +193,6 @@ class SqliteDriver(AbstractDriver):
 
     @transaction
     def erase(self, table: str, filters=[]) -> None:
-        if table not in TABLES.keys():
-            raise ValueError(table)
-
         template = 'DELETE FROM %s' % table
 
         addendum, parameters = match_string(filters, True)
@@ -219,6 +202,8 @@ class SqliteDriver(AbstractDriver):
 
         return template + addendum, parameters
 
+
+DRIVER = SqliteDriver
 
 if __name__ == '__main__':
     driver = SqliteDriver()
