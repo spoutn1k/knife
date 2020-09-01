@@ -123,3 +123,7 @@ class TagNotFound(KnifeError):
 
     def __str__(self):
         return "Tag not found"
+
+class DepencyAlreadyExists(KnifeError):
+    def __str__(self):
+        return "Dependency already exists"

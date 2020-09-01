@@ -61,11 +61,11 @@ class Store:
 
         ingredient = Ingredient(params)
 
-        if SqliteDriver().read(INGREDIENTS,
+        if stored := SqliteDriver().read(INGREDIENTS,
                                filters=[{
                                    'simple_name': ingredient.simple_name
                                }]):
-            raise IngredientAlreadyExists(params)
+            raise IngredientAlreadyExists(Ingredient(stored[0]).serializable)
 
         SqliteDriver().write(INGREDIENTS, ingredient.params)
         return ingredient.serializable
@@ -280,7 +280,12 @@ class Store:
         if not SqliteDriver().read(DISHES, filters=[{'id': dish_id}]):
             raise DishNotFound(dish_id)
 
-        return self.driver.dish_requires(dish_id)
+        return SqliteDriver().read(
+            (DISHES, DEPENDENCIES, 'id', 'requisite'),
+            filters=[{
+                'required_by': dish_id
+            }],
+            columns=['id', 'name'])
 
     @format_output
     def link_dish(self, dish_id):
@@ -294,6 +299,12 @@ class Store:
 
         if not SqliteDriver().read(DISHES, filters=[{'id': required_id}]):
             raise DishNotFound(required_id)
+
+        if SqliteDriver().read(DEPENDENCIES, filters=[{
+            'required_by': dish_id,
+            'requisite': required_id
+        }]):
+            raise DepencyAlreadyExists()
 
         SqliteDriver().write(DEPENDENCIES, {
             'required_by': dish_id,
