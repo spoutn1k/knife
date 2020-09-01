@@ -1,22 +1,13 @@
 import os
 import psycopg2
 from knife import helpers
+from knife.drivers import AbstractDriver, DISHES_STRUCTURE, INGREDIENTS_STRUCTURE, LABELS_STRUCTURE, REQUIREMENTS_STRUCTURE, TAGS_STRUCTURE, DEPENDENCIES_STRUCTURE
 
 DRIVER_NAME = 'pgsql'
 
 DBURL = os.environ.get('DATABASE_URL')
-LOGFILE = 'queries.log'
-LOGGING = False
 
-
-def log(*args, **kwargs):
-    if not LOGGING:
-        return
-    with open(LOGFILE, 'a') as logfile:
-        logfile.write("{} {}\n".format(*args, dict(**kwargs)))
-
-
-DISHES = '''
+DISHES_DEFINITION = '''
 CREATE TABLE dishes (
     id TEXT,
     name TEXT NOT NULL,
@@ -26,7 +17,7 @@ CREATE TABLE dishes (
     PRIMARY KEY (id))
 '''
 
-DEPENDENCIES = '''
+DEPENDENCIES_DEFINITION = '''
 CREATE TABLE dependencies (
     requisite TEXT NOT NULL,
     required_by TEXT NOT NULL,
@@ -41,7 +32,7 @@ CREATE TABLE dependencies (
         ON DELETE CASCADE)
 '''
 
-INGREDIENTS = '''
+INGREDIENTS_DEFINITION = '''
 CREATE TABLE ingredients (
     id TEXT,
     name TEXT NOT NULL,
@@ -49,7 +40,7 @@ CREATE TABLE ingredients (
     PRIMARY KEY (id))
 '''
 
-REQUIREMENTS = '''
+REQUIREMENTS_DEFINITION = '''
 CREATE TABLE requirements (
     dish_id TEXT NOT NULL, 
     ingredient_id TEXT NOT NULL, 
@@ -65,7 +56,7 @@ CREATE TABLE requirements (
         ON DELETE CASCADE)
 '''
 
-LABELS = '''
+LABELS_DEFINITION = '''
 CREATE TABLE labels (
     id TEXT,
     name TEXT NOT NULL,
@@ -73,7 +64,7 @@ CREATE TABLE labels (
     PRIMARY KEY (id))
 '''
 
-TAGS = '''
+TAGS_DEFINITION = '''
 CREATE TABLE tags (
     dish_id TEXT NOT NULL,
     label_id TEXT NOT NULL,
@@ -88,348 +79,139 @@ CREATE TABLE tags (
         ON DELETE CASCADE)
 '''
 
-#      _       _        _
-#   __| | __ _| |_ __ _| |__   __ _ ___  ___
-#  / _` |/ _` | __/ _` | '_ \ / _` / __|/ _ \
-# | (_| | (_| | || (_| | |_) | (_| \__ \  __/
-#  \__,_|\__,_|\__\__,_|_.__/ \__,_|___/\___|
-
-
-def db_setup():
-    connexion = psycopg2.connect(DBURL, sslmode='require')
-    cursor = connexion.cursor()
-
-    return connexion, cursor
-
-
-def db_close(connexion):
-    connexion.commit()
-    connexion.close()
-
-
-def db_execute(template, values={}):
-    connexion, cursor = db_setup()
-
-    log(template, values)
-    try:
-        cursor.execute(template, values)
-    finally:
-        db_close(connexion)
-
-
-def db_query(query_string, query_params=None, match=False):
-    """
-    Query wrapper
-    We assume all query params keys are sanitized
-    """
-    connexion, cursor = db_setup()
-    # The query is a matching one, we change the operator from '=' to ' like '
-    operator = " LIKE " if match else "="
-    if match:
-        for (key, val) in query_params.items():
-            query_params[key] = "%{}%".format(val)
-
-    if query_params:
-        keys = [
-            "{}{}%({})s".format(key, operator, key)
-            for (key, _) in query_params.items()
-        ]
-        query_string = query_string + " WHERE " + " AND ".join(keys)
-
-    log(query_string, query_params)
-    try:
-        cursor.execute(query_string, query_params)
-        data = cursor.fetchall()
-    finally:
-        db_close(connexion)
-
-    return data
-
-
-def db_exec(query_string, query_params=None, match=False):
-    """
-    Query wrapper
-    We assume all query params keys are sanitized
-    """
-    connexion, cursor = db_setup()
-    # The query is a matching one, we change the operator from '=' to ' like '
-    operator = " LIKE " if match else "="
-    if match:
-        for (key, val) in query_params.items():
-            query_params[key] = "%{}%".format(val)
-
-    if query_params:
-        keys = [
-            "{}{}%({})s".format(key, operator, key)
-            for (key, _) in query_params.items()
-        ]
-        query_string = query_string + " WHERE " + " AND ".join(keys)
-
-    log(query_string, query_params)
-    try:
-        cursor.execute(query_string, query_params)
-    finally:
-        db_close(connexion)
-
-
-def db_update(table, updated_vals={}, matching_vals={}, match=False):
-    """
-    Query wrapper
-    We assume all query params keys are sanitized
-    """
-    connexion, cursor = db_setup()
-
-    # The query is a matching one, we change the operator from '=' to ' like '
-    operator = " LIKE " if match else "="
-    if match:
-        for (key, val) in matching_vals.items():
-            matching_vals[key] = "%{}%".format(val)
-
-    if matching_vals:
-        replace = [
-            "{}{}%({})s".format(key, '=', key)
-            for (key, _) in updated_vals.items()
-        ]
-        match = [
-            "{}{}%({}_match)s".format(key, operator, key)
-            for (key, _) in matching_vals.items()
-        ]
-        query_string = "UPDATE {} SET {} WHERE {}".format(
-            table, ','.join(replace), ' AND '.join(match))
+DISHES = 'dishes'
+DEPENDENCIES = 'dependencies'
+INGREDIENTS = 'ingredients'
+REQUIREMENTS = 'requirements'
+LABELS = 'labels'
+TAGS = 'tags'
+
+TABLES = {
+    DISHES: DISHES_STRUCTURE,
+    DEPENDENCIES: DEPENDENCIES_STRUCTURE,
+    INGREDIENTS: INGREDIENTS_STRUCTURE,
+    REQUIREMENTS: REQUIREMENTS_STRUCTURE,
+    LABELS: LABELS_STRUCTURE,
+    TAGS: TAGS_STRUCTURE
+}
+
+
+def match_string(filters: list, exact: bool):
+    parameters = {}
+
+    if valid_filters := list(filter(lambda x: x, filters)):
+        match_operator = '=' if exact else 'LIKE'
+        template = ' WHERE '
+
+        rules = []
+        for f in valid_filters:
+            rule = []
+            for column, value in f.items():
+                if not exact:
+                    value = "%%%s%%" % value
+                parameters.update({column: value})
+                rule.append("%s %s %%(%s)s" % (column, match_operator, column))
+            rules.append(" AND ".join(rule))
+
+        template += " OR ".join(rules)
 
-    for (key, value) in matching_vals.items():
-        updated_vals["{}_match".format(key)] = value
-    log(query_string, updated_vals)
-    try:
-        cursor.execute(query_string, updated_vals)
-    finally:
-        db_close(connexion)
+        return template, parameters
+    return '', {}
 
-    return
 
+def transaction(func):
+    def wrapper(*args, **kwargs):
+        driver, table = args[:2]
+        driver.setup()
+        template, parameters = func(*args, **kwargs)
+        print(template, parameters)
+        driver.cursor.execute(template, parameters)
+        data = driver.cursor.fetchall()
+        driver.close()
 
-def db_drop_tables(tables):
-    for name in tables:
-        try:
-            db_execute("DROP TABLE {}".format(name))
-        except Exception as err:
-            print("Error {}".format(err))
+        if 'columns' in func.__code__.co_varnames:
+            if kwargs.get('columns', ['*']) == ['*']:
+                structure = TABLES.get(table)
+                columns = [field[0] for field in structure[1]]
+            else:
+                columns = kwargs['columns']
+            data = [dict(zip(columns, record)) for record in data]
 
+        return data
 
-#      _ _     _
-#   __| (_)___| |__
-#  / _` | / __| '_ \
-# | (_| | \__ \ | | |
-#  \__,_|_|___/_| |_|
+    wrapper.__name__ = func.__name__
+    return wrapper
 
 
-def dish_lookup(query_params, match=True):
-    results = db_query("SELECT id, name FROM dishes",
-                       query_params,
-                       match=match)
-    return [{'id': _id, 'name': name} for (_id, name) in results]
+class PostGresDriver(AbstractDriver):
+    def setup(self, params=None):
+        self.connexion = psycopg2.connect(DBURL, sslmode='require')
+        self.cursor = self.connexion.cursor()
 
+    def close(self):
+        self.connexion.commit()
+        self.connexion.close()
 
-def dish_put(dish):
-    db_execute(
-        "INSERT INTO dishes VALUES (%s, %s, %s, %s, %s)",
-        (dish.id, dish.name, dish.simple_name, dish.author, dish.directions))
+    @transaction
+    def read(self, table, filters=[], columns=['*'], exact=True):
+        if isinstance(table, tuple) and len(table) == 4:
+            table = "%s JOIN %s ON %s.%s = %s.%s" % (
+                table[0], table[1], table[0], table[2], table[1], table[3])
+        else:
+            if table not in TABLES.keys():
+                raise ValueError(table)
 
+        template = 'SELECT %s FROM %s' % (', '.join(columns), table)
 
-def dish_delete(dish_id):
-    query = "DELETE FROM dishes"
-    match = {'id': dish_id}
-    db_exec(query, match)
+        addendum, parameters = match_string(filters, exact)
 
+        return template + addendum, parameters
 
-def dish_get(query_params):
-    results = db_query("SELECT * FROM dishes", query_params)
+    @transaction
+    def write(self, table: str, record: dict, filters=[]) -> None:
+        if table not in TABLES.keys():
+            raise ValueError(table)
 
-    data = []
-    for (_id, name, _, author, directions) in results:
-        data.append({
-            'id': _id,
-            'name': name,
-            'author': author,
-            'directions': directions
-        })
-    return data
+        if filters:
+            # if filters are there, we update values
 
+            # Put a stamp in case a key is both a filter and a target
+            values = ', '.join(
+                ["%s = %%(record_%s)s" % (k, k) for k in record.keys()])
+            stamped_record = dict([('record_' + k, v)
+                                   for (k, v) in record.items()])
 
-def dish_update(dish_id, dish_data):
-    db_update('dishes', dish_data, {'id': dish_id})
+            template = 'UPDATE %s SET %s' % (table, values)
 
+            addendum, parameters = match_string(filters, True)
 
-def dish_tag(dish_id, label_id):
-    return db_execute("INSERT INTO tags VALUES(%s, %s)", (dish_id, label_id))
+            if not addendum:
+                raise ValueError(filters)
 
+            template += addendum
+            parameters.update(stamped_record)
 
-def dish_untag(dish_id, label_id):
-    query = "DELETE FROM tags"
-    match = {'label_id': label_id, 'dish_id': dish_id}
-    db_exec(query, match)
+        else:
+            # if not, a simple insert
+            columns = ', '.join(record.keys())
+            values = ', '.join(["%%(%s)s" % key for key in record.keys()])
 
+            template = 'INSERT INTO %s (%s) VALUES (%s)' % (table, columns,
+                                                            values)
+            parameters = record
 
-#      _                           _                 _
-#   __| | ___ _ __   ___ _ __   __| | ___ _ __   ___(_) ___  ___
-#  / _` |/ _ \ '_ \ / _ \ '_ \ / _` |/ _ \ '_ \ / __| |/ _ \/ __|
-# | (_| |  __/ |_) |  __/ | | | (_| |  __/ | | | (__| |  __/\__ \
-#  \__,_|\___| .__/ \___|_| |_|\__,_|\___|_| |_|\___|_|\___||___/
-#            |_|
+        return template, parameters
 
+    @transaction
+    def erase(self, table: str, filters=[]) -> None:
+        if table not in TABLES.keys():
+            raise ValueError(table)
 
-def dish_link(dependent_id, requisite_id):
-    query = "INSERT INTO dependencies VALUES (%s, %s)"
-    values = (requisite_id, dependent_id)
-    db_execute(query, values)
+        template = 'DELETE FROM %s' % table
 
+        addendum, parameters = match_string(filters, True)
 
-def dish_unlink(dependent_id, requisite_id):
-    query = "DELETE FROM dependencies"
-    match = {'required_by': dependent_id, 'requisite': requisite_id}
-    db_exec(query, match)
+        if not addendum:
+            raise ValueError(filters)
 
-
-def dish_requires(dish_id):
-    query = "SELECT id, name FROM dishes JOIN dependencies ON dishes.id = dependencies.requisite"
-    results = db_query(query, {'required_by': dish_id})
-    return [{'id': _id, 'name': name} for (_id, name) in results]
-
-
-#  _                          _ _            _
-# (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_
-# | | '_ \ / _` | '__/ _ \/ _` | |/ _ \ '_ \| __|
-# | | | | | (_| | | |  __/ (_| | |  __/ | | | |_
-# |_|_| |_|\__, |_|  \___|\__,_|_|\___|_| |_|\__|
-#          |___/
-
-
-def ingredient_get(args, match=False):
-    results = db_query("SELECT id, name FROM ingredients", args, match=match)
-
-    return [{'id': _id, 'name': name} for (_id, name) in results]
-
-
-def ingredient_put(ingredient):
-    db_execute("INSERT INTO ingredients VALUES (%s, %s, %s)",
-               (ingredient.id, ingredient.name, ingredient.simple_name))
-
-
-def ingredient_delete(ingredient_id):
-    query = "DELETE FROM ingredients"
-    match = {'id': ingredient_id}
-    db_exec(query, match)
-
-
-def ingredient_update(ingredient_id, ingredient_data):
-    db_update('ingredients', ingredient_data, {'id': ingredient_id})
-
-
-#                       _                               _
-#  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
-# | '__/ _ \/ _` | | | | | '__/ _ \ '_ ` _ \ / _ \ '_ \| __|
-# | | |  __/ (_| | |_| | | | |  __/ | | | | |  __/ | | | |_
-# |_|  \___|\__, |\__,_|_|_|  \___|_| |_| |_|\___|_| |_|\__|
-#              |_|
-
-
-def requirement_get(query_params):
-    results = db_query("SELECT * FROM requirements", query_params)
-    data = []
-
-    for (dish_id, ingredient_id, quantity) in results:
-        data.append({
-            'dish_id': dish_id,
-            'ingredient_id': ingredient_id,
-            'quantity': quantity
-        })
-    return data
-
-
-def requirement_exists(query_params):
-    results = db_query("SELECT COUNT(*) FROM requirements", query_params)
-    return results[0][0]
-
-
-def requirement_put(requirement):
-    query = "INSERT INTO requirements VALUES (%s, %s, %s)"
-    values = (requirement['dish_id'], requirement['ingredient_id'],
-              requirement['quantity'])
-    db_execute(query, values)
-    data = {
-        'id': requirement['ingredient_id'],
-        'quantity': requirement['quantity']
-    }
-    return data
-
-
-def requirement_update(query, values):
-    return db_update('requirements', values, query)
-
-
-def requirement_delete(query):
-    return db_exec("DELETE FROM requirements", query)
-
-
-#  _
-# | |_ __ _  __ _ ___
-# | __/ _` |/ _` / __|
-# | || (_| | (_| \__ \
-#  \__\__,_|\__, |___/
-#           |___/
-
-
-def tag_get(query_params, match=False):
-    query_str = "SELECT id, name FROM labels JOIN tags ON tags.label_id = labels.id"
-    results = db_query(query_str, query_params, match=match)
-    data = [{'name': name, 'id': _id} for (_id, name) in results]
-    return data
-
-
-def tag_show(tag_id):
-    query = "SELECT dishes.id, dishes.name FROM dishes JOIN tags ON dishes.id = tags.dish_id"
-    results = db_query(query, {'label_id': tag_id})
-    data = [{'name': name, 'id': _id} for (_id, name) in results]
-    return data
-
-
-#  _       _          _
-# | | __ _| |__   ___| |___
-# | |/ _` | '_ \ / _ \ / __|
-# | | (_| | |_) |  __/ \__ \
-# |_|\__,_|_.__/ \___|_|___/
-
-
-def label_get(query_params, match=False):
-    query_str = "SELECT id, name FROM labels"
-    results = db_query(query_str, query_params, match=match)
-    return [{'name': name, 'id': _id} for (_id, name) in results]
-
-
-def label_put(label):
-    query = "INSERT INTO labels VALUES (%s, %s, %s)"
-    values = (label.id, label.name, label.simple_name)
-    db_execute(query, values)
-
-
-def label_delete(label_id):
-    query = "DELETE FROM labels"
-    match = {'id': label_id}
-    db_exec(query, match)
-
-
-def label_update(label_id, label_data):
-    db_update('labels', label_data, {'id': label_id})
-
-
-if __name__ == "__main__":
-    db_drop_tables([
-        'dishes', 'ingredients', 'requirements', 'dependencies', 'labels',
-        'tags'
-    ])
-    db_execute(LABELS)
-    db_execute(DISHES)
-    db_execute(INGREDIENTS)
-    db_execute(TAGS)
-    db_execute(REQUIREMENTS)
-    db_execute(DEPENDENCIES)
+        return template + addendum, parameters
