@@ -5,7 +5,8 @@ from knife.models import Datatypes, FieldList
 class Label:
     table_name = 'labels'
     fields = FieldList(('id', Datatypes.text, Datatypes.primary_key),
-                        ('name', Datatypes.text))
+                        ('name', Datatypes.text),
+                        ('simple_name', Datatypes.text))
 
     def __init__(self, params):
         self._id = params.get("id")

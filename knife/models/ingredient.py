@@ -6,7 +6,8 @@ from knife.models import Datatypes, FieldList
 class Ingredient:
     table_name = 'ingredients'
     fields = FieldList(('id', Datatypes.text, Datatypes.primary_key),
-                       ('name', Datatypes.text))
+                       ('name', Datatypes.text),
+                       ('simple_name', Datatypes.text))
 
     def __init__(self, params):
         self._id = params.get("id")
