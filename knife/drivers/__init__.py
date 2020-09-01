@@ -3,67 +3,6 @@ from importlib import import_module
 from pkgutil import walk_packages
 
 
-class Datatypes():
-    integer = 0
-    text = 1
-
-    required = 10
-    primary_key = 11
-    foreign_key = 12
-
-
-DISHES_STRUCTURE = ('dishes', (('id', Datatypes.text, Datatypes.primary_key),
-                               ('name', Datatypes.text, Datatypes.required),
-                               ('simple_name', Datatypes.text,
-                                Datatypes.required),
-                               ('author', Datatypes.text), ('directions',
-                                                            Datatypes.text)))
-
-INGREDIENTS_STRUCTURE = ('ingredients',
-                         (('id', Datatypes.text, Datatypes.primary_key),
-                          ('name', Datatypes.text, Datatypes.required),
-                          ('simple_name', Datatypes.text, Datatypes.required)))
-
-LABELS_STRUCTURE = ('labels', (('id', Datatypes.text, Datatypes.primary_key),
-                               ('name', Datatypes.text, Datatypes.required),
-                               ('simple_name', Datatypes.text,
-                                Datatypes.required)))
-
-REQUIREMENTS_STRUCTURE = ('requirements',
-                          (('dish_id', Datatypes.text, Datatypes.primary_key),
-                           ('ingredient_id', Datatypes.text,
-                            Datatypes.primary_key), ('quantity',
-                                                     Datatypes.text)))
-
-TAGS_STRUCTURE = ('tags', (('dish_id', Datatypes.text, Datatypes.primary_key),
-                           ('label_id', Datatypes.text,
-                            Datatypes.primary_key)))
-
-DEPENDENCIES_STRUCTURE = ('dependencies', (('requisite', Datatypes.text,
-                                            Datatypes.primary_key),
-                                           ('required_by', Datatypes.text,
-                                            Datatypes.primary_key)))
-
-
-class Tables():
-    dishes = 0
-    ingredients = 1
-    labels = 2
-
-    dependencies = 3
-    requirements = 4
-    tags = 5
-
-    tokens = {
-        dishes: DISHES_STRUCTURE,
-        dependencies: DEPENDENCIES_STRUCTURE,
-        ingredients: INGREDIENTS_STRUCTURE,
-        requirements: REQUIREMENTS_STRUCTURE,
-        labels: LABELS_STRUCTURE,
-        tags: TAGS_STRUCTURE
-    }
-
-
 class AbstractDriver(object):
     pass
 

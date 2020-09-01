@@ -1,6 +1,8 @@
 import sqlite3
 from knife import helpers
-from knife.drivers import AbstractDriver, Tables
+from knife.drivers import AbstractDriver
+
+from knife.models import objects, Dish
 
 DRIVER_NAME = 'sqlite'
 DBPATH = '/tmp/database.db'
@@ -77,6 +79,8 @@ CREATE TABLE tags (
         ON DELETE CASCADE)
 '''
 
+IMPLEMENTATIONS = {}
+
 
 def match_string(filters: list, exact: bool):
     parameters = {}
@@ -103,15 +107,22 @@ def match_string(filters: list, exact: bool):
 
 def transaction(func):
     def wrapper(*args, **kwargs):
-        driver, table_ref = args[:2]
+        driver, obj_class = args[:2]
 
-        if isinstance(table_ref, tuple):
-            table = (Tables.tokens.get(table_ref[0])[0],
-                     Tables.tokens.get(table_ref[1])[0], *table_ref[2:])
+        if isinstance(obj_class, tuple):
+            table_name = (obj_class[0].table_name, obj_class[1].table_name,
+                          str(obj_class[2]), str(obj_class[3]))
         else:
-            table = Tables.tokens.get(table_ref)[0]
+            table_name = obj_class.table_name
 
-        args = (driver, table, *args[2:])
+        args = (driver, table_name, *args[2:])
+
+        if 'columns' in func.__code__.co_varnames:
+            if kwargs.get('columns', ['*']) == ['*']:
+                columns = list(Dish.fields)
+            else:
+                columns = [str(c) for c in kwargs.get('columns')]
+            kwargs['columns'] = columns
 
         driver.setup()
         template, parameters = func(*args, **kwargs)
@@ -121,11 +132,6 @@ def transaction(func):
         driver.close()
 
         if 'columns' in func.__code__.co_varnames:
-            if kwargs.get('columns', ['*']) == ['*']:
-                structure = Tables.tokens.get(table_ref)
-                columns = [field[0] for field in structure[1]]
-            else:
-                columns = kwargs['columns']
             data = [dict(zip(columns, record)) for record in data]
 
         return data
@@ -206,6 +212,7 @@ class SqliteDriver(AbstractDriver):
 DRIVER = SqliteDriver
 
 if __name__ == '__main__':
+    """
     driver = SqliteDriver()
     driver.setup()
     driver.connexion.execute(LABELS_DEFINITION)
@@ -215,3 +222,7 @@ if __name__ == '__main__':
     driver.connexion.execute(REQUIREMENTS_DEFINITION)
     driver.connexion.execute(DEPENDENCIES_DEFINITION)
     driver.close()
+    """
+    print(IMPLEMENTATIONS)
+    print(IMPLEMENTATIONS[Dish]['name'])
+    print(IMPLEMENTATIONS[Dish]['fields'].values())

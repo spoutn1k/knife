@@ -1,8 +1,16 @@
 import time
 from knife import helpers
-from knife.models import Ingredient
+from knife.models import Datatypes, Ingredient, FieldList
+
 
 class Dish:
+    table_name = 'dishes'
+    fields = FieldList(('id', Datatypes.text, Datatypes.primary_key),
+                        ('name', Datatypes.text),
+                        ('simple_name', Datatypes.text),
+                        ('author', Datatypes.text),
+                        ('directions', Datatypes.text))
+
     def __init__(self, params):
         self._id = params.get('id')
         self.name = params.get('name', '').rstrip()
@@ -11,7 +19,10 @@ class Dish:
         self.requirements = []
         for data in params.get('requirements', []):
             ing = Ingredient(data.get('ingredient'))
-            self.requirements.append({'ingredient': ing, 'quantity': data['quantity']})
+            self.requirements.append({
+                'ingredient': ing,
+                'quantity': data['quantity']
+            })
         self.dependencies = params.get('dependencies', [])
         self.tags = params.get('tags', [])
 
@@ -30,20 +41,34 @@ class Dish:
 
     @property
     def params(self):
-        return {'id': self.id,
-                'name': self.name,
-                'simple_name': self.simple_name,
-                'author': self.author,
-                'directions': self.directions}
+        return {
+            'id': self.id,
+            'name': self.name,
+            'simple_name': self.simple_name,
+            'author': self.author,
+            'directions': self.directions
+        }
 
     @property
     def serializable(self):
-        return {'id': self.id,
-                'name': self.name,
-                'author': self.author,
-                'directions': self.directions,
-                'requirements': [{'ingredient': {'id': data['ingredient'].id,
-                                                 'name': data['ingredient'].name},
-                                  'quantity': data['quantity']} for data in self.requirements],
-                'tags': self.tags,
-                'dependencies': self.dependencies}
+        return {
+            'id':
+            self.id,
+            'name':
+            self.name,
+            'author':
+            self.author,
+            'directions':
+            self.directions,
+            'requirements': [{
+                'ingredient': {
+                    'id': data['ingredient'].id,
+                    'name': data['ingredient'].name
+                },
+                'quantity': data['quantity']
+            } for data in self.requirements],
+            'tags':
+            self.tags,
+            'dependencies':
+            self.dependencies
+        }
