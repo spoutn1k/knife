@@ -39,6 +39,11 @@ TAGS_STRUCTURE = ('tags', (('dish_id', Datatypes.text, Datatypes.primary_key),
                            ('label_id', Datatypes.text,
                             Datatypes.primary_key)))
 
+DEPENDENCIES_STRUCTURE = ('dependencies',
+                          (('requisite', Datatypes.text, Datatypes.primary_key),
+                           ('required_by', Datatypes.text,
+                            Datatypes.primary_key)))
+
 
 class AbstractDriver(object):
     pass
