@@ -4,7 +4,7 @@ store.py
 Implementation of the Store class
 """
 
-from flask import request
+from flask import request, make_response
 from knife import helpers
 from knife.models import Dish, Label, Ingredient, Requirement, Tag, Dependency
 from knife.exceptions import *
@@ -25,8 +25,12 @@ def format_output(func):
         try:
             data = func(*args, **kwargs)
         except KnifeError as kerr:
-            return {'accept': False, 'error': str(kerr), 'data': kerr.data}
-        return {'accept': True, 'data': data}
+            return make_response(({
+                'accept': False,
+                'error': str(kerr),
+                'data': kerr.data
+            }, kerr.status))
+        return make_response(({'accept': True, 'data': data}, 200))
 
     wrapper.__name__ = func.__name__
     return wrapper

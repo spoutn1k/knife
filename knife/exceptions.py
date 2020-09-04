@@ -2,12 +2,14 @@ class KnifeError(Exception):
     def __init__(self):
         super().__init__()
         self.data = None
+        self.status = 500
 
 
 class InvalidQuery(KnifeError):
     def __init__(self, param):
         super().__init__()
         self.param = param
+        self.status = 400
 
     def __str__(self):
         return "Invalid parameter: {}".format(self.param)
@@ -17,15 +19,17 @@ class IngredientNotFound(KnifeError):
     def __init__(self, ingredient_id):
         super().__init__()
         self.ingredient_id = ingredient_id
+        self.status = 404
 
     def __str__(self):
-        return "Ingredient not found"
+        return "Ingredient not found: %s" % self.ingredient_id
 
 
 class IngredientAlreadyExists(KnifeError):
     def __init__(self, ingredient_data):
         super().__init__()
         self.data = ingredient_data
+        self.status = 409
 
     def __str__(self):
         return "Ingredient already exists"
@@ -35,6 +39,7 @@ class IngredientInUse(KnifeError):
     def __init__(self, use_count):
         super().__init__()
         self.use_count = use_count
+        self.status = 409
 
     def __str__(self):
         return "Ingredient in use"
@@ -44,15 +49,17 @@ class DishNotFound(KnifeError):
     def __init__(self, dish_id):
         super().__init__()
         self.dish_id = dish_id
+        self.status = 404
 
     def __str__(self):
-        return "Dish not found"
+        return "Dish not found: %s" % self.dish_id
 
 
 class DishAlreadyExists(KnifeError):
     def __init__(self, dish_id):
         super().__init__()
         self.dish_id = dish_id
+        self.status = 409
 
     def __str__(self):
         return "Dish already exists"
@@ -63,6 +70,7 @@ class RequirementNotFound(KnifeError):
         super().__init__()
         self.dish_id = dish_id
         self.ingredient_id = ingredient_id
+        self.status = 404
 
     def __str__(self):
         return "Requirement not found"
@@ -73,6 +81,7 @@ class RequirementAlreadyExists(KnifeError):
         super().__init__()
         self.dish_id = dish_id
         self.ingredient_id = ingredient_id
+        self.status = 409
 
     def __str__(self):
         return "Requirement already exists"
@@ -82,6 +91,7 @@ class LabelInvalid(KnifeError):
     def __init__(self, label_name):
         super().__init__()
         self.label_name = label_name
+        self.status = 400
 
     def __str__(self):
         return "Invalid label name: {}".format(self.label_name)
@@ -91,6 +101,7 @@ class LabelAlreadyExists(KnifeError):
     def __init__(self, label_data):
         super().__init__()
         self.data = label_data
+        self.status = 409
 
     def __str__(self):
         return "Label already exists"
@@ -100,6 +111,7 @@ class LabelNotFound(KnifeError):
     def __init__(self, label_id):
         super().__init__()
         self.label_id = label_id
+        self.status = 404
 
     def __str__(self):
         return "Label not found"
@@ -110,6 +122,7 @@ class TagAlreadyExists(KnifeError):
         super().__init__()
         self.dish_id = dish_id
         self.label_id = label_id
+        self.status = 409
 
     def __str__(self):
         return "Tag already exists"
@@ -120,10 +133,15 @@ class TagNotFound(KnifeError):
         super().__init__()
         self.dish_id = dish_id
         self.label_id = label_id
+        self.status = 404
 
     def __str__(self):
         return "Tag not found"
 
 class DepencyAlreadyExists(KnifeError):
+    def __init__(self):
+        super().__init__()
+        self.status = 409
+
     def __str__(self):
         return "Dependency already exists"
