@@ -196,14 +196,12 @@ class Store:
         """
         Get full details about the dish of the specified id
         """
-        results = self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}])
-
-        if not results:
+        if not (results := self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}])):
             raise DishNotFound(dish_id)
 
         dish_data = results[0]
 
-        dish_data['requirements'] = self.show_requirements(dish_id).get('data')
+        dish_data['requirements'] = self.list_requirements(dish_id)
 
         dish_data['tags'] = self.driver.read(
             (Tag, Label, Tag.fields.label_id, Label.fields.id),
@@ -353,11 +351,10 @@ class Store:
 # |_|  \___|\__, |\__,_|_|_|  \___|_| |_| |_|\___|_| |_|\__|
 #              |_|
 
-    @format_output
-    def show_requirements(self, dish_id):
+    def list_requirements(self, dish_id):
         requirement_list = []
 
-        matches = self.driver.read(
+        data = self.driver.read(
             (Requirement, Ingredient, Requirement.fields.ingredient_id,
              Ingredient.fields.id),
             columns=(Ingredient.fields.name, Requirement.fields.quantity,
@@ -366,7 +363,7 @@ class Store:
                 Requirement.fields.dish_id: dish_id
             }])
 
-        for record in matches:
+        for record in data:
             requirement_list.append({
                 'ingredient': {
                     Ingredient.fields.id: record[Ingredient.fields.id],
@@ -377,6 +374,13 @@ class Store:
             })
 
         return requirement_list
+
+    @format_output
+    def show_requirements(self, dish_id):
+        if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
+            raise DishNotFound(dish_id)
+
+        return self.list_requirements(dish_id)
 
     @format_output
     def add_requirement(self, dish_id):
