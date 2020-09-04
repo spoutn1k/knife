@@ -2,8 +2,6 @@ import sqlite3
 from knife import helpers
 from knife.drivers import AbstractDriver
 
-from knife.models import objects, Dish
-
 DRIVER_NAME = 'sqlite'
 DBPATH = '/tmp/database.db'
 
@@ -126,7 +124,7 @@ def transaction(func):
 
         if 'columns' in func.__code__.co_varnames:
             if (columns := kwargs.get('columns', ['*'])) == ['*']:
-                columns = list(Dish.fields)
+                columns = list(obj_class.fields)
             data = [dict(zip(columns, record)) for record in data]
 
         return data
@@ -207,7 +205,6 @@ class SqliteDriver(AbstractDriver):
 DRIVER = SqliteDriver
 
 if __name__ == '__main__':
-    """
     driver = SqliteDriver()
     driver.setup()
     driver.connexion.execute(LABELS_DEFINITION)
@@ -217,7 +214,3 @@ if __name__ == '__main__':
     driver.connexion.execute(REQUIREMENTS_DEFINITION)
     driver.connexion.execute(DEPENDENCIES_DEFINITION)
     driver.close()
-    """
-    print(IMPLEMENTATIONS)
-    print(IMPLEMENTATIONS[Dish]['name'])
-    print(IMPLEMENTATIONS[Dish]['fields'].values())
