@@ -224,12 +224,15 @@ class Store:
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
-        validate_query(args, ['name', 'author', 'directions'])
+        validate_query(
+            args,
+            [Dish.fields.name, Dish.fields.author, Dish.fields.directions])
 
-        if 'name' in args:
-            args['simple_name'] = helpers.simplify(args['name'])
+        if Dish.fields.name in args:
+            args[Dish.fields.simple_name] = helpers.simplify(
+                args[Dish.fields.name])
 
-        self.driver.write(Dish, args, filters=[{'id': dish_id}])
+        self.driver.write(Dish, args, filters=[{Dish.fields.id: dish_id}])
 
     @format_output
     def get_tags(self, dish_id):
@@ -237,11 +240,12 @@ class Store:
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
-        return self.driver.read((Tag, Label, 'label_id', 'id'),
-                                filters=[{
-                                    'dish_id': dish_id
-                                }],
-                                columns=['name', 'label_id'])
+        return self.driver.read(
+            (Tag, Label, Tag.fields.label_id, Label.fields.id),
+            filters=[{
+                Tag.fields.dish_id: dish_id
+            }],
+            columns=[Label.fields.name, Label.fields.id])
 
     @format_output
     def tag_dish(self, dish_id):
@@ -254,16 +258,17 @@ class Store:
             raise DishNotFound(dish_id)
 
         label = self.create_label(args).get('data')
+        label_id = label.get(Label.fields.id)
         if self.driver.read(Tag,
                             filters=[{
-                                'dish_id': dish_id,
-                                'label_id': label.get('id')
+                                Tag.fields.dish_id: dish_id,
+                                Tag.fields.label_id: label_id
                             }]):
-            raise TagAlreadyExists(dish_id, label.get('id'))
+            raise TagAlreadyExists(dish_id, label_id)
 
         self.driver.write(Tag, {
-            'dish_id': dish_id,
-            'label_id': label.get('id')
+            Tag.fields.dish_id: dish_id,
+            Tag.fields.label_id: label_id
         })
 
     @format_output
@@ -271,20 +276,20 @@ class Store:
         """
         Untag a dish with a label
         """
-        if not self.driver.read(Label, filters=[{'id': label_id}]):
+        if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
             raise LabelNotFound(label_id)
 
         if not self.driver.read(Tag,
                                 filters=[{
-                                    'dish_id': dish_id,
-                                    'label_id': label_id
+                                    Tag.fields.dish_id: dish_id,
+                                    Tag.fields.label_id: label_id
                                 }]):
             raise TagNotFound(dish_id, label_id)
 
         self.driver.erase(Tag,
                           filters=[{
-                              'dish_id': dish_id,
-                              'label_id': label_id
+                              Tag.fields.dish_id: dish_id,
+                              Tag.fields.label_id: label_id
                           }])
 
     @format_output
@@ -292,18 +297,20 @@ class Store:
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
-        return self.driver.read((Dish, Dependency, 'id', 'requisite'),
-                                filters=[{
-                                    'required_by': dish_id
-                                }],
-                                columns=['id', 'name'])
+        return self.driver.read(
+            (Dish, Dependency, Dish.fields.id, Dependency.fields.requisite),
+            filters=[{
+                Dependency.fields.required_by: dish_id
+            }],
+            columns=[Dish.fields.id, Dish.fields.name])
 
     @format_output
     def link_dish(self, dish_id):
         """
         Specify a recipe requirement for a recipe
         """
-        required_id = request.form.get('required')
+        if not (required_id := request.form.get(Dependency.fields.requisite)):
+            raise InvalidQuery("Missing parameter")
 
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
@@ -313,15 +320,16 @@ class Store:
 
         if self.driver.read(Dependency,
                             filters=[{
-                                'required_by': dish_id,
-                                'requisite': required_id
+                                Dependency.fields.required_by: dish_id,
+                                Dependency.fields.requisite: required_id
                             }]):
             raise DepencyAlreadyExists()
 
-        self.driver.write(Dependency, {
-            'required_by': dish_id,
-            'requisite': required_id
-        })
+        self.driver.write(
+            Dependency, {
+                Dependency.fields.required_by: dish_id,
+                Dependency.fields.requisite: required_id
+            })
 
     @format_output
     def unlink_dish(self, dish_id, required_id):
@@ -330,8 +338,8 @@ class Store:
         """
         self.driver.erase(Dependency,
                           filters=[{
-                              'dish_id': dish_id,
-                              'required_id': required_id
+                              Dependency.fields.dish_id: dish_id,
+                              Dependency.fields.required_id: required_id
                           }])
 
 #                       _                               _
@@ -372,30 +380,35 @@ class Store:
         Add a requirement to a dish
         """
 
-        ingredient_id = request.form.get('ingredient')
-        quantity = request.form.get('quantity')
+        ingredient_id = request.form.get(Requirement.fields.ingredient_id)
+        quantity = request.form.get(Requirement.fields.quantity)
 
         if not ingredient_id or not quantity:
             raise InvalidQuery("Missing parameter")
 
-        if not self.driver.read(Dish, filters=[{'id': dish_id}]):
+        if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
-        if not self.driver.read(Ingredient, filters=[{'id': ingredient_id}]):
+        if not self.driver.read(Ingredient,
+                                filters=[{
+                                    Ingredient.fields.id: ingredient_id
+                                }]):
             raise IngredientNotFound(ingredient_id)
 
         if self.driver.read(Requirement,
                             filters=[{
-                                'dish_id': dish_id,
-                                'ingredient_id': ingredient_id
+                                Requirement.fields.dish_id:
+                                dish_id,
+                                Requirement.fields.ingredient_id:
+                                ingredient_id
                             }]):
             raise RequirementAlreadyExists(dish_id, ingredient_id)
 
         self.driver.write(
             Requirement, {
-                'dish_id': dish_id,
-                'ingredient_id': ingredient_id,
-                'quantity': quantity
+                Requirement.fields.dish_id: dish_id,
+                Requirement.fields.ingredient_id: ingredient_id,
+                Requirement.fields.quantity: quantity
             })
 
     @format_output
@@ -405,8 +418,10 @@ class Store:
         """
         stored = self.driver.read(Requirement,
                                   filters=[{
-                                      'dish_id': dish_id,
-                                      'ingredient_id': ingredient_id
+                                      Requirement.fields.dish_id:
+                                      dish_id,
+                                      Requirement.fields.ingredient_id:
+                                      ingredient_id
                                   }])
         if not stored:
             raise RequirementNotFound(dish_id, ingredient_id)
@@ -418,19 +433,22 @@ class Store:
         Modify the quantity of a required ingredient
         """
         args = helpers.fix_args(dict(request.form))
-        validate_query(args, ['quantity'])
-        if not self.driver.read(Requirement,
-                                filters=[{
-                                    'dish_id': dish_id,
-                                    'ingredient_id': ingredient_id
-                                }]):
+        validate_query(args, [Requirement.fields.quantity])
+        if not self.driver.read(
+                Requirement,
+                filters=[{
+                    Requirement.fields.dish_id: dish_id,
+                    Requirement.fields.ingredient_id: ingredient_id
+                }]):
             raise RequirementNotFound(dish_id, ingredient_id)
 
         self.driver.write(Requirement,
                           args,
                           filters=[{
-                              'dish_id': dish_id,
-                              'ingredient_id': ingredient_id
+                              Requirement.fields.dish_id:
+                              dish_id,
+                              Requirement.fields.ingredient_id:
+                              ingredient_id
                           }])
 
     @format_output
@@ -438,17 +456,20 @@ class Store:
         """
         Remove a requirement
         """
-        if not self.driver.read(Requirement,
-                                filters=[{
-                                    'dish_id': dish_id,
-                                    'ingredient_id': ingredient_id
-                                }]):
+        if not self.driver.read(
+                Requirement,
+                filters=[{
+                    Requirement.fields.dish_id: dish_id,
+                    Requirement.fields.ingredient_id: ingredient_id
+                }]):
             raise RequirementNotFound(dish_id, ingredient_id)
 
         self.driver.erase(Requirement,
                           filters=[{
-                              'dish_id': dish_id,
-                              'ingredient_id': ingredient_id
+                              Requirement.fields.dish_id:
+                              dish_id,
+                              Requirement.fields.ingredient_id:
+                              ingredient_id
                           }])
 
 
@@ -464,10 +485,10 @@ class Store:
         Get all labels which match the parameters in args
         """
         args = helpers.fix_args(dict(request.args))
-        validate_query(args, ['name', 'id'])
+        validate_query(args, [Label.fields.id, Label.fields.name])
         return self.driver.read(Label,
                                 filters=[args],
-                                columns=('id', 'name'),
+                                columns=(Label.fields.id, Label.fields.name),
                                 exact=False)
 
     @format_output
@@ -475,21 +496,22 @@ class Store:
         """
         Create a new label
         """
-        if not self.driver.read(Label, filters=[{'id': label_id}]):
+        if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
             raise LabelNotFound(label_id)
 
-        self.driver.erase(Label, filters=[{'id': label_id}])
+        self.driver.erase(Label, filters=[{Label.fields.id: label_id}])
 
     @format_output
     def create_label(self, args):
-        validate_query(args, ['name'])
+        validate_query(args, [Label.fields.name])
         label = Label(args)
-        if label.name in ["", None] or " " in label.name:
+        if not label.name or " " in label.name:
             raise LabelInvalid(labelname)
 
         stored = self.driver.read(Label,
                                   filters=[{
-                                      'simple_name': label.simple_name
+                                      Label.fields.simple_name:
+                                      label.simple_name
                                   }])
         if not stored:
             self.driver.write(Label, label.params)
@@ -503,24 +525,26 @@ class Store:
         """
         Show dishes tagged with the label
         """
-        if not self.driver.read(Label, filters=[{'id': label_id}]):
+        if not self.driver.read(Label, filters=[{Label.field.id: label_id}]):
             raise LabelNotFound(label_id)
 
-        return self.driver.read((Tag, Dish, 'dish_id', 'id'),
-                                filters=[{
-                                    'label_id': label_id
-                                }],
-                                columns=['id', 'name'])
+        return self.driver.read(
+            (Tag, Dish, Tag.fields.dish_id, Dish.fields.id),
+            filters=[{
+                Tag.fields.label_id: label_id
+            }],
+            columns=(Dish.fields.id, Dish.fields.name))
 
     @format_output
     def edit_label(self, label_id):
         args = helpers.fix_args(dict(request.form))
 
-        if not self.driver.read(Label, filters=[{'id': label_id}]):
+        if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
             raise LabelNotFound(label_id)
 
-        validate_query(args, ['name'])
-        if 'name' in args:
-            args['simple_name'] = helpers.simplify(args['name'])
+        validate_query(args, [Label.fields.name])
+        if Label.fields.name in args:
+            args[Label.fields.simple_name] = helpers.simplify(
+                args[Label.fields.name])
 
-        self.driver.write(Label, args, filters=[{'id': label_id}])
+        self.driver.write(Label, args, filters=[{Label.fields.id: label_id}])
