@@ -67,6 +67,7 @@ class TestDependencyAdd(TestCase):
 
     def setUp(self):
         self.url = "%s/dishes/%s/dependencies/add" % (SERVER, RECIPE_IDS[0])
+        clear_dependencies()
 
     def test_add(self):
         params = {'requisite': RECIPE_IDS[1]}
@@ -111,10 +112,12 @@ class TestDependencyAdd(TestCase):
 
         url = "%s/dishes/%s/dependencies/add" % (SERVER, RECIPE_IDS[1])
         params = {'requisite': RECIPE_IDS[0]}
-        query = requests.post(self.url, data=params)
 
+        query = requests.post(url, data=params)
         self.assertFalse(query.ok, msg=query.json())
 
+        query = requests.post(self.url, data=params)
+        self.assertFalse(query.ok, msg=query.json())
 
 class TestDependencyDelete(TestCase):
     @classmethod

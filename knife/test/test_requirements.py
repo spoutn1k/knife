@@ -20,19 +20,14 @@ def create_objects():
                               data={'name': name})
         INGREDIENT_IDS.append(query.json().get('data').get('id'))
 
-    requests.post("%s/dishes/%s/requirements/add" % (SERVER, RECIPE_ID),
-                  data={
-                      'ingredient_id': INGREDIENT_IDS[0],
-                      'quantity': 4
-                  })
-
 
 def delete_objects():
     global RECIPE_ID
     global INGREDIENT_IDS
 
     for id in INGREDIENT_IDS:
-        requests.delete("%s/dishes/%s/requirements/%s" % (SERVER,RECIPE_ID, id))
+        requests.delete("%s/dishes/%s/requirements/%s" %
+                        (SERVER, RECIPE_ID, id))
         requests.delete("%s/ingredients/%s" % (SERVER, id))
 
     INGREDIENT_IDS = []
@@ -40,11 +35,20 @@ def delete_objects():
     requests.delete("%s/dishes/%s" % (SERVER, RECIPE_ID))
 
 
+def default_requirements():
+    requests.post("%s/dishes/%s/requirements/add" % (SERVER, RECIPE_ID),
+                  data={
+                      'ingredient_id': INGREDIENT_IDS[0],
+                      'quantity': 4
+                  })
+
+
 def clear_requirements():
     query = requests.get("%s/dishes/%s/requirements" % (SERVER, RECIPE_ID))
     for requirement in query.json().get('data'):
-        requests.delete("%s/dishes/%s/requirements/%s" %
-                        (SERVER, RECIPE_ID, query.json().get('ingredient').get('id')))
+        requests.delete(
+            "%s/dishes/%s/requirements/%s" %
+            (SERVER, RECIPE_ID, requirement.get('ingredient').get('id')))
 
 
 class TestRequirementShow(TestCase):
@@ -57,7 +61,12 @@ class TestRequirementShow(TestCase):
         delete_objects()
 
     def setUp(self):
+        clear_requirements()
         self.url = "%s/dishes/%s/requirements" % (SERVER, RECIPE_ID)
+        default_requirements()
+
+    def tearDown(self):
+        clear_requirements()
 
     def test_index_all(self):
         query = requests.get(self.url)
@@ -76,7 +85,12 @@ class TestRequirementAdd(TestCase):
         delete_objects()
 
     def setUp(self):
+        clear_requirements()
         self.url = "%s/dishes/%s/requirements/add" % (SERVER, RECIPE_ID)
+        default_requirements()
+
+    def tearDown(self):
+        clear_requirements()
 
     def test_add(self):
         params = {'ingredient_id': INGREDIENT_IDS[1], 'quantity': 3}
@@ -128,6 +142,7 @@ class TestRequirementAdd(TestCase):
 
         self.assertFalse(query.ok, msg=query.json())
 
+
 class TestRequirementDelete(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -138,7 +153,12 @@ class TestRequirementDelete(TestCase):
         delete_objects()
 
     def setUp(self):
+        clear_requirements()
         self.url = "%s/dishes/%s/requirements" % (SERVER, RECIPE_ID)
+        default_requirements()
+
+    def tearDown(self):
+        clear_requirements()
 
     def test_delete(self):
         query = requests.delete("%s/%s" % (self.url, INGREDIENT_IDS[0]))
@@ -150,6 +170,7 @@ class TestRequirementDelete(TestCase):
 
         self.assertFalse(query.ok, msg=query.json())
 
+
 class TestRequirementEdit(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -160,11 +181,17 @@ class TestRequirementEdit(TestCase):
         delete_objects()
 
     def setUp(self):
+        clear_requirements()
         self.url = "%s/dishes/%s/requirements" % (SERVER, RECIPE_ID)
+        default_requirements()
+
+    def tearDown(self):
+        clear_requirements()
 
     def test_edit(self):
         new_quantity = '5 cups'
-        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]), data={'quantity': new_quantity})
+        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
+                             data={'quantity': new_quantity})
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -173,13 +200,15 @@ class TestRequirementEdit(TestCase):
         self.assertEqual(new_quantity, query.json()['data'][0]['quantity'])
 
     def test_edit_nonexistent(self):
-        query = requests.put("%s/%s" % (self.url, 'nonexistent'), data={'quantity': 5})
+        query = requests.put("%s/%s" % (self.url, 'nonexistent'),
+                             data={'quantity': 5})
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_edit_invalid_quantity(self):
         new_quantity = ''
-        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]), data={'quantity': new_quantity})
+        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
+                             data={'quantity': new_quantity})
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -189,11 +218,16 @@ class TestRequirementEdit(TestCase):
 
     def test_edit_wrong_field(self):
         new_quantity = '5 cups'
-        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]), data={'quantitad': new_quantity})
+        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
+                             data={'quantitad': new_quantity})
 
         self.assertFalse(query.ok, msg=query.json())
 
-        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]), data={'quantity': new_quantity, 'metadata': False})
+        query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
+                             data={
+                                 'quantity': new_quantity,
+                                 'metadata': False
+                             })
 
         self.assertFalse(query.ok, msg=query.json())
 
