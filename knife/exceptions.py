@@ -154,3 +154,13 @@ class DepencyAlreadyExists(KnifeError):
 
     def __str__(self):
         return "Dependency already exists"
+
+class DependencyNotFound(KnifeError):
+    def __init__(self, dish_id, required_id):
+        super().__init__()
+        self.dish_id = dish_id
+        self.required = required_id
+        self.status = 404
+
+    def __str__(self):
+        return "Dependency not found"

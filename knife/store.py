@@ -361,6 +361,9 @@ class Store:
         if not (required_id := request.form.get(Dependency.fields.requisite)):
             raise InvalidQuery("Missing parameter")
 
+        if dish_id == required_id:
+            raise InvalidValue(Dependency.fields.requisite, dish_id)
+
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
@@ -371,6 +374,9 @@ class Store:
                             filters=[{
                                 Dependency.fields.required_by: dish_id,
                                 Dependency.fields.requisite: required_id
+                            }, {
+                                Dependency.fields.required_by: required_id,
+                                Dependency.fields.requisite: dish_id
                             }]):
             raise DepencyAlreadyExists()
 
@@ -385,6 +391,13 @@ class Store:
         """
         Delete a recipe requirement for a recipe
         """
+        if not self.driver.read(Dependency,
+                            filters=[{
+                                Dependency.fields.required_by: dish_id,
+                                Dependency.fields.requisite: required_id
+                            }]):
+            raise DependencyNotFound(dish_id, required_id)
+
         self.driver.erase(Dependency,
                           filters=[{
                               Dependency.fields.required_by: dish_id,
@@ -434,9 +447,11 @@ class Store:
         """
         Add a requirement to a dish
         """
+        args = helpers.fix_args(request.form)
+        validate_query(args, [Requirement.fields.quantity, Requirement.fields.ingredient_id])
 
-        ingredient_id = request.form.get(Requirement.fields.ingredient_id)
-        quantity = request.form.get(Requirement.fields.quantity)
+        ingredient_id = args.get(Requirement.fields.ingredient_id)
+        quantity = args.get(Requirement.fields.quantity)
 
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
