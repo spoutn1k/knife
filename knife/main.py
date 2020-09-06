@@ -44,9 +44,9 @@ ROUTES = (
     (['DELETE'], BACK_END.delete_dependency,
      '/dishes/<dish_id>/dependencies/<required_id>'),
 
-    (['GET'], BACK_END.get_tags, '/dishes/<dish_id>/tags'),
-    (['POST'], BACK_END.tag_dish, '/dishes/<dish_id>/tags/add'),
-    (['DELETE'], BACK_END.untag_dish, '/dishes/<dish_id>/tags/<label_id>'),
+    (['GET'], BACK_END.show_tags, '/dishes/<dish_id>/tags'),
+    (['POST'], BACK_END.add_tag, '/dishes/<dish_id>/tags/add'),
+    (['DELETE'], BACK_END.delete_tag, '/dishes/<dish_id>/tags/<label_id>'),
 )
 
 for methods, view_func, rule in ROUTES:

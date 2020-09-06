@@ -237,7 +237,7 @@ class Store:
         self.driver.write(Dish, args, filters=[{Dish.fields.id: dish_id}])
 
     @format_output
-    def get_tags(self, dish_id):
+    def show_tags(self, dish_id):
 
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
@@ -250,7 +250,7 @@ class Store:
             columns=[Label.fields.name, Label.fields.id])
 
     @format_output
-    def tag_dish(self, dish_id):
+    def add_tag(self, dish_id):
         """
         Tag a dish with a label
         """
@@ -275,7 +275,7 @@ class Store:
         })
 
     @format_output
-    def untag_dish(self, dish_id, label_id):
+    def delete_tag(self, dish_id, label_id):
         """
         Untag a dish with a label
         """
