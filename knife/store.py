@@ -95,7 +95,10 @@ class Store:
         """
         Show dishes tagged with the ingredient
         """
-        if not (stored := self.driver.read(Ingredient, filters=[{Ingredient.fields.id: ingredient_id}])):
+        if not (stored := self.driver.read(
+                Ingredient, filters=[{
+                    Ingredient.fields.id: ingredient_id
+                }])):
             raise LabelNotFound(ingredient_id)
 
         dishes = self.driver.read(
@@ -227,6 +230,26 @@ class Store:
         """
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
+
+        for requirement in self.driver.read(Requirement,
+                                            filters=[{
+                                                Requirement.fields.dish_id:
+                                                dish_id
+                                            }]):
+            self.driver.erase(Requirement, filters=[requirement])
+
+        for tag in self.driver.read(Tag,
+                                    filters=[{
+                                        Tag.fields.dish_id: dish_id
+                                    }]):
+            self.driver.erase(Tag, filters=[tag])
+
+        for dependency in self.driver.read(Dependency,
+                                           filters=[{
+                                               Dependency.fields.required_by:
+                                               dish_id
+                                           }]):
+            self.driver.erase(dependency, filters=[dependency])
 
         self.driver.erase(Dish, filters=[{Dish.fields.id: dish_id}])
 
@@ -411,11 +434,12 @@ class Store:
         """
         Delete a recipe requirement for a recipe
         """
-        if not self.driver.read(Dependency,
-                            filters=[{
-                                Dependency.fields.required_by: dish_id,
-                                Dependency.fields.requisite: required_id
-                            }]):
+        if not self.driver.read(
+                Dependency,
+                filters=[{
+                    Dependency.fields.required_by: dish_id,
+                    Dependency.fields.requisite: required_id
+                }]):
             raise DependencyNotFound(dish_id, required_id)
 
         self.driver.erase(Dependency,
@@ -468,7 +492,9 @@ class Store:
         Add a requirement to a dish
         """
         args = helpers.fix_args(request.form)
-        validate_query(args, [Requirement.fields.quantity, Requirement.fields.ingredient_id])
+        validate_query(
+            args,
+            [Requirement.fields.quantity, Requirement.fields.ingredient_id])
 
         ingredient_id = args.get(Requirement.fields.ingredient_id)
         quantity = args.get(Requirement.fields.quantity)
@@ -526,7 +552,8 @@ class Store:
         validate_query(args, [Requirement.fields.quantity])
 
         if not args[Requirement.fields.quantity]:
-            raise InvalidValue(Requirement.fields.quantity, args[Requirement.fields.quantity])
+            raise InvalidValue(Requirement.fields.quantity,
+                               args[Requirement.fields.quantity])
 
         if not self.driver.read(
                 Requirement,
@@ -587,11 +614,14 @@ class Store:
 
     @format_output
     def delete_label(self, label_id):
-        """
-        Create a new label
-        """
         if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
             raise LabelNotFound(label_id)
+
+        for tag in self.driver.read(Tag,
+                                    filters=[{
+                                        Tag.fields.label_id: label_id
+                                    }]):
+            self.driver.erase(Tag, filters=[tag])
 
         self.driver.erase(Label, filters=[{Label.fields.id: label_id}])
 
@@ -622,7 +652,10 @@ class Store:
         """
         Show dishes tagged with the label
         """
-        if not (stored := self.driver.read(Label, filters=[{Label.fields.id: label_id}])):
+        if not (stored := self.driver.read(Label,
+                                           filters=[{
+                                               Label.fields.id: label_id
+                                           }])):
             raise LabelNotFound(label_id)
 
         dishes = self.driver.read(
