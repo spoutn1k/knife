@@ -259,8 +259,9 @@ class Store:
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
-        label = self.create_label(args).get('data')
-        label_id = label.get(Label.fields.id)
+        label = self.get_or_create_label(args)
+
+        label_id = label.id
         if self.driver.read(Tag,
                             filters=[{
                                 Tag.fields.dish_id: dish_id,
@@ -509,22 +510,29 @@ class Store:
 
         self.driver.erase(Label, filters=[{Label.fields.id: label_id}])
 
-    @format_output
-    def create_label(self, args):
-        validate_query(args, [Label.fields.name])
-        label = Label(args)
-        if not label.name or " " in label.name:
-            raise LabelInvalid(labelname)
+    def get_or_create_label(self, parameters):
+        target = Label(parameters)
 
-        stored = self.driver.read(Label,
+        if not target.name or " " in target.name:
+            raise LabelInvalid(target.name)
+
+        if stored := self.driver.read(Label,
                                   filters=[{
                                       Label.fields.simple_name:
-                                      label.simple_name
-                                  }])
-        if not stored:
-            self.driver.write(Label, label.params)
+                                      target.simple_name
+                                      }]):
+                                  
+            return Label(stored[0])
         else:
-            return stored[0]
+            self.driver.write(Label, target.params)
+            return target
+
+    @format_output
+    def create_label(self):
+        args = helpers.fix_args(dict(request.form))
+        validate_query(args, [Label.fields.name])
+
+        label = self.get_or_create_label(args)
 
         return label.serializable
 
