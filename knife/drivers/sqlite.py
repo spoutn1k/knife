@@ -88,13 +88,13 @@ def match_string(filters: list, exact: bool):
         template = ' WHERE '
 
         rules = []
-        for f in valid_filters:
+        for index, f in enumerate(valid_filters):
             rule = []
             for column, value in f.items():
                 if not exact:
                     value = "%%%s%%" % value
-                parameters.update({column: value})
-                rule.append("%s %s :%s" % (column, match_operator, column))
+                rule.append("%s %s :%s_%d" % (column, match_operator, column, index))
+                parameters.update({"%s_%d" % (column, index): value})
             rules.append(" AND ".join(rule))
 
         template += " OR ".join(rules)
