@@ -39,9 +39,9 @@ ROUTES = (
     (['DELETE'], BACK_END.delete_requirement,
      '/dishes/<dish_id>/requirements/<ingredient_id>'),
 
-    (['GET'], BACK_END.get_deps, '/dishes/<dish_id>/dependencies'),
-    (['POST'], BACK_END.link_dish, '/dishes/<dish_id>/dependencies/add'),
-    (['DELETE'], BACK_END.unlink_dish,
+    (['GET'], BACK_END.show_dependencies, '/dishes/<dish_id>/dependencies'),
+    (['POST'], BACK_END.add_dependency, '/dishes/<dish_id>/dependencies/add'),
+    (['DELETE'], BACK_END.delete_dependency,
      '/dishes/<dish_id>/dependencies/<required_id>'),
 
     (['GET'], BACK_END.get_tags, '/dishes/<dish_id>/tags'),

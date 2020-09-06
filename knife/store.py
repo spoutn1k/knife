@@ -296,7 +296,7 @@ class Store:
                           }])
 
     @format_output
-    def get_deps(self, dish_id):
+    def show_dependencies(self, dish_id):
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
@@ -308,7 +308,7 @@ class Store:
             columns=[Dish.fields.id, Dish.fields.name])
 
     @format_output
-    def link_dish(self, dish_id):
+    def add_dependency(self, dish_id):
         """
         Specify a recipe requirement for a recipe
         """
@@ -335,14 +335,14 @@ class Store:
             })
 
     @format_output
-    def unlink_dish(self, dish_id, required_id):
+    def delete_dependency(self, dish_id, required_id):
         """
         Delete a recipe requirement for a recipe
         """
         self.driver.erase(Dependency,
                           filters=[{
-                              Dependency.fields.dish_id: dish_id,
-                              Dependency.fields.required_id: required_id
+                              Dependency.fields.required_by: dish_id,
+                              Dependency.fields.requisite: required_id
                           }])
 
 #                       _                               _
