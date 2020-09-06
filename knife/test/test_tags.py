@@ -42,10 +42,10 @@ def delete_objects():
 
 def clear_tags():
     query = requests.get("%s/dishes/%s/tags" % (SERVER, RECIPE_ID))
-    for requirement in query.json().get('data'):
+    for tag in query.json().get('data'):
         requests.delete(
             "%s/dishes/%s/tags/%s" %
-            (SERVER, RECIPE_ID, query.json().get('ingredient').get('id')))
+            (SERVER, RECIPE_ID, tag.get('id')))
 
 
 class TestTagShow(TestCase):

@@ -46,7 +46,7 @@ class TestDependencyShow(TestCase):
 
     def test_index_all(self):
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post(self.url, data=params)
+        query = requests.post("%s/add" % self.url, data=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -130,7 +130,7 @@ class TestDependencyDelete(TestCase):
 
     def test_delete(self):
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post(self.url, data=params)
+        query = requests.post("%s/add" % self.url, data=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
