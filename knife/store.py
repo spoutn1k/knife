@@ -196,7 +196,10 @@ class Store:
         """
         Get full details about the dish of the specified id
         """
-        if not (results := self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}])):
+        if not (results := self.driver.read(Dish,
+                                            filters=[{
+                                                Dish.fields.id: dish_id
+                                            }])):
             raise DishNotFound(dish_id)
 
         dish_data = results[0]
@@ -233,6 +236,12 @@ class Store:
         if Dish.fields.name in args:
             args[Dish.fields.simple_name] = helpers.simplify(
                 args[Dish.fields.name])
+            if stored := self.driver.read(Dish,
+                                          filters=[{
+                                              Dish.fields.simple_name:
+                                              args[Dish.fields.simple_name]
+                                          }]):
+                raise DishAlreadyExists(Dish(stored[0]).id)
 
         self.driver.write(Dish, args, filters=[{Dish.fields.id: dish_id}])
 
@@ -517,11 +526,11 @@ class Store:
             raise LabelInvalid(target.name)
 
         if stored := self.driver.read(Label,
-                                  filters=[{
-                                      Label.fields.simple_name:
-                                      target.simple_name
+                                      filters=[{
+                                          Label.fields.simple_name:
+                                          target.simple_name
                                       }]):
-                                  
+
             return Label(stored[0])
         else:
             self.driver.write(Label, target.params)
