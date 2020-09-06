@@ -145,7 +145,7 @@ class TestLabelEdit(TestCase):
         clear_labels()
 
     def test_edit_name(self):
-        new_name = 'french'
+        new_name = 'francais'
         query = requests.put(self.url, data={'name': new_name})
 
         self.assertTrue(query.ok, msg=query.json())
@@ -169,7 +169,7 @@ class TestLabelEdit(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
     def test_edit_name_taken(self):
-        new_name = 'Français'
+        new_name = 'français'
         query = requests.post("%s/labels/new" % SERVER,
                               data={'name': new_name})
         self.assertTrue(query.ok, msg=query.json())
