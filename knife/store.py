@@ -293,19 +293,31 @@ class Store:
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
 
-        label = self.get_or_create_label(args)
+        label = Label(args)
 
-        label_id = label.id
+        if not label.simple_name or " " in label.name:
+            raise InvalidValue(Label.fields.name, label.name)
+
+        if stored := self.driver.read(Label,
+                                      filters=[{
+                                          Label.fields.simple_name:
+                                          label.simple_name
+                                      }]):
+
+            label = Label(stored[0])
+        else:
+            self.driver.write(Label, label.params)
+
         if self.driver.read(Tag,
                             filters=[{
                                 Tag.fields.dish_id: dish_id,
-                                Tag.fields.label_id: label_id
+                                Tag.fields.label_id: label.id
                             }]):
-            raise TagAlreadyExists(dish_id, label_id)
+            raise TagAlreadyExists(dish_id, label.id)
 
         self.driver.write(Tag, {
             Tag.fields.dish_id: dish_id,
-            Tag.fields.label_id: label_id
+            Tag.fields.label_id: label.id
         })
 
     @format_output
@@ -426,11 +438,11 @@ class Store:
         ingredient_id = request.form.get(Requirement.fields.ingredient_id)
         quantity = request.form.get(Requirement.fields.quantity)
 
-        if not ingredient_id or not quantity:
-            raise InvalidQuery("Missing parameter")
-
         if not self.driver.read(Dish, filters=[{Dish.fields.id: dish_id}]):
             raise DishNotFound(dish_id)
+
+        if not quantity:
+            raise InvalidValue(Requirement.fields.quantity, quantity)
 
         if not self.driver.read(Ingredient,
                                 filters=[{
@@ -477,6 +489,10 @@ class Store:
         """
         args = helpers.fix_args(dict(request.form))
         validate_query(args, [Requirement.fields.quantity])
+
+        if not args[Requirement.fields.quantity]:
+            raise InvalidValue(Requirement.fields.quantity, args[Requirement.fields.quantity])
+
         if not self.driver.read(
                 Requirement,
                 filters=[{
@@ -544,29 +560,25 @@ class Store:
 
         self.driver.erase(Label, filters=[{Label.fields.id: label_id}])
 
-    def get_or_create_label(self, parameters):
-        target = Label(parameters)
-
-        if not target.simple_name or " " in target.name:
-            raise InvalidValue(Label.fields.name, target.name)
-
-        if stored := self.driver.read(Label,
-                                      filters=[{
-                                          Label.fields.simple_name:
-                                          target.simple_name
-                                      }]):
-
-            return Label(stored[0])
-        else:
-            self.driver.write(Label, target.params)
-            return target
-
     @format_output
     def create_label(self):
         args = helpers.fix_args(dict(request.form))
         validate_query(args, [Label.fields.name])
 
-        label = self.get_or_create_label(args)
+        label = Label(args)
+
+        if not label.simple_name or " " in label.name:
+            raise InvalidValue(Label.fields.name, label.name)
+
+        if stored := self.driver.read(Label,
+                                      filters=[{
+                                          Label.fields.simple_name:
+                                          label.simple_name
+                                      }]):
+
+            raise LabelAlreadyExists(Label(stored[0]).serializable)
+        else:
+            self.driver.write(Label, label.params)
 
         return label.serializable
 
