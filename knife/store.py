@@ -91,6 +91,26 @@ class Store:
             exact=False)
 
     @format_output
+    def show_ingredient(self, ingredient_id):
+        """
+        Show dishes tagged with the ingredient
+        """
+        if not (stored := self.driver.read(Ingredient, filters=[{Ingredient.fields.id: ingredient_id}])):
+            raise LabelNotFound(ingredient_id)
+
+        dishes = self.driver.read(
+            (Requirement, Dish, Requirement.fields.dish_id, Dish.fields.id),
+            filters=[{
+                Requirement.fields.ingredient_id: ingredient_id
+            }],
+            columns=(Dish.fields.id, Dish.fields.name))
+
+        ingredient = stored[0]
+        ingredient.update({'used_in_dishes': dishes})
+
+        return ingredient
+
+    @format_output
     def delete_ingredient(self, ingredient_id):
         """
         Delete an ingredient from an id
@@ -602,15 +622,20 @@ class Store:
         """
         Show dishes tagged with the label
         """
-        if not self.driver.read(Label, filters=[{Label.field.id: label_id}]):
+        if not (stored := self.driver.read(Label, filters=[{Label.fields.id: label_id}])):
             raise LabelNotFound(label_id)
 
-        return self.driver.read(
+        dishes = self.driver.read(
             (Tag, Dish, Tag.fields.dish_id, Dish.fields.id),
             filters=[{
                 Tag.fields.label_id: label_id
             }],
             columns=(Dish.fields.id, Dish.fields.name))
+
+        label = stored[0]
+        label.update({'tagged_dishes': dishes})
+
+        return label
 
     @format_output
     def edit_label(self, label_id):
@@ -625,7 +650,7 @@ class Store:
             name = args[Label.fields.name]
             simple_name = helpers.simplify(name)
 
-            if not simple_name or ' ' in simple_name:
+            if not simple_name or ' ' in name:
                 raise InvalidValue(Label.fields.name, name)
 
             if stored := self.driver.read(Label,

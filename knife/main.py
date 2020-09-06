@@ -16,6 +16,7 @@ BACK_END = Store(DRIVERS['sqlite'])
 
 ROUTES = (
     (['GET'], BACK_END.ingredient_lookup, '/ingredients'),
+    (['GET'], BACK_END.show_ingredient, '/ingredients/<ingredient_id>'),
     (['POST'], BACK_END.create_ingredient, '/ingredients/new'),
     (['PUT'], BACK_END.edit_ingredient, '/ingredients/<ingredient_id>'),
     (['DELETE'], BACK_END.delete_ingredient, '/ingredients/<ingredient_id>'),
