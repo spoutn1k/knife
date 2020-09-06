@@ -14,6 +14,15 @@ class InvalidQuery(KnifeError):
     def __str__(self):
         return "Invalid parameter: {}".format(self.param)
 
+class InvalidValue(KnifeError):
+    def __init__(self, field, value):
+        super().__init__()
+        self.field = field
+        self.value = value
+
+    def __str__(self):
+        return "Invalid field %s (%s)" % (self.field, self.value)
+
 
 class IngredientNotFound(KnifeError):
     def __init__(self, ingredient_id):

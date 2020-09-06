@@ -59,10 +59,13 @@ class Store:
         params = helpers.fix_args(dict(request.form))
         validate_query(params, [Ingredient.fields.name])
 
-        if 'name' not in params.keys():
+        if Ingredient.fields.name not in params.keys():
             raise InvalidQuery(params)
 
         ing = Ingredient(params)
+
+        if not ing.simple_name:
+            raise InvalidValue(Ingredient.fields.name, ing.name)
 
         if stored := self.driver.read(Ingredient,
                                       filters=[{
@@ -122,9 +125,12 @@ class Store:
             raise IngredientNotFound(ingredient_id)
 
         validate_query(args, [Ingredient.fields.name])
+
         if Ingredient.fields.name in args:
             args[Ingredient.fields.simple_name] = helpers.simplify(
                 args[Ingredient.fields.name])
+            if stored := self.driver.read(Ingredient, filters=[{Ingredient.fields.simple_name: args[Ingredient.fields.simple_name]}]):
+                raise IngredientAlreadyExists({})
 
         self.driver.write(Ingredient,
                           args,
@@ -151,6 +157,9 @@ class Store:
             raise InvalidQuery(params)
 
         dish = Dish(params)
+
+        if not dish.simple_name:
+            raise InvalidValue(Dish.fields.name, dish.name)
 
         if self.driver.read(Dish,
                             filters=[{
@@ -234,6 +243,8 @@ class Store:
             [Dish.fields.name, Dish.fields.author, Dish.fields.directions])
 
         if Dish.fields.name in args:
+            if not args[Dish.fields.name]:
+                raise InvalidQuery({Dish.fields.name: args[Dish.fields.name]})
             args[Dish.fields.simple_name] = helpers.simplify(
                 args[Dish.fields.name])
             if stored := self.driver.read(Dish,
@@ -522,8 +533,8 @@ class Store:
     def get_or_create_label(self, parameters):
         target = Label(parameters)
 
-        if not target.name or " " in target.name:
-            raise LabelInvalid(target.name)
+        if not target.simple_name or " " in target.name:
+            raise InvalidValue(Label.fields.name, target.name)
 
         if stored := self.driver.read(Label,
                                       filters=[{
@@ -571,5 +582,7 @@ class Store:
         if Label.fields.name in args:
             args[Label.fields.simple_name] = helpers.simplify(
                 args[Label.fields.name])
+            if stored := self.driver.read(Label, filters=[{Label.fields.simple_name: args[Label.fields.simple_name]}]):
+                raise LabelAlreadyExists({'name': args[Label.fields.name]})
 
         self.driver.write(Label, args, filters=[{Label.fields.id: label_id}])
