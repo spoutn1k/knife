@@ -127,10 +127,20 @@ class Store:
         validate_query(args, [Ingredient.fields.name])
 
         if Ingredient.fields.name in args:
-            args[Ingredient.fields.simple_name] = helpers.simplify(
-                args[Ingredient.fields.name])
-            if stored := self.driver.read(Ingredient, filters=[{Ingredient.fields.simple_name: args[Ingredient.fields.simple_name]}]):
+            name = args[Ingredient.fields.name]
+            simple_name = helpers.simplify(name)
+
+            if not simple_name:
+                raise InvalidValue(Ingredient.fields.name, name)
+
+            if stored := self.driver.read(Ingredient,
+                                          filters=[{
+                                              Ingredient.fields.simple_name:
+                                              simple_name
+                                          }]):
                 raise IngredientAlreadyExists({})
+
+            args[Ingredient.fields.simple_name] = simple_name
 
         self.driver.write(Ingredient,
                           args,
@@ -243,16 +253,20 @@ class Store:
             [Dish.fields.name, Dish.fields.author, Dish.fields.directions])
 
         if Dish.fields.name in args:
-            if not args[Dish.fields.name]:
-                raise InvalidQuery({Dish.fields.name: args[Dish.fields.name]})
-            args[Dish.fields.simple_name] = helpers.simplify(
-                args[Dish.fields.name])
+            name = args[Dish.fields.name]
+            simple_name = helpers.simplify(name)
+
+            if not simple_name:
+                raise InvalidValue(Dish.fields.name, name)
+
             if stored := self.driver.read(Dish,
                                           filters=[{
                                               Dish.fields.simple_name:
-                                              args[Dish.fields.simple_name]
+                                              simple_name
                                           }]):
                 raise DishAlreadyExists(Dish(stored[0]).id)
+
+            args[Dish.fields.simple_name] = simple_name
 
         self.driver.write(Dish, args, filters=[{Dish.fields.id: dish_id}])
 
@@ -579,10 +593,21 @@ class Store:
             raise LabelNotFound(label_id)
 
         validate_query(args, [Label.fields.name])
+
         if Label.fields.name in args:
-            args[Label.fields.simple_name] = helpers.simplify(
-                args[Label.fields.name])
-            if stored := self.driver.read(Label, filters=[{Label.fields.simple_name: args[Label.fields.simple_name]}]):
-                raise LabelAlreadyExists({'name': args[Label.fields.name]})
+            name = args[Label.fields.name]
+            simple_name = helpers.simplify(name)
+
+            if not simple_name or ' ' in simple_name:
+                raise InvalidValue(Label.fields.name, name)
+
+            if stored := self.driver.read(Label,
+                                          filters=[{
+                                              Label.fields.simple_name:
+                                              simple_name
+                                          }]):
+                raise LabelAlreadyExists({Label.fields.name: name})
+
+            args[Label.fields.simple_name] = simple_name
 
         self.driver.write(Label, args, filters=[{Label.fields.id: label_id}])
