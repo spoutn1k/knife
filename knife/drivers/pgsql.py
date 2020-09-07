@@ -6,77 +6,30 @@ from knife.drivers import AbstractDriver
 DRIVER_NAME = 'pgsql'
 DBURL = os.environ.get('DATABASE_URL')
 
-DISHES_DEFINITION = '''
-CREATE TABLE dishes (
-    id TEXT,
-    name TEXT NOT NULL,
-    simple_name TEXT,
-    author TEXT,
-    directions TEXT,
-    PRIMARY KEY (id))
-'''
 
-DEPENDENCIES_DEFINITION = '''
-CREATE TABLE dependencies (
-    requisite TEXT NOT NULL,
-    required_by TEXT NOT NULL,
-    PRIMARY KEY (requisite, required_by),
-    CONSTRAINT fk_requisite
-        FOREIGN KEY (requisite)
-        REFERENCES dishes (id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_requirement
-        FOREIGN KEY (required_by)
-        REFERENCES dishes (id)
-        ON DELETE CASCADE)
-'''
+def model_definition(model):
+    datatypes = {
+        Datatypes.text: 'TEXT',
+        Datatypes.required: 'NOT NULL',
+        Datatypes.primary_key: ''
+    }
 
-INGREDIENTS_DEFINITION = '''
-CREATE TABLE ingredients (
-    id TEXT,
-    name TEXT NOT NULL,
-    simple_name TEXT,
-    PRIMARY KEY (id))
-'''
+    TEMPLATE = "CREATE TABLE %s (%%s)" % model.table_name
+    columns = []
+    pks = []
 
-REQUIREMENTS_DEFINITION = '''
-CREATE TABLE requirements (
-    dish_id TEXT NOT NULL, 
-    ingredient_id TEXT NOT NULL, 
-    quantity TEXT, 
-    PRIMARY KEY (dish_id, ingredient_id),
-    CONSTRAINT fk_dish
-        FOREIGN KEY (dish_id)
-        REFERENCES dishes (id) 
-        ON DELETE CASCADE,
-    CONSTRAINT fk_ingredient
-        FOREIGN KEY (ingredient_id)
-        REFERENCES ingredients (id) 
-        ON DELETE CASCADE)
-'''
+    for field in model.fields.fields:
+        modifiers = [datatypes[dt] for dt in field.datatypes]
+        columns.append("%s %s" % (str(field), " ".join(modifiers)))
 
-LABELS_DEFINITION = '''
-CREATE TABLE labels (
-    id TEXT,
-    name TEXT NOT NULL,
-    simple_name TEXT,
-    PRIMARY KEY (id))
-'''
+    for field in model.fields.fields:
+        if Datatypes.primary_key in field.datatypes:
+            pks.append(str(field))
 
-TAGS_DEFINITION = '''
-CREATE TABLE tags (
-    dish_id TEXT NOT NULL,
-    label_id TEXT NOT NULL,
-    PRIMARY KEY (dish_id, label_id),
-    CONSTRAINT fk_dish
-        FOREIGN KEY (dish_id)
-        REFERENCES dishes (id) 
-        ON DELETE CASCADE,
-    CONSTRAINT fk_label
-        FOREIGN KEY (label_id)
-        REFERENCES labels (id) 
-        ON DELETE CASCADE)
-'''
+    columns.append("PRIMARY KEY (%s)" % ", ".join(pks))
+
+    return TEMPLATE % (", ".join(columns))
+
 
 def match_string(filters: list, exact: bool):
     parameters = {}
@@ -92,7 +45,8 @@ def match_string(filters: list, exact: bool):
                 if not exact:
                     value = "%%%s%%" % value
                 parameters.update({"%s_%d" % (column, index): value})
-                rule.append("%s %s %%(%s_%d)s" % (column, match_operator, column, index))
+                rule.append("%s %s %%(%s_%d)s" %
+                            (column, match_operator, column, index))
             rules.append(" AND ".join(rule))
 
         template += " OR ".join(rules)
@@ -103,11 +57,10 @@ def match_string(filters: list, exact: bool):
 
 def transaction(func):
     def wrapper(*args, **kwargs):
-        driver, table_ref = args[:2]
+        driver, model = args[:2]
 
         if isinstance(table_ref, tuple):
-            table = (Tables.tokens.get(table_ref[0])[0],
-                     Tables.tokens.get(table_ref[1])[0], *table_ref[2:])
+            table = (model[0].table_name, model[1].table_name, *model[2:])
         else:
             table = Tables.tokens.get(table_ref)[0]
 
@@ -126,11 +79,8 @@ def transaction(func):
         driver.close()
 
         if 'columns' in func.__code__.co_varnames:
-            if kwargs.get('columns', ['*']) == ['*']:
-                structure = Tables.tokens.get(table_ref)
-                columns = [field[0] for field in structure[1]]
-            else:
-                columns = kwargs['columns']
+            if (columns := kwargs.get('columns', ['*'])) == ['*']:
+                columns = list(model.fields)
             data = [dict(zip(columns, record)) for record in data]
 
         return data
