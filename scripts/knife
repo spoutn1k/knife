@@ -1,1 +1,4 @@
+#!/bin/bash
+
+DATABASY_TYPE=SQLITE
 gunicorn knife.main:APP

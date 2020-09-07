@@ -11,7 +11,11 @@ from knife.store import Store
 from knife.drivers import DRIVERS
 
 APP = Flask(__name__)
-BACK_END = Store(DRIVERS['sqlite'])
+
+if not (driver_name := os.environ.get('DATABASE_TYPE')):
+    raise ValueError("DATABASE_TYPE is not set. Possible values are: %s" % ", ".join(DRIVERS.keys()))
+
+BACK_END = Store(DRIVERS[driver_name.lower()])
 
 
 ROUTES = (
