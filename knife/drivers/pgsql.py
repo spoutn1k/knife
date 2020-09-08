@@ -59,10 +59,10 @@ def transaction(func):
     def wrapper(*args, **kwargs):
         driver, model = args[:2]
 
-        if isinstance(table_ref, tuple):
+        if isinstance(model, tuple):
             table = (model[0].table_name, model[1].table_name, *model[2:])
         else:
-            table = Tables.tokens.get(table_ref)[0]
+            table = model.table_name
 
         args = (driver, table, *args[2:])
 
