@@ -1,7 +1,12 @@
 import os
+import sys
 import unittest
 
 SERVER = os.environ.get('KNIFE_SERVER')
+
+if not SERVER:
+    print("KNIFE_SERVER is not set. Aborting.", file=sys.stderr)
+    exit(1)
 
 
 def show_url(func):

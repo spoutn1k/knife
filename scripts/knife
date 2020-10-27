@@ -1,4 +1,4 @@
 #!/bin/bash
 
-DATABASY_TYPE=SQLITE
+export DATABASE_TYPE=SQLITE
 gunicorn knife.main:APP
