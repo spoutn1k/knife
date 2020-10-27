@@ -12,15 +12,15 @@ def create_objects():
     global RECIPE_ID
     global LABEL_IDS
 
-    query = requests.post("%s/dishes/new" % SERVER, data={'name': RECIPE_NAME})
+    query = requests.post("%s/recipes/new" % SERVER, data={'name': RECIPE_NAME})
     RECIPE_ID = query.json().get('data').get('id')
 
-    requests.post("%s/dishes/%s/tags/add" % (SERVER, RECIPE_ID),
+    requests.post("%s/recipes/%s/tags/add" % (SERVER, RECIPE_ID),
                   data={
                       'name': LABEL_NAMES[0],
                   })
 
-    query = requests.get("%s/dishes/%s/tags" % (SERVER, RECIPE_ID))
+    query = requests.get("%s/recipes/%s/tags" % (SERVER, RECIPE_ID))
 
     LABEL_IDS = [l.get('id') for l in query.json()['data']]
 
@@ -32,19 +32,19 @@ def delete_objects():
     clear_tags()
 
     for id in LABEL_IDS:
-        requests.delete("%s/dishes/%s/tags/%s" % (SERVER, RECIPE_ID, id))
+        requests.delete("%s/recipes/%s/tags/%s" % (SERVER, RECIPE_ID, id))
         requests.delete("%s/labels/%s" % (SERVER, id))
 
     LABEL_IDS = []
 
-    requests.delete("%s/dishes/%s" % (SERVER, RECIPE_ID))
+    requests.delete("%s/recipes/%s" % (SERVER, RECIPE_ID))
 
 
 def clear_tags():
-    query = requests.get("%s/dishes/%s/tags" % (SERVER, RECIPE_ID))
+    query = requests.get("%s/recipes/%s/tags" % (SERVER, RECIPE_ID))
     for tag in query.json().get('data'):
         requests.delete(
-            "%s/dishes/%s/tags/%s" %
+            "%s/recipes/%s/tags/%s" %
             (SERVER, RECIPE_ID, tag.get('id')))
 
 
@@ -58,7 +58,7 @@ class TestTagShow(TestCase):
         delete_objects()
 
     def setUp(self):
-        self.url = "%s/dishes/%s/tags" % (SERVER, RECIPE_ID)
+        self.url = "%s/recipes/%s/tags" % (SERVER, RECIPE_ID)
 
     def test_index_all(self):
         query = requests.get(self.url)
@@ -77,7 +77,7 @@ class TestTagAdd(TestCase):
         delete_objects()
 
     def setUp(self):
-        self.url = "%s/dishes/%s/tags/add" % (SERVER, RECIPE_ID)
+        self.url = "%s/recipes/%s/tags/add" % (SERVER, RECIPE_ID)
 
     def test_add(self):
         params = {'name': LABEL_NAMES[1]}
@@ -120,7 +120,7 @@ class TestTagDelete(TestCase):
         delete_objects()
 
     def setUp(self):
-        self.url = "%s/dishes/%s/tags" % (SERVER, RECIPE_ID)
+        self.url = "%s/recipes/%s/tags" % (SERVER, RECIPE_ID)
 
     def test_delete(self):
         query = requests.delete("%s/%s" % (self.url, LABEL_IDS[0]))

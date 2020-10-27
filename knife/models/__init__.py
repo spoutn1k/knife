@@ -43,9 +43,9 @@ class FieldList():
 
 from knife.models.label import Label
 from knife.models.ingredient import Ingredient
-from knife.models.dish import Dish
+from knife.models.recipe import Recipe
 from knife.models.requirement import Requirement
 from knife.models.tag import Tag
 from knife.models.dependency import Dependency
 
-objects = [Dish, Ingredient, Label, Requirement, Tag, Dependency]
+objects = [Recipe, Ingredient, Label, Requirement, Tag, Dependency]

@@ -54,30 +54,30 @@ class IngredientInUse(KnifeError):
         return "Ingredient in use"
 
 
-class DishNotFound(KnifeError):
-    def __init__(self, dish_id):
+class RecipeNotFound(KnifeError):
+    def __init__(self, recipe_id):
         super().__init__()
-        self.dish_id = dish_id
+        self.recipe_id = recipe_id
         self.status = 404
 
     def __str__(self):
-        return "Dish not found: %s" % self.dish_id
+        return "Recipe not found: %s" % self.recipe_id
 
 
-class DishAlreadyExists(KnifeError):
-    def __init__(self, dish_id):
+class RecipeAlreadyExists(KnifeError):
+    def __init__(self, recipe_id):
         super().__init__()
-        self.dish_id = dish_id
+        self.recipe_id = recipe_id
         self.status = 409
 
     def __str__(self):
-        return "Dish already exists"
+        return "Recipe already exists"
 
 
 class RequirementNotFound(KnifeError):
-    def __init__(self, dish_id, ingredient_id):
+    def __init__(self, recipe_id, ingredient_id):
         super().__init__()
-        self.dish_id = dish_id
+        self.recipe_id = recipe_id
         self.ingredient_id = ingredient_id
         self.status = 404
 
@@ -86,9 +86,9 @@ class RequirementNotFound(KnifeError):
 
 
 class RequirementAlreadyExists(KnifeError):
-    def __init__(self, dish_id, ingredient_id):
+    def __init__(self, recipe_id, ingredient_id):
         super().__init__()
-        self.dish_id = dish_id
+        self.recipe_id = recipe_id
         self.ingredient_id = ingredient_id
         self.status = 409
 
@@ -127,9 +127,9 @@ class LabelNotFound(KnifeError):
 
 
 class TagAlreadyExists(KnifeError):
-    def __init__(self, dish_id, label_id):
+    def __init__(self, recipe_id, label_id):
         super().__init__()
-        self.dish_id = dish_id
+        self.recipe_id = recipe_id
         self.label_id = label_id
         self.status = 409
 
@@ -138,9 +138,9 @@ class TagAlreadyExists(KnifeError):
 
 
 class TagNotFound(KnifeError):
-    def __init__(self, dish_id, label_id):
+    def __init__(self, recipe_id, label_id):
         super().__init__()
-        self.dish_id = dish_id
+        self.recipe_id = recipe_id
         self.label_id = label_id
         self.status = 404
 
@@ -156,9 +156,9 @@ class DepencyAlreadyExists(KnifeError):
         return "Dependency already exists"
 
 class DependencyNotFound(KnifeError):
-    def __init__(self, dish_id, required_id):
+    def __init__(self, recipe_id, required_id):
         super().__init__()
-        self.dish_id = dish_id
+        self.recipe_id = recipe_id
         self.required = required_id
         self.status = 404
 

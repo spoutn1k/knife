@@ -12,7 +12,7 @@ def create_objects():
     global RECIPE_ID
     global INGREDIENT_IDS
 
-    query = requests.post("%s/dishes/new" % SERVER, data={'name': RECIPE_NAME})
+    query = requests.post("%s/recipes/new" % SERVER, data={'name': RECIPE_NAME})
     RECIPE_ID = query.json().get('data').get('id')
 
     for name in INGREDIENT_NAMES:
@@ -26,17 +26,17 @@ def delete_objects():
     global INGREDIENT_IDS
 
     for id in INGREDIENT_IDS:
-        requests.delete("%s/dishes/%s/requirements/%s" %
+        requests.delete("%s/recipes/%s/requirements/%s" %
                         (SERVER, RECIPE_ID, id))
         requests.delete("%s/ingredients/%s" % (SERVER, id))
 
     INGREDIENT_IDS = []
 
-    requests.delete("%s/dishes/%s" % (SERVER, RECIPE_ID))
+    requests.delete("%s/recipes/%s" % (SERVER, RECIPE_ID))
 
 
 def default_requirements():
-    requests.post("%s/dishes/%s/requirements/add" % (SERVER, RECIPE_ID),
+    requests.post("%s/recipes/%s/requirements/add" % (SERVER, RECIPE_ID),
                   data={
                       'ingredient_id': INGREDIENT_IDS[0],
                       'quantity': 4
@@ -44,10 +44,10 @@ def default_requirements():
 
 
 def clear_requirements():
-    query = requests.get("%s/dishes/%s/requirements" % (SERVER, RECIPE_ID))
+    query = requests.get("%s/recipes/%s/requirements" % (SERVER, RECIPE_ID))
     for requirement in query.json().get('data'):
         requests.delete(
-            "%s/dishes/%s/requirements/%s" %
+            "%s/recipes/%s/requirements/%s" %
             (SERVER, RECIPE_ID, requirement.get('ingredient').get('id')))
 
 
@@ -62,7 +62,7 @@ class TestRequirementShow(TestCase):
 
     def setUp(self):
         clear_requirements()
-        self.url = "%s/dishes/%s/requirements" % (SERVER, RECIPE_ID)
+        self.url = "%s/recipes/%s/requirements" % (SERVER, RECIPE_ID)
         default_requirements()
 
     def tearDown(self):
@@ -86,7 +86,7 @@ class TestRequirementAdd(TestCase):
 
     def setUp(self):
         clear_requirements()
-        self.url = "%s/dishes/%s/requirements/add" % (SERVER, RECIPE_ID)
+        self.url = "%s/recipes/%s/requirements/add" % (SERVER, RECIPE_ID)
         default_requirements()
 
     def tearDown(self):
@@ -154,7 +154,7 @@ class TestRequirementDelete(TestCase):
 
     def setUp(self):
         clear_requirements()
-        self.url = "%s/dishes/%s/requirements" % (SERVER, RECIPE_ID)
+        self.url = "%s/recipes/%s/requirements" % (SERVER, RECIPE_ID)
         default_requirements()
 
     def tearDown(self):
@@ -182,7 +182,7 @@ class TestRequirementEdit(TestCase):
 
     def setUp(self):
         clear_requirements()
-        self.url = "%s/dishes/%s/requirements" % (SERVER, RECIPE_ID)
+        self.url = "%s/recipes/%s/requirements" % (SERVER, RECIPE_ID)
         default_requirements()
 
     def tearDown(self):

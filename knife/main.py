@@ -25,11 +25,11 @@ ROUTES = (
     (['PUT'], BACK_END.edit_ingredient, '/ingredients/<ingredient_id>'),
     (['DELETE'], BACK_END.delete_ingredient, '/ingredients/<ingredient_id>'),
 
-    (['GET'], BACK_END.dish_lookup, '/dishes'),
-    (['GET'], BACK_END.get_dish, '/dishes/<dish_id>'),
-    (['POST'], BACK_END.create_dish, '/dishes/new'),
-    (['PUT'], BACK_END.edit_dish, '/dishes/<dish_id>'),
-    (['DELETE'], BACK_END.delete_dish, '/dishes/<dish_id>'),
+    (['GET'], BACK_END.recipe_lookup, '/recipes'),
+    (['GET'], BACK_END.get_recipe, '/recipes/<recipe_id>'),
+    (['POST'], BACK_END.create_recipe, '/recipes/new'),
+    (['PUT'], BACK_END.edit_recipe, '/recipes/<recipe_id>'),
+    (['DELETE'], BACK_END.delete_recipe, '/recipes/<recipe_id>'),
 
     (['GET'], BACK_END.label_lookup, '/labels'),
     (['POST'], BACK_END.create_label, '/labels/new'),
@@ -37,21 +37,21 @@ ROUTES = (
     (['PUT'], BACK_END.edit_label, '/labels/<label_id>'),
     (['DELETE'], BACK_END.delete_label, '/labels/<label_id>'),
 
-    (['GET'], BACK_END.show_requirements, '/dishes/<dish_id>/requirements'),
-    (['POST'], BACK_END.add_requirement, '/dishes/<dish_id>/requirements/add'),
+    (['GET'], BACK_END.show_requirements, '/recipes/<recipe_id>/requirements'),
+    (['POST'], BACK_END.add_requirement, '/recipes/<recipe_id>/requirements/add'),
     (['PUT'], BACK_END.edit_requirement,
-     '/dishes/<dish_id>/requirements/<ingredient_id>'),
+     '/recipes/<recipe_id>/requirements/<ingredient_id>'),
     (['DELETE'], BACK_END.delete_requirement,
-     '/dishes/<dish_id>/requirements/<ingredient_id>'),
+     '/recipes/<recipe_id>/requirements/<ingredient_id>'),
 
-    (['GET'], BACK_END.show_dependencies, '/dishes/<dish_id>/dependencies'),
-    (['POST'], BACK_END.add_dependency, '/dishes/<dish_id>/dependencies/add'),
+    (['GET'], BACK_END.show_dependencies, '/recipes/<recipe_id>/dependencies'),
+    (['POST'], BACK_END.add_dependency, '/recipes/<recipe_id>/dependencies/add'),
     (['DELETE'], BACK_END.delete_dependency,
-     '/dishes/<dish_id>/dependencies/<required_id>'),
+     '/recipes/<recipe_id>/dependencies/<required_id>'),
 
-    (['GET'], BACK_END.show_tags, '/dishes/<dish_id>/tags'),
-    (['POST'], BACK_END.add_tag, '/dishes/<dish_id>/tags/add'),
-    (['DELETE'], BACK_END.delete_tag, '/dishes/<dish_id>/tags/<label_id>'),
+    (['GET'], BACK_END.show_tags, '/recipes/<recipe_id>/tags'),
+    (['POST'], BACK_END.add_tag, '/recipes/<recipe_id>/tags/add'),
+    (['DELETE'], BACK_END.delete_tag, '/recipes/<recipe_id>/tags/<label_id>'),
 )
 
 for methods, view_func, rule in ROUTES:

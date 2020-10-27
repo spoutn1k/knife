@@ -9,7 +9,7 @@ def create_objects():
     global RECIPE_IDS
 
     for name in RECIPE_NAMES:
-        query = requests.post("%s/dishes/new" % SERVER, data={'name': name})
+        query = requests.post("%s/recipes/new" % SERVER, data={'name': name})
         RECIPE_IDS.append(query.json().get('data').get('id'))
 
 
@@ -19,16 +19,16 @@ def delete_objects():
     clear_dependencies()
 
     for id in RECIPE_IDS:
-        requests.delete("%s/dishes/%s" % (SERVER, id))
+        requests.delete("%s/recipes/%s" % (SERVER, id))
 
     RECIPE_IDS = []
 
 
 def clear_dependencies():
     for id in RECIPE_IDS:
-        for dep in requests.get("%s/dishes/%s/dependencies" %
+        for dep in requests.get("%s/recipes/%s/dependencies" %
                                 (SERVER, id)).json().get('data'):
-            requests.delete("%s/dishes/%s/dependencies/%s" %
+            requests.delete("%s/recipes/%s/dependencies/%s" %
                             (SERVER, id, dep.get('id')))
 
 
@@ -42,7 +42,7 @@ class TestDependencyShow(TestCase):
         delete_objects()
 
     def setUp(self):
-        self.url = "%s/dishes/%s/dependencies" % (SERVER, RECIPE_IDS[0])
+        self.url = "%s/recipes/%s/dependencies" % (SERVER, RECIPE_IDS[0])
 
     def test_index_all(self):
         params = {'requisite': RECIPE_IDS[1]}
@@ -66,7 +66,7 @@ class TestDependencyAdd(TestCase):
         delete_objects()
 
     def setUp(self):
-        self.url = "%s/dishes/%s/dependencies/add" % (SERVER, RECIPE_IDS[0])
+        self.url = "%s/recipes/%s/dependencies/add" % (SERVER, RECIPE_IDS[0])
         clear_dependencies()
 
     def test_add(self):
@@ -110,7 +110,7 @@ class TestDependencyAdd(TestCase):
 
         self.assertTrue(query.ok, msg=query.json())
 
-        url = "%s/dishes/%s/dependencies/add" % (SERVER, RECIPE_IDS[1])
+        url = "%s/recipes/%s/dependencies/add" % (SERVER, RECIPE_IDS[1])
         params = {'requisite': RECIPE_IDS[0]}
 
         query = requests.post(url, data=params)
@@ -129,7 +129,7 @@ class TestDependencyDelete(TestCase):
         delete_objects()
 
     def setUp(self):
-        self.url = "%s/dishes/%s/dependencies" % (SERVER, RECIPE_IDS[0])
+        self.url = "%s/recipes/%s/dependencies" % (SERVER, RECIPE_IDS[0])
 
     def test_delete(self):
         params = {'requisite': RECIPE_IDS[1]}

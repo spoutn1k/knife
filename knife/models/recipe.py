@@ -3,8 +3,8 @@ from knife import helpers
 from knife.models import Datatypes, Ingredient, FieldList
 
 
-class Dish:
-    table_name = 'dishes'
+class Recipe:
+    table_name = 'recipes'
     fields = FieldList(('id', Datatypes.text, Datatypes.primary_key),
                         ('name', Datatypes.text),
                         ('simple_name', Datatypes.text),

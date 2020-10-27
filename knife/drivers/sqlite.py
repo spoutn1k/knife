@@ -1,7 +1,7 @@
 import sqlite3
 from knife import helpers
 from knife.drivers import AbstractDriver
-from knife.models import Datatypes, Dish, Ingredient, Label, Dependency, Tag, Requirement
+from knife.models import Datatypes, Recipe, Ingredient, Label, Dependency, Tag, Requirement
 
 DRIVER_NAME = 'sqlite'
 DBPATH = '/tmp/database.db'
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     driver.setup()
     driver.connexion.execute(model_definition(Label))
     driver.connexion.execute(model_definition(Ingredient))
-    driver.connexion.execute(model_definition(Dish))
+    driver.connexion.execute(model_definition(Recipe))
     driver.connexion.execute(model_definition(Dependency))
     driver.connexion.execute(model_definition(Tag))
     driver.connexion.execute(model_definition(Requirement))

@@ -37,7 +37,7 @@ class TestCase(unittest.TestCase):
         #self.assertIsInstance = show_url(self.assertIsInstance)
 
 
-from knife.test.test_dishes import TestDishIndex, TestDishCreate, TestDishDelete, TestDishEdit, TestDishShow
+from knife.test.test_recipes import TestRecipeIndex, TestRecipeCreate, TestRecipeDelete, TestRecipeEdit, TestRecipeShow
 from knife.test.test_ingredients import TestIngredientIndex, TestIngredientCreate, TestIngredientDelete, TestIngredientEdit
 from knife.test.test_labels import TestLabelIndex, TestLabelCreate, TestLabelDelete, TestLabelEdit
 from knife.test.test_requirements import TestRequirementShow, TestRequirementAdd, TestRequirementDelete, TestRequirementEdit

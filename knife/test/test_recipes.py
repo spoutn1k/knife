@@ -3,14 +3,14 @@ from knife.test import TestCase, SERVER
 
 
 def clear_recipes():
-    query = requests.get("%s/dishes" % SERVER)
+    query = requests.get("%s/recipes" % SERVER)
     for recipe in query.json().get('data'):
-        requests.delete("%s/dishes/%s" % (SERVER, recipe.get('id')))
+        requests.delete("%s/recipes/%s" % (SERVER, recipe.get('id')))
 
 
-class TestDishIndex(TestCase):
+class TestRecipeIndex(TestCase):
     def setUp(self):
-        endpoint = 'dishes'
+        endpoint = 'recipes'
         self.url = "%s/%s" % (SERVER, endpoint)
 
     def test_index_all(self):
@@ -67,9 +67,9 @@ class TestDishIndex(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestDishCreate(TestCase):
+class TestRecipeCreate(TestCase):
     def setUp(self):
-        endpoint = 'dishes/new'
+        endpoint = 'recipes/new'
         self.url = "%s/%s" % (SERVER, endpoint)
 
         clear_recipes()
@@ -130,14 +130,14 @@ class TestDishCreate(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestDishDelete(TestCase):
+class TestRecipeDelete(TestCase):
     def setUp(self):
         clear_recipes()
-        query = requests.post("%s/dishes/new" % SERVER,
+        query = requests.post("%s/recipes/new" % SERVER,
                               data={'name': 'Tartare'})
-        dish_id = query.json().get('data').get('id')
+        recipe_id = query.json().get('data').get('id')
 
-        endpoint = "/dishes/%s" % dish_id
+        endpoint = "/recipes/%s" % recipe_id
         self.url = "%s/%s" % (SERVER, endpoint)
 
     def tearDown(self):
@@ -155,15 +155,15 @@ class TestDishDelete(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestDishEdit(TestCase):
+class TestRecipeEdit(TestCase):
     def setUp(self):
         clear_recipes()
         self.recipe_name = 'Tartare'
-        query = requests.post("%s/dishes/new" % SERVER,
+        query = requests.post("%s/recipes/new" % SERVER,
                               data={'name': self.recipe_name})
-        dish_id = query.json().get('data').get('id')
+        recipe_id = query.json().get('data').get('id')
 
-        endpoint = "/dishes/%s" % dish_id
+        endpoint = "/recipes/%s" % recipe_id
         self.url = "%s/%s" % (SERVER, endpoint)
 
     def tearDown(self):
@@ -253,7 +253,7 @@ class TestDishEdit(TestCase):
 
     def test_edit_name_taken(self):
         new_name = 'Tartare Francais'
-        query = requests.post("%s/dishes/new" % SERVER,
+        query = requests.post("%s/recipes/new" % SERVER,
                               data={'name': new_name})
         self.assertTrue(query.ok, msg=query.json())
 
@@ -270,18 +270,18 @@ class TestDishEdit(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestDishShow(TestCase):
+class TestRecipeShow(TestCase):
     def setUp(self):
         clear_recipes()
-        query = requests.post("%s/dishes/new" % SERVER,
+        query = requests.post("%s/recipes/new" % SERVER,
                               data={
                                   'name': 'Tartare',
                                   'author': 'jb',
                                   'directions': 'Grind the meat.'
                               })
-        dish_id = query.json().get('data').get('id')
+        recipe_id = query.json().get('data').get('id')
 
-        endpoint = "/dishes/%s" % dish_id
+        endpoint = "/recipes/%s" % recipe_id
         self.url = "%s/%s" % (SERVER, endpoint)
 
     def tearDown(self):
