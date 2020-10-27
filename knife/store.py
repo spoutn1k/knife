@@ -302,11 +302,12 @@ class Store:
             if not simple_name:
                 raise InvalidValue(Dish.fields.name, name)
 
-            if stored := self.driver.read(Dish,
+            stored = self.driver.read(Dish,
                                           filters=[{
                                               Dish.fields.simple_name:
                                               simple_name
-                                          }]):
+                                          }])
+            if len(stored) and stored[0]['id'] != dish_id:
                 raise DishAlreadyExists(Dish(stored[0]).id)
 
             args[Dish.fields.simple_name] = simple_name
