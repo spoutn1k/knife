@@ -158,8 +158,9 @@ class TestDishDelete(TestCase):
 class TestDishEdit(TestCase):
     def setUp(self):
         clear_recipes()
+        self.recipe_name = 'Tartare'
         query = requests.post("%s/dishes/new" % SERVER,
-                              data={'name': 'Tartare'})
+                              data={'name': self.recipe_name})
         dish_id = query.json().get('data').get('id')
 
         endpoint = "/dishes/%s" % dish_id
@@ -203,10 +204,12 @@ class TestDishEdit(TestCase):
                          new_directions)
 
     def test_edit_mixed(self):
+        new_name = 'Super Tartare'
         new_author = 'jb'
         new_directions = 'do stuff'
         query = requests.put(self.url,
                              data={
+                                 'name': new_name,
                                  'directions': new_directions,
                                  'author': new_author
                              })
@@ -216,6 +219,7 @@ class TestDishEdit(TestCase):
         query = requests.get(self.url)
 
         self.assertTrue(query.ok, msg=query.json())
+        self.assertEqual(query.json().get('data').get('name'), new_name)
         self.assertEqual(query.json().get('data').get('directions'),
                          new_directions)
         self.assertEqual(query.json().get('data').get('author'), new_author)
@@ -230,6 +234,22 @@ class TestDishEdit(TestCase):
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertNotEqual(query.json().get('data').get('name'), new_name)
+
+    def test_edit_same_name(self):
+        new_author = 'dark jb'
+
+        query = requests.put(self.url,
+                             data={
+                                 'name': self.recipe_name,
+                                 'author': new_author
+                             })
+        self.assertTrue(query.ok, msg=query.json())
+
+        query = requests.get(self.url)
+        self.assertTrue(query.ok, msg=query.json())
+        self.assertEqual(query.json().get('data').get('name'),
+                         self.recipe_name)
+        self.assertEqual(query.json().get('data').get('author'), new_author)
 
     def test_edit_name_taken(self):
         new_name = 'Tartare Francais'
@@ -246,8 +266,9 @@ class TestDishEdit(TestCase):
 
     def test_edit_nonexistent(self):
         new_name = 'Tartare Francais'
-        query = requests.put(self.url+'_bis', data={'name': new_name})
+        query = requests.put(self.url + '_bis', data={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
+
 
 class TestDishShow(TestCase):
     def setUp(self):
@@ -278,5 +299,5 @@ class TestDishShow(TestCase):
         self.assertIn('dependencies', query.json().get('data'))
 
     def test_show_nonexistent(self):
-        query = requests.get(self.url+'_bis')
+        query = requests.get(self.url + '_bis')
         self.assertFalse(query.ok, msg=query.json())
