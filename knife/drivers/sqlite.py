@@ -154,14 +154,3 @@ class SqliteDriver(AbstractDriver):
 
 
 DRIVER = SqliteDriver
-
-if __name__ == '__main__':
-    driver = SqliteDriver()
-    driver.setup()
-    driver.connexion.execute(model_definition(Label))
-    driver.connexion.execute(model_definition(Ingredient))
-    driver.connexion.execute(model_definition(Recipe))
-    driver.connexion.execute(model_definition(Dependency))
-    driver.connexion.execute(model_definition(Tag))
-    driver.connexion.execute(model_definition(Requirement))
-    driver.close()
