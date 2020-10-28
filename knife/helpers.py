@@ -1,3 +1,4 @@
+import os
 import hashlib
 from unidecode import unidecode
 
@@ -16,10 +17,19 @@ def fix_args(dictionnary):
 
 
 def hash256(string):
-    grounder = hashlib.sha256()
-    grounder.update(string.encode())
-    return grounder.hexdigest()
+    grinder = hashlib.sha256()
+    grinder.update(string.encode())
+    return grinder.hexdigest()
 
 
 def simplify(string):
     return unidecode(string.lower()).replace(' ', '_').replace("'", '_')
+
+def complain(key):
+    """
+    Get a value from the environment, or get mad about it
+    """
+    if not (value := os.environ.get(key)):
+        raise RuntimeError("%s is not set as an environment variable." % key)
+
+    return value

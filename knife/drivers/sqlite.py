@@ -1,10 +1,10 @@
 import sqlite3
-from knife import helpers
+from knife.helpers import complain
 from knife.drivers import AbstractDriver
 from knife.models import Datatypes, Recipe, Ingredient, Label, Dependency, Tag, Requirement
 
 DRIVER_NAME = 'sqlite'
-DBPATH = '/tmp/database.db'
+DBPATH = complain('DATABASE_URL')
 
 
 def model_definition(model):

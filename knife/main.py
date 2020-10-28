@@ -4,16 +4,16 @@ main.py
 Declaration of routes available in the knife app
 """
 
-import os
 from flask import Flask, request
-from knife import helpers
+from knife.helpers import complain
 from knife.store import Store
 from knife.drivers import DRIVERS
 
 APP = Flask(__name__)
 
-if not (driver_name := os.environ.get('DATABASE_TYPE')):
-    raise ValueError("DATABASE_TYPE is not set. Possible values are: %s" % ", ".join(DRIVERS.keys()))
+driver_name = complain('DATABASE_TYPE')
+if driver_name.lower() not in DRIVERS.keys():
+    raise ValueError("DATABASE_TYPE is not valid. Possible values are: %s" % ", ".join(DRIVERS.keys()))
 
 BACK_END = Store(DRIVERS[driver_name.lower()])
 

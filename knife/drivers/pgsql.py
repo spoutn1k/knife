@@ -1,10 +1,11 @@
 import os
 import psycopg2
-from knife import helpers
+from knife.helpers import complain
 from knife.drivers import AbstractDriver
+from knife.models import Datatypes
 
 DRIVER_NAME = 'pgsql'
-DBURL = os.environ.get('DATABASE_URL')
+DBURL = complain('DATABASE_URL')
 
 
 def model_definition(model):
