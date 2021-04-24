@@ -13,7 +13,7 @@ from knife.exceptions import *
 def validate_query(args_dict, authorized_keys):
     for key in list(args_dict.keys()):
         if key not in authorized_keys:
-            raise InvalidQuery(key)
+            raise InvalidQuery({key, args_dict.get(key)})
 
 
 def format_output(func):
@@ -198,6 +198,10 @@ class Store:
         validate_query(params, [
             Recipe.fields.name, Recipe.fields.author, Recipe.fields.directions
         ])
+
+        if not params:
+            raise EmptyQuery()
+
         if Recipe.fields.name not in params.keys():
             raise InvalidQuery(params)
 
@@ -300,6 +304,9 @@ class Store:
 
     def _edit_recipe(self, recipe_id):
         args = helpers.fix_args(dict(request.form))
+
+        if not args:
+            raise EmptyQuery()
 
         if not self.driver.read(Recipe,
                                 filters=[{

@@ -12,7 +12,17 @@ class InvalidQuery(KnifeError):
         self.status = 400
 
     def __str__(self):
-        return "Invalid parameter: {}".format(self.param)
+        return "Invalid parameter: %s" % str(self.param)
+
+
+class EmptyQuery(KnifeError):
+    def __init__(self):
+        super().__init__()
+        self.status = 400
+
+    def __str__(self):
+        return "Expected parameters"
+
 
 class InvalidValue(KnifeError):
     def __init__(self, field, value):
@@ -147,6 +157,7 @@ class TagNotFound(KnifeError):
     def __str__(self):
         return "Tag not found"
 
+
 class DepencyAlreadyExists(KnifeError):
     def __init__(self):
         super().__init__()
@@ -154,6 +165,7 @@ class DepencyAlreadyExists(KnifeError):
 
     def __str__(self):
         return "Dependency already exists"
+
 
 class DependencyNotFound(KnifeError):
     def __init__(self, recipe_id, required_id):
