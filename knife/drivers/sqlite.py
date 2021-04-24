@@ -1,10 +1,12 @@
 import sqlite3
+import logging
 from knife.helpers import complain
 from knife.drivers import AbstractDriver
 from knife.models import Datatypes, Recipe, Ingredient, Label, Dependency, Tag, Requirement
 
 DRIVER_NAME = 'sqlite'
 DBPATH = complain('DATABASE_URL')
+LOGGER = logging.getLogger(__name__)
 
 
 def model_definition(model):
@@ -68,7 +70,9 @@ def transaction(func):
 
         driver.setup()
         template, parameters = func(*args, **kwargs)
-        print(template, parameters)
+
+        LOGGER.debug("%s %s" % (template, str(parameters)))
+
         driver.cursor.execute(template, parameters)
         data = driver.cursor.fetchall()
         driver.close()

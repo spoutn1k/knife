@@ -3,4 +3,4 @@
 export DATABASE_TYPE=sqlite
 export DATABASE_URL=$HOME/.knife.sqlite
 
-gunicorn knife.main:APP
+gunicorn knife.__main__:APP
