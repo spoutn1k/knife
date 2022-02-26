@@ -8,3 +8,4 @@ psycopg2==2.8.4
 Unidecode==1.1.1
 Werkzeug==0.16.0
 requests
+coverage

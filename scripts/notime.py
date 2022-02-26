@@ -44,5 +44,5 @@ if __name__ == '__main__':
 
     child = Popen(argv[2:], stdout=DEVNULL, stderr=PIPE)
     sleep(delay)
-    child.kill()
+    child.terminate()
     close(errpipe_write)
