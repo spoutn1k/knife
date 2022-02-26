@@ -21,6 +21,7 @@ def format_output(func):
     Decoration, encasing the output of the function into a dict for it to be sent via the api.
     Exceptions are caught and parsed to have a clear error message
     """
+
     def wrapper(*args, **kwargs):
         try:
             data = func(*args, **kwargs)
@@ -41,6 +42,7 @@ class Store:
     Class acting as the middleman between the api front and the database driver
     This abstracts the methods of the driver for them to be interchangeable
     """
+
     def __init__(self, driver):
         self.driver = driver()
 
@@ -593,9 +595,9 @@ class Store:
         args = helpers.fix_args(dict(request.form))
         validate_query(args, [Requirement.fields.quantity])
 
-        if not args[Requirement.fields.quantity]:
+        if not args.get(Requirement.fields.quantity):
             raise InvalidValue(Requirement.fields.quantity,
-                               args[Requirement.fields.quantity])
+                               args.get(Requirement.fields.quantity, ''))
 
         if not self.driver.read(
                 Requirement,
