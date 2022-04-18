@@ -1,1 +1,1 @@
-web: gunicorn knife.main:APP
+web: gunicorn knife.__main__:APP
