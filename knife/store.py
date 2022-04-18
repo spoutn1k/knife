@@ -269,7 +269,7 @@ class Store:
                                                Dependency.fields.required_by:
                                                recipe_id
                                            }]):
-            self.driver.erase(dependency, filters=[dependency])
+            self.driver.erase(Dependency, filters=[dependency])
 
         self.driver.erase(Recipe, filters=[{Recipe.fields.id: recipe_id}])
 
