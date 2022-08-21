@@ -1,5 +1,5 @@
 import requests
-from knife.test import TestCase, SERVER
+from test import TestCase, SERVER
 
 RECIPE_NAME = 'Tartare'
 RECIPE_ID = 'Not set'
@@ -12,7 +12,8 @@ def create_objects():
     global RECIPE_ID
     global INGREDIENT_IDS
 
-    query = requests.post("%s/recipes/new" % SERVER, data={'name': RECIPE_NAME})
+    query = requests.post("%s/recipes/new" % SERVER,
+                          data={'name': RECIPE_NAME})
     RECIPE_ID = query.json().get('data').get('id')
 
     for name in INGREDIENT_NAMES:
@@ -52,6 +53,7 @@ def clear_requirements():
 
 
 class TestRequirementShow(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()
@@ -76,6 +78,7 @@ class TestRequirementShow(TestCase):
 
 
 class TestRequirementAdd(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()
@@ -144,6 +147,7 @@ class TestRequirementAdd(TestCase):
 
 
 class TestRequirementDelete(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()
@@ -172,6 +176,7 @@ class TestRequirementDelete(TestCase):
 
 
 class TestRequirementEdit(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()

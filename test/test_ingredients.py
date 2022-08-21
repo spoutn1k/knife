@@ -1,5 +1,5 @@
 import requests
-from knife.test import TestCase, SERVER
+from test import TestCase, SERVER
 
 
 def clear_ingredients():
@@ -9,6 +9,7 @@ def clear_ingredients():
 
 
 class TestIngredientIndex(TestCase):
+
     def setUp(self):
         endpoint = 'ingredients'
         self.url = "%s/%s" % (SERVER, endpoint)
@@ -54,6 +55,7 @@ class TestIngredientIndex(TestCase):
 
 
 class TestIngredientCreate(TestCase):
+
     def setUp(self):
         endpoint = 'ingredients/new'
         self.url = "%s/%s" % (SERVER, endpoint)
@@ -91,10 +93,7 @@ class TestIngredientCreate(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_wrong_params(self):
-        params = {
-            'name': 'Oignon',
-            'metadata': 'stuff'
-        }
+        params = {'name': 'Oignon', 'metadata': 'stuff'}
         query = requests.post(self.url, data=params)
 
         self.assertFalse(query.ok, msg=query.json())
@@ -107,6 +106,7 @@ class TestIngredientCreate(TestCase):
 
 
 class TestIngredientDelete(TestCase):
+
     def setUp(self):
         clear_ingredients()
         query = requests.post("%s/ingredients/new" % SERVER,
@@ -132,6 +132,7 @@ class TestIngredientDelete(TestCase):
 
 
 class TestIngredientEdit(TestCase):
+
     def setUp(self):
         clear_ingredients()
         query = requests.post("%s/ingredients/new" % SERVER,
@@ -150,7 +151,8 @@ class TestIngredientEdit(TestCase):
 
         self.assertTrue(query.ok, msg=query.json())
 
-        query = requests.get("%s/ingredients" % SERVER, params={'name': new_name})
+        query = requests.get("%s/ingredients" % SERVER,
+                             params={'name': new_name})
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertEqual(query.json().get('data')[0].get('name'), new_name)
@@ -181,5 +183,5 @@ class TestIngredientEdit(TestCase):
 
     def test_edit_nonexistent(self):
         new_name = 'Oignon Francais'
-        query = requests.put(self.url+'_bis', data={'name': new_name})
+        query = requests.put(self.url + '_bis', data={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())

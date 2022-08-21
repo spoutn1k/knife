@@ -1,5 +1,5 @@
 import requests
-from knife.test import TestCase, SERVER
+from test import TestCase, SERVER
 
 RECIPE_NAMES = ('Tartare', 'Frites')
 RECIPE_IDS = []
@@ -33,6 +33,7 @@ def clear_dependencies():
 
 
 class TestDependencyShow(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()
@@ -57,6 +58,7 @@ class TestDependencyShow(TestCase):
 
 
 class TestDependencyAdd(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()
@@ -119,7 +121,9 @@ class TestDependencyAdd(TestCase):
         query = requests.post(self.url, data=params)
         self.assertFalse(query.ok, msg=query.json())
 
+
 class TestDependencyDelete(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()

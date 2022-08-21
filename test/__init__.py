@@ -10,6 +10,7 @@ if not SERVER:
 
 
 def show_url(func):
+
     def wrap(*args, **kwargs):
         self = func.__self__
 
@@ -27,6 +28,7 @@ def show_url(func):
 
 
 class TestCase(unittest.TestCase):
+
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__(*args, **kwargs)
 
@@ -37,9 +39,9 @@ class TestCase(unittest.TestCase):
         #self.assertIsInstance = show_url(self.assertIsInstance)
 
 
-from knife.test.test_recipes import TestRecipeIndex, TestRecipeCreate, TestRecipeDelete, TestRecipeEdit, TestRecipeShow
-from knife.test.test_ingredients import TestIngredientIndex, TestIngredientCreate, TestIngredientDelete, TestIngredientEdit
-from knife.test.test_labels import TestLabelIndex, TestLabelCreate, TestLabelDelete, TestLabelEdit
-from knife.test.test_requirements import TestRequirementShow, TestRequirementAdd, TestRequirementDelete, TestRequirementEdit
-from knife.test.test_tags import TestTagShow, TestTagAdd, TestTagDelete
-from knife.test.test_dependencies import TestDependencyShow, TestDependencyAdd, TestDependencyDelete
+from test.test_recipes import TestRecipeIndex, TestRecipeCreate, TestRecipeDelete, TestRecipeEdit, TestRecipeShow
+from test.test_ingredients import TestIngredientIndex, TestIngredientCreate, TestIngredientDelete, TestIngredientEdit
+from test.test_labels import TestLabelIndex, TestLabelCreate, TestLabelDelete, TestLabelEdit
+from test.test_requirements import TestRequirementShow, TestRequirementAdd, TestRequirementDelete, TestRequirementEdit
+from test.test_tags import TestTagShow, TestTagAdd, TestTagDelete
+from test.test_dependencies import TestDependencyShow, TestDependencyAdd, TestDependencyDelete

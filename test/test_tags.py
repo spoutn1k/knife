@@ -1,5 +1,5 @@
 import requests
-from knife.test import TestCase, SERVER
+from test import TestCase, SERVER
 
 RECIPE_NAME = 'Tartare'
 RECIPE_ID = 'Not set'
@@ -12,7 +12,8 @@ def create_objects():
     global RECIPE_ID
     global LABEL_IDS
 
-    query = requests.post("%s/recipes/new" % SERVER, data={'name': RECIPE_NAME})
+    query = requests.post("%s/recipes/new" % SERVER,
+                          data={'name': RECIPE_NAME})
     RECIPE_ID = query.json().get('data').get('id')
 
     requests.post("%s/recipes/%s/tags/add" % (SERVER, RECIPE_ID),
@@ -43,12 +44,12 @@ def delete_objects():
 def clear_tags():
     query = requests.get("%s/recipes/%s/tags" % (SERVER, RECIPE_ID))
     for tag in query.json().get('data'):
-        requests.delete(
-            "%s/recipes/%s/tags/%s" %
-            (SERVER, RECIPE_ID, tag.get('id')))
+        requests.delete("%s/recipes/%s/tags/%s" %
+                        (SERVER, RECIPE_ID, tag.get('id')))
 
 
 class TestTagShow(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()
@@ -68,6 +69,7 @@ class TestTagShow(TestCase):
 
 
 class TestTagAdd(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()
@@ -111,6 +113,7 @@ class TestTagAdd(TestCase):
 
 
 class TestTagDelete(TestCase):
+
     @classmethod
     def setUpClass(cls):
         create_objects()

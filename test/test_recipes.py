@@ -1,5 +1,5 @@
 import requests
-from knife.test import TestCase, SERVER
+from test import TestCase, SERVER
 
 
 def clear_recipes():
@@ -9,6 +9,7 @@ def clear_recipes():
 
 
 class TestRecipeIndex(TestCase):
+
     def setUp(self):
         endpoint = 'recipes'
         self.url = "%s/%s" % (SERVER, endpoint)
@@ -68,6 +69,7 @@ class TestRecipeIndex(TestCase):
 
 
 class TestRecipeCreate(TestCase):
+
     def setUp(self):
         endpoint = 'recipes/new'
         self.url = "%s/%s" % (SERVER, endpoint)
@@ -131,6 +133,7 @@ class TestRecipeCreate(TestCase):
 
 
 class TestRecipeDelete(TestCase):
+
     def setUp(self):
         clear_recipes()
         query = requests.post("%s/recipes/new" % SERVER,
@@ -156,6 +159,7 @@ class TestRecipeDelete(TestCase):
 
 
 class TestRecipeEdit(TestCase):
+
     def setUp(self):
         clear_recipes()
         self.recipe_name = 'Tartare'
@@ -271,6 +275,7 @@ class TestRecipeEdit(TestCase):
 
 
 class TestRecipeShow(TestCase):
+
     def setUp(self):
         clear_recipes()
         query = requests.post("%s/recipes/new" % SERVER,

@@ -1,5 +1,5 @@
 import requests
-from knife.test import TestCase, SERVER
+from test import TestCase, SERVER
 
 
 def clear_labels():
@@ -9,6 +9,7 @@ def clear_labels():
 
 
 class TestLabelIndex(TestCase):
+
     def setUp(self):
         endpoint = 'labels'
         self.url = "%s/%s" % (SERVER, endpoint)
@@ -54,6 +55,7 @@ class TestLabelIndex(TestCase):
 
 
 class TestLabelCreate(TestCase):
+
     def setUp(self):
         endpoint = 'labels/new'
         self.url = "%s/%s" % (SERVER, endpoint)
@@ -91,10 +93,7 @@ class TestLabelCreate(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_wrong_params(self):
-        params = {
-            'name': 'french',
-            'metadata': 'stuff'
-        }
+        params = {'name': 'french', 'metadata': 'stuff'}
         query = requests.post(self.url, data=params)
 
         self.assertFalse(query.ok, msg=query.json())
@@ -107,6 +106,7 @@ class TestLabelCreate(TestCase):
 
 
 class TestLabelDelete(TestCase):
+
     def setUp(self):
         clear_labels()
         query = requests.post("%s/labels/new" % SERVER,
@@ -132,6 +132,7 @@ class TestLabelDelete(TestCase):
 
 
 class TestLabelEdit(TestCase):
+
     def setUp(self):
         clear_labels()
         query = requests.post("%s/labels/new" % SERVER,
@@ -183,5 +184,5 @@ class TestLabelEdit(TestCase):
 
     def test_edit_nonexistent(self):
         new_name = 'Francais'
-        query = requests.put(self.url+'_bis', data={'name': new_name})
+        query = requests.put(self.url + '_bis', data={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
