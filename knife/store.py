@@ -54,18 +54,18 @@ class Store:
         self.driver = driver()
 
         for method in [
-                self._add_dependency, self._add_requirement, self._add_tag,
-                self._create_ingredient, self._create_label,
-                self._create_recipe, self._delete_dependency,
-                self._delete_ingredient, self._delete_label,
-                self._delete_recipe, self._delete_requirement,
-                self._delete_tag, self._edit_ingredient, self._edit_label,
-                self._edit_recipe, self._edit_requirement, self._get_recipe,
-                self._get_requirement, self._ingredient_lookup,
-                self._label_lookup, self._list_requirements,
-                self._recipe_lookup, self._show_dependencies,
-                self._show_ingredient, self._show_label,
-                self._show_requirements, self._show_tags
+                self._dependency_add, self._requirement_add, self._tag_add,
+                self._ingredient_create, self._label_create,
+                self._recipe_create, self._dependency_delete,
+                self._ingredient_delete, self._label_delete,
+                self._recipe_delete, self._requirement_delete,
+                self._tag_delete, self._ingredient_edit, self._label_edit,
+                self._recipe_edit, self._requirement_edit, self._recipe_get,
+                self._requirement_get, self._ingredient_lookup,
+                self._label_lookup, self._requirement_list,
+                self._recipe_lookup, self._dependency_show,
+                self._ingredient_show, self._label_show,
+                self._requirement_show, self._tag_show
         ]:
             formatted = format_output(method)
             self.__setattr__(formatted.__name__, formatted)
@@ -77,7 +77,7 @@ class Store:
     # |_|_| |_|\__, |_|  \___|\__,_|_|\___|_| |_|\__|
     #          |___/
 
-    def _create_ingredient(self):
+    def _ingredient_create(self):
         """
         Create a ingredient object from the params in arguments
         """
@@ -114,7 +114,7 @@ class Store:
             columns=[Ingredient.fields.id, Ingredient.fields.name],
             exact=False)
 
-    def _show_ingredient(self, ingredient_id):
+    def _ingredient_show(self, ingredient_id):
         """
         Show recipes tagged with the ingredient
         """
@@ -133,11 +133,11 @@ class Store:
             columns=(Recipe.fields.id, Recipe.fields.name))
 
         ingredient = stored[0]
-        ingredient.update({'used_in_recipes': recipes})
+        ingredient.update({'used_recipe_ins': recipes})
 
         return ingredient
 
-    def _delete_ingredient(self, ingredient_id):
+    def _ingredient_delete(self, ingredient_id):
         """
         Delete an ingredient from an id
         """
@@ -160,7 +160,7 @@ class Store:
                               Ingredient.fields.id: ingredient_id
                           }])
 
-    def _edit_ingredient(self, ingredient_id):
+    def _ingredient_edit(self, ingredient_id):
         args = helpers.fix_args(dict(request.form))
 
         if not self.driver.read(Ingredient,
@@ -199,7 +199,7 @@ class Store:
     # | (_| | \__ \ | | |
     #  \__,_|_|___/_| |_|
 
-    def _create_recipe(self):
+    def _recipe_create(self):
         """
         Create a recipe object from the params in arguments
         """
@@ -248,7 +248,7 @@ class Store:
                                 columns=(Recipe.fields.id, Recipe.fields.name),
                                 exact=False)
 
-    def _delete_recipe(self, recipe_id):
+    def _recipe_delete(self, recipe_id):
         """
         Delete a recipe from an id
         """
@@ -280,7 +280,7 @@ class Store:
 
         self.driver.erase(Recipe, filters=[{Recipe.fields.id: recipe_id}])
 
-    def _get_recipe(self, recipe_id):
+    def _recipe_get(self, recipe_id):
         """
         Get full details about the recipe of the specified id
         """
@@ -292,7 +292,7 @@ class Store:
 
         recipe_data = results[0]
 
-        recipe_data['requirements'] = self._list_requirements(recipe_id)
+        recipe_data['requirements'] = self._requirement_list(recipe_id)
 
         recipe_data['tags'] = self.driver.read(
             (Tag, Label, Tag.fields.label_id, Label.fields.id),
@@ -311,7 +311,7 @@ class Store:
 
         return Recipe(recipe_data).serializable
 
-    def _edit_recipe(self, recipe_id):
+    def _recipe_edit(self, recipe_id):
         args = helpers.fix_args(dict(request.form))
 
         if not args:
@@ -350,9 +350,9 @@ class Store:
                               Recipe.fields.id: recipe_id
                           }])
 
-        return self._get_recipe(recipe_id)
+        return self._recipe_get(recipe_id)
 
-    def _show_tags(self, recipe_id):
+    def _tag_show(self, recipe_id):
 
         if not self.driver.read(Recipe,
                                 filters=[{
@@ -367,7 +367,7 @@ class Store:
             }],
             columns=[Label.fields.name, Label.fields.id])
 
-    def _add_tag(self, recipe_id):
+    def _tag_add(self, recipe_id):
         """
         Tag a recipe with a label
         """
@@ -406,7 +406,7 @@ class Store:
             Tag.fields.label_id: label.id
         })
 
-    def _delete_tag(self, recipe_id, label_id):
+    def _tag_delete(self, recipe_id, label_id):
         """
         Untag a recipe with a label
         """
@@ -426,7 +426,7 @@ class Store:
                               Tag.fields.label_id: label_id
                           }])
 
-    def _show_dependencies(self, recipe_id):
+    def _dependency_show(self, recipe_id):
         if not self.driver.read(Recipe,
                                 filters=[{
                                     Recipe.fields.id: recipe_id
@@ -441,7 +441,7 @@ class Store:
                                 }],
                                 columns=[Recipe.fields.id, Recipe.fields.name])
 
-    def _add_dependency(self, recipe_id):
+    def _dependency_add(self, recipe_id):
         """
         Specify a recipe requirement for a recipe
         """
@@ -479,7 +479,7 @@ class Store:
                 Dependency.fields.requisite: required_id
             })
 
-    def _delete_dependency(self, recipe_id, required_id):
+    def _dependency_delete(self, recipe_id, required_id):
         """
         Delete a recipe requirement for a recipe
         """
@@ -504,7 +504,7 @@ class Store:
     # |_|  \___|\__, |\__,_|_|_|  \___|_| |_| |_|\___|_| |_|\__|
     #              |_|
 
-    def _list_requirements(self, recipe_id):
+    def _requirement_list(self, recipe_id):
         requirement_list = []
 
         data = self.driver.read(
@@ -528,16 +528,16 @@ class Store:
 
         return requirement_list
 
-    def _show_requirements(self, recipe_id):
+    def _requirement_show(self, recipe_id):
         if not self.driver.read(Recipe,
                                 filters=[{
                                     Recipe.fields.id: recipe_id
                                 }]):
             raise RecipeNotFound(recipe_id)
 
-        return self._list_requirements(recipe_id)
+        return self._requirement_list(recipe_id)
 
-    def _add_requirement(self, recipe_id):
+    def _requirement_add(self, recipe_id):
         """
         Add a requirement to a recipe
         """
@@ -580,7 +580,7 @@ class Store:
                 Requirement.fields.quantity: quantity
             })
 
-    def _get_requirement(self, recipe_id, ingredient_id):
+    def _requirement_get(self, recipe_id, ingredient_id):
         """
         Get a requirement from both the recipe and the required ingredient
         """
@@ -595,7 +595,7 @@ class Store:
             raise RequirementNotFound(recipe_id, ingredient_id)
         return stored[0]
 
-    def _edit_requirement(self, recipe_id, ingredient_id):
+    def _requirement_edit(self, recipe_id, ingredient_id):
         """
         Modify the quantity of a required ingredient
         """
@@ -623,7 +623,7 @@ class Store:
                               ingredient_id
                           }])
 
-    def _delete_requirement(self, recipe_id, ingredient_id):
+    def _requirement_delete(self, recipe_id, ingredient_id):
         """
         Remove a requirement
         """
@@ -654,7 +654,7 @@ class Store:
                                 columns=(Label.fields.id, Label.fields.name),
                                 exact=False)
 
-    def _delete_label(self, label_id):
+    def _label_delete(self, label_id):
         if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
             raise LabelNotFound(label_id)
 
@@ -666,7 +666,7 @@ class Store:
 
         self.driver.erase(Label, filters=[{Label.fields.id: label_id}])
 
-    def _create_label(self):
+    def _label_create(self):
         args = helpers.fix_args(dict(request.form))
         validate_query(args, [Label.fields.name])
 
@@ -687,7 +687,7 @@ class Store:
 
         return label.serializable
 
-    def _show_label(self, label_id):
+    def _label_show(self, label_id):
         """
         Show recipes tagged with the label
         """
@@ -709,7 +709,7 @@ class Store:
 
         return label
 
-    def _edit_label(self, label_id):
+    def _label_edit(self, label_id):
         args = helpers.fix_args(dict(request.form))
 
         if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
