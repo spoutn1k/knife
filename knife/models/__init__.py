@@ -8,6 +8,7 @@ class Datatypes():
 
 
 class Field():
+
     def __init__(self, appearance: str, *datatype):
         self.appearance = appearance
         self.datatypes = datatype
@@ -20,6 +21,7 @@ class Field():
 
 
 class FieldList():
+
     def __init__(self, *fields):
         self.index = 0
         self.fields = [Field(*f) for f in fields]
@@ -48,4 +50,4 @@ from knife.models.requirement import Requirement
 from knife.models.tag import Tag
 from knife.models.dependency import Dependency
 
-objects = [Recipe, Ingredient, Label, Requirement, Tag, Dependency]
+OBJECTS = [Recipe, Ingredient, Label, Requirement, Tag, Dependency]

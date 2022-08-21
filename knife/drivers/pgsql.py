@@ -1,4 +1,3 @@
-import os
 import psycopg2
 from knife.helpers import complain
 from knife.drivers import AbstractDriver
@@ -57,6 +56,7 @@ def match_string(filters: list, exact: bool):
 
 
 def transaction(func):
+
     def wrapper(*args, **kwargs):
         driver, model = args[:2]
 
@@ -91,6 +91,7 @@ def transaction(func):
 
 
 class PostGresDriver(AbstractDriver):
+
     def setup(self, params=None):
         self.connexion = psycopg2.connect(DBURL, sslmode='require')
         self.cursor = self.connexion.cursor()

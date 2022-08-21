@@ -5,11 +5,10 @@ from knife.models import Datatypes, Ingredient, FieldList
 
 class Recipe:
     table_name = 'recipes'
-    fields = FieldList(('id', Datatypes.text, Datatypes.primary_key),
-                        ('name', Datatypes.text),
-                        ('simple_name', Datatypes.text),
-                        ('author', Datatypes.text),
-                        ('directions', Datatypes.text))
+    fields = FieldList(
+        ('id', Datatypes.text, Datatypes.primary_key),
+        ('name', Datatypes.text), ('simple_name', Datatypes.text),
+        ('author', Datatypes.text), ('directions', Datatypes.text))
 
     def __init__(self, params):
         self._id = params.get('id')

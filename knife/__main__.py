@@ -1,5 +1,7 @@
 import os
 import logging
+from flask import Flask
+from knife.routes import setup_routes
 
 if os.environ.get('KNIFE_DEBUG'):
     logging.basicConfig(filename="knife.%d.log" % os.getpid(),
@@ -18,9 +20,6 @@ if os.environ.get('KNIFE_COVERAGE'):
         cov.save()
 
     atexit.register(save_coverage)
-
-from flask import Flask, request
-from knife.routes import setup_routes
 
 APP = Flask(__name__)
 setup_routes(APP)

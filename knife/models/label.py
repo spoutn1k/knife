@@ -2,11 +2,12 @@ import time
 from knife import helpers
 from knife.models import Datatypes, FieldList
 
+
 class Label:
     table_name = 'labels'
     fields = FieldList(('id', Datatypes.text, Datatypes.primary_key),
-                        ('name', Datatypes.text),
-                        ('simple_name', Datatypes.text))
+                       ('name', Datatypes.text),
+                       ('simple_name', Datatypes.text))
 
     def __init__(self, params):
         self._id = params.get("id")
@@ -24,11 +25,12 @@ class Label:
 
     @property
     def params(self):
-        return {'id': self.id,
-                'name': self.name,
-                'simple_name': self.simple_name}
+        return {
+            'id': self.id,
+            'name': self.name,
+            'simple_name': self.simple_name
+        }
 
     @property
     def serializable(self):
-        return {'id': self.id,
-                'name': self.name}
+        return {'id': self.id, 'name': self.name}

@@ -2,7 +2,7 @@ import sqlite3
 import logging
 from knife.helpers import complain
 from knife.drivers import AbstractDriver
-from knife.models import Datatypes, Recipe, Ingredient, Label, Dependency, Tag, Requirement
+from knife.models import Datatypes
 
 DRIVER_NAME = 'sqlite'
 DBPATH = complain('DATABASE_URL')
@@ -58,6 +58,7 @@ def match_string(filters: list, exact: bool):
 
 
 def transaction(func):
+
     def wrapper(*args, **kwargs):
         driver, model = args[:2]
 
@@ -89,6 +90,7 @@ def transaction(func):
 
 
 class SqliteDriver(AbstractDriver):
+
     def setup(self, params=None):
         self.connexion = sqlite3.connect(DBPATH)
 

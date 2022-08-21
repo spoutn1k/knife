@@ -6,8 +6,14 @@ Implementation of the Store class
 
 from flask import request, make_response
 from knife import helpers
-from knife.models import Recipe, Label, Ingredient, Requirement, Tag, Dependency
-from knife.exceptions import *
+from knife.models import (Recipe, Label, Ingredient, Requirement, Tag,
+                          Dependency)
+from knife.exceptions import (
+    InvalidValue, RecipeNotFound, RecipeAlreadyExists, RequirementNotFound,
+    RequirementAlreadyExists, LabelNotFound, LabelAlreadyExists, TagNotFound,
+    TagAlreadyExists, IngredientNotFound, IngredientAlreadyExists,
+    IngredientInUse, DependencyNotFound, DepencyAlreadyExists, InvalidQuery,
+    EmptyQuery, KnifeError)
 
 
 def validate_query(args_dict, authorized_keys):
@@ -18,7 +24,8 @@ def validate_query(args_dict, authorized_keys):
 
 def format_output(func):
     """
-    Decoration, encasing the output of the function into a dict for it to be sent via the api.
+    Decoration, encasing the output of the function into a dict for it to be
+    sent via the api.
     Exceptions are caught and parsed to have a clear error message
     """
 
@@ -63,12 +70,12 @@ class Store:
             formatted = format_output(method)
             self.__setattr__(formatted.__name__, formatted)
 
-#  _                          _ _            _
-# (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_
-# | | '_ \ / _` | '__/ _ \/ _` | |/ _ \ '_ \| __|
-# | | | | | (_| | | |  __/ (_| | |  __/ | | | |_
-# |_|_| |_|\__, |_|  \___|\__,_|_|\___|_| |_|\__|
-#          |___/
+    #  _                          _ _            _
+    # (_)_ __   __ _ _ __ ___  __| (_) ___ _ __ | |_
+    # | | '_ \ / _` | '__/ _ \/ _` | |/ _ \ '_ \| __|
+    # | | | | | (_| | | |  __/ (_| | |  __/ | | | |_
+    # |_|_| |_|\__, |_|  \___|\__,_|_|\___|_| |_|\__|
+    #          |___/
 
     def _create_ingredient(self):
         """
@@ -171,11 +178,11 @@ class Store:
             if not simple_name:
                 raise InvalidValue(Ingredient.fields.name, name)
 
-            if stored := self.driver.read(Ingredient,
-                                          filters=[{
-                                              Ingredient.fields.simple_name:
-                                              simple_name
-                                          }]):
+            if self.driver.read(Ingredient,
+                                filters=[{
+                                    Ingredient.fields.simple_name:
+                                    simple_name
+                                }]):
                 raise IngredientAlreadyExists({})
 
             args[Ingredient.fields.simple_name] = simple_name
@@ -186,11 +193,11 @@ class Store:
                               Ingredient.fields.id: ingredient_id
                           }])
 
-#      _ _     _
-#   __| (_)___| |__
-#  / _` | / __| '_ \
-# | (_| | \__ \ | | |
-#  \__,_|_|___/_| |_|
+    #      _ _     _
+    #   __| (_)___| |__
+    #  / _` | / __| '_ \
+    # | (_| | \__ \ | | |
+    #  \__,_|_|___/_| |_|
 
     def _create_recipe(self):
         """
@@ -490,12 +497,12 @@ class Store:
                               Dependency.fields.requisite: required_id
                           }])
 
-#                       _                               _
-#  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
-# | '__/ _ \/ _` | | | | | '__/ _ \ '_ ` _ \ / _ \ '_ \| __|
-# | | |  __/ (_| | |_| | | | |  __/ | | | | |  __/ | | | |_
-# |_|  \___|\__, |\__,_|_|_|  \___|_| |_| |_|\___|_| |_|\__|
-#              |_|
+    #                       _                               _
+    #  _ __ ___  __ _ _   _(_)_ __ ___ _ __ ___   ___ _ __ | |_
+    # | '__/ _ \/ _` | | | | | '__/ _ \ '_ ` _ \ / _ \ '_ \| __|
+    # | | |  __/ (_| | |_| | | | |  __/ | | | | |  __/ | | | |_
+    # |_|  \___|\__, |\__,_|_|_|  \___|_| |_| |_|\___|_| |_|\__|
+    #              |_|
 
     def _list_requirements(self, recipe_id):
         requirement_list = []
@@ -636,13 +643,6 @@ class Store:
                               ingredient_id
                           }])
 
-
-#  _       _          _
-# | | __ _| |__   ___| |
-# | |/ _` | '_ \ / _ \ |
-# | | (_| | |_) |  __/ |
-# |_|\__,_|_.__/ \___|_|
-
     def _label_lookup(self):
         """
         Get all labels which match the parameters in args
@@ -724,11 +724,10 @@ class Store:
             if not simple_name or ' ' in name:
                 raise InvalidValue(Label.fields.name, name)
 
-            if stored := self.driver.read(Label,
-                                          filters=[{
-                                              Label.fields.simple_name:
-                                              simple_name
-                                          }]):
+            if self.driver.read(Label,
+                                filters=[{
+                                    Label.fields.simple_name: simple_name
+                                }]):
                 raise LabelAlreadyExists({Label.fields.name: name})
 
             args[Label.fields.simple_name] = simple_name
