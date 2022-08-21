@@ -8,6 +8,7 @@ STATUS = 'PARENT'
 errpipe_read, errpipe_write = (None, None)
 child = None
 
+
 def handle_sigchild(sig_no, stack_frame=None):
     if STATUS == 'CHILD':
         if child:
@@ -28,6 +29,7 @@ if __name__ == '__main__':
 
     errpipe_read, errpipe_write = pipe()
     pid = fork()
+    delay = int(argv[1])
 
     if pid:
         close(errpipe_write)
@@ -37,7 +39,6 @@ if __name__ == '__main__':
 
     close(errpipe_read)
     STATUS = 'CHILD'
-    delay = int(argv[1])
 
     print("Running '%s' for %d seconds as a background process" %
           (" ".join(argv[2:]), delay))
