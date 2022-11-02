@@ -1,0 +1,469 @@
+---
+openapi: 3.0.0
+info:
+  title: knife
+  version: '0.3.0'
+servers:
+- url: http://127.0.0.1:8000
+paths:
+  /ingredients:
+    get:
+      summary: List defined ingredients
+      parameters:
+      - in: query
+        name: name
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Matching ingredients on server
+  /ingredients/new:
+    post:
+      summary: Create a new ingredient
+      parameters:
+      - in: header
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Ingredient created
+        '400':
+          description: Invalid query
+        '409':
+          description: Ingredient already exists
+  /ingredients/{ingredient_id}:
+    put:
+      summary: Edit an ingredient
+      parameters:
+      - in: header
+        name: name
+        required: false
+        schema:
+          type: string
+      - in: path
+        name: ingredient_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Ingredient edition success
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Ingredient not found
+        '409':
+          description: Ingredient already exists
+    delete:
+      parameters:
+      - in: path
+        name: ingredient_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Ingredient deletion success
+        '404':
+          description: Ingredient not found
+        '409':
+          description: Ingredient in use
+    get:
+      summary: Get information about an ingredient
+      parameters:
+      - in: path
+        name: ingredient_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Ingredient metadata
+        '404':
+          description: Ingredient not found
+  /recipes:
+    get:
+      summary: Lookup recipe indexes from the server, filtering by name/author/description
+      parameters:
+      - in: query
+        name: name
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: directions
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Matching recipes on server
+        '400':
+          description: Invalid parameters
+  /recipes/{recipe_id}:
+    put:
+      summary: Edit a recipe
+      parameters:
+      - in: header
+        name: name
+        required: false
+        schema:
+          type: string
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: header
+        name: directions
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Recipe edition success
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Recipe not found
+        '409':
+          description: Recipe already exists
+    get:
+      summary: Show a recipe
+      parameters:
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Recipe access success
+        '404':
+          description: Recipe not found
+    delete:
+      summary: Delete a recipe
+      parameters:
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Recipe deletion success
+        '404':
+          description: Recipe not found
+  /recipes/new:
+    post:
+      summary: Create a recipe
+      parameters:
+      - in: header
+        name: name
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: header
+        name: directions
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Recipe created
+        '400':
+          description: Invalid query
+        '409':
+          description: Recipe already exists
+  /labels:
+    get:
+      summary: Lookup labels defined on the server
+      parameters:
+      - in: query
+        name: name
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Label lookup success
+        '400':
+          description: Invalid query
+  /labels/new:
+    post:
+      summary: Create a label
+      parameters:
+      - in: header
+        name: name
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Label creation success
+        '400':
+          description: Invalid query
+        '409':
+          description: Label already exists
+  /labels/{label_id}:
+    delete:
+      summary: Delete a label
+      parameters:
+      - in: path
+        name: label_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Label deletion success
+        '404':
+          description: Label not found
+    get:
+      summary: Get label data and recipes tagged with label
+      parameters:
+      - in: path
+        name: label_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Label metadata getter success
+        '404':
+          description: Label not found
+    put:
+      parameters:
+      - in: header
+        name: name
+        required: false
+        schema:
+          type: string
+      - in: path
+        name: label_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Label metadata getter success
+        '400':
+          description: Invalid query
+        '404':
+          description: Label not found
+        '409':
+          description: Label already exists
+  /recipes/{recipe_id}/requirements:
+    get:
+      summary: List requirements of a recipe
+      parameters:
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Requirement fetch success
+  /recipes/{recipe_id}/requirements/add:
+    post:
+      summary: Add an ingredient and quantity to a recipe
+      parameters:
+      - in: header
+        name: quantity
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: ingredient_id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Requirement addition success
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Recipe or ingredient not found
+        '409':
+          description: Requirement already exists
+  /recipes/{recipe_id}/requirements/{ingredient_id}:
+    put:
+      summary: Edit the quantity of a requirement on a recipe
+      parameters:
+      - in: header
+        name: quantity
+        required: false
+        schema:
+          type: string
+      - in: path
+        name: ingredient_id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Requirement edition success
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Recipe or ingredient not found
+    delete:
+      summary: Delete a requirement on a recipe
+      parameters:
+      - in: path
+        name: ingredient_id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Requirement deletion success
+        '404':
+          description: Requirement not found
+  /recipes/{recipe_id}/dependencies:
+    get:
+      summary: List the dependencies of a recipe
+      parameters:
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Dependency access success
+        '404':
+          description: Recipe not found
+  /recipes/{recipe_id}/dependencies/add:
+    post:
+      summary: Add a recipe dependency to another recipe
+      parameters:
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: required_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Dependency addition success
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Recipe not found
+        '409':
+          description: Dependency already exists
+  /recipes/{recipe_id}/dependencies/{required_id}:
+    delete:
+      summary: Delete a recipe dependency
+      parameters:
+      - in: path
+        name: required_id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Dependency deletion success
+        '404':
+          description: Recipe not found
+  /recipes/{recipe_id}/tags:
+    get:
+      summary: List tags associated with a recipe
+      parameters:
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tag listing success
+        '404':
+          description: Recipe not found
+  /recipes/{recipe_id}/tags/add:
+    post:
+      summary: Add a tag to a recipe
+      parameters:
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tagging success
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Recipe not found
+        '409':
+          description: Tag already exists
+  /recipes/{recipe_id}/tags/{label_id}:
+    delete:
+      summary: Delete a tag from a recipe
+      parameters:
+      - in: path
+        name: label_id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: recipe_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tag deletion success
+        '404':
+          description: Recipe not found
