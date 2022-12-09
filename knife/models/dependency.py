@@ -1,7 +1,9 @@
-from knife.models import Datatypes, Attributes, FieldList
+from knife.models import Datatypes, Attributes, FieldList, Recipe
 
 
 class Dependency:
     table_name = 'dependencies'
-    fields = FieldList(('required_by', Datatypes.text, Attributes.primary_key),
-                       ('requisite', Datatypes.text, Attributes.primary_key))
+    fields = FieldList(
+        ('required_by', Recipe.fields.id_type, Attributes.primary_key),
+        ('requisite', Recipe.fields.id_type, Attributes.primary_key),
+    )

@@ -1,9 +1,9 @@
-from knife.models import Datatypes, Attributes, FieldList
+from knife.models import Datatypes, Attributes, FieldList, Recipe, Ingredient
 
 
 class Requirement:
     table_name = 'requirements'
     fields = FieldList(
-        ('recipe_id', Datatypes.text, Attributes.primary_key),
-        ('ingredient_id', Datatypes.text, Attributes.primary_key),
+        ('recipe_id', Recipe.fields.id_type, Attributes.primary_key),
+        ('ingredient_id', Ingredient.fields.id_type, Attributes.primary_key),
         ('quantity', Datatypes.text))
