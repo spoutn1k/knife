@@ -3,15 +3,17 @@ from knife import helpers
 from knife.models import Datatypes, Attributes, FieldList
 
 
-class Ingredient:
-    table_name = 'ingredients'
+class User:
+    table_name = 'users'
     fields = FieldList(('id', Datatypes.text, Attributes.primary_key),
-                       ('name', Datatypes.text),
-                       ('simple_name', Datatypes.text))
+                       ('name', Datatypes.text))
 
     def __init__(self, params):
-        self._id = params.get("id")
-        self.name = params.get("name", '').rstrip()
+        self._id = params.get('id')
+        self.name = params.get('name', '').rstrip()
+
+    def __str__(self):
+        return self.name
 
     @property
     def id(self):
@@ -28,9 +30,11 @@ class Ingredient:
         return {
             'id': self.id,
             'name': self.name,
-            'simple_name': self.simple_name
         }
 
     @property
     def serializable(self):
-        return {'id': self.id, 'name': self.name}
+        return {
+            'id': self.id,
+            'name': self.name,
+        }

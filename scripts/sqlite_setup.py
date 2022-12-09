@@ -6,10 +6,7 @@ if __name__ == '__main__':
     driver.setup()
 
     for obj in OBJECTS:
-        try:
-            driver.connexion.execute(model_definition(obj))
-        except:
-            pass
+        driver.connexion.execute(model_definition(obj))
         driver.connexion.execute("DELETE FROM %s" % obj.table_name)
 
     driver.close()

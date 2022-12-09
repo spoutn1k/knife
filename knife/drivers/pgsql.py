@@ -1,29 +1,33 @@
 import psycopg2
 from knife.helpers import complain
 from knife.drivers import AbstractDriver
-from knife.models import Datatypes
+from knife.models import Datatypes, Attributes
 
 DRIVER_NAME = 'pgsql'
 DBURL = complain('DATABASE_URL')
 
+DATATYPES = {
+    Datatypes.text: 'TEXT',
+}
+ATTRIBUTES = {
+    Attributes.required: 'NOT NULL',
+    Attributes.primary_key: '',
+}
+
 
 def model_definition(model):
-    datatypes = {
-        Datatypes.text: 'TEXT',
-        Datatypes.required: 'NOT NULL',
-        Datatypes.primary_key: ''
-    }
-
     TEMPLATE = "CREATE TABLE %s (%%s)" % model.table_name
     columns = []
     pks = []
 
     for field in model.fields.fields:
-        modifiers = [datatypes[dt] for dt in field.datatypes]
-        columns.append("%s %s" % (str(field), " ".join(modifiers)))
+        datatype = DATATYPES[field.datatype]
+        attributes = list(map(lambda a: ATTRIBUTES[a], field.attributes))
+        columns.append("%s %s %s" %
+                       (str(field), datatype, " ".join(attributes)))
 
     for field in model.fields.fields:
-        if Datatypes.primary_key in field.datatypes:
+        if Attributes.primary_key in field.attributes:
             pks.append(str(field))
 
     columns.append("PRIMARY KEY (%s)" % ", ".join(pks))
