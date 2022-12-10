@@ -133,7 +133,7 @@ class Store:
             columns=(Recipe.fields.id, Recipe.fields.name))
 
         ingredient = stored[0]
-        ingredient.update({'used_recipe_ins': recipes})
+        ingredient.update({'used_in': recipes})
 
         return ingredient
 
