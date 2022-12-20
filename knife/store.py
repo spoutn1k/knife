@@ -108,6 +108,11 @@ class Store:
         """
         args = helpers.fix_args(dict(request.args))
         validate_query(args, [Ingredient.fields.id, Ingredient.fields.name])
+
+        if args.get(Ingredient.fields.name):
+            args[Ingredient.fields.simple_name] = helpers.simplify(
+                args.pop(Ingredient.fields.name))
+
         return self.driver.read(
             Ingredient,
             filters=[args],
