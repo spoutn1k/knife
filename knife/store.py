@@ -183,12 +183,12 @@ class Store:
             if not simple_name:
                 raise InvalidValue(Ingredient.fields.name, name)
 
-            if self.driver.read(Ingredient,
-                                filters=[{
-                                    Ingredient.fields.simple_name:
-                                    simple_name
-                                }]):
-                raise IngredientAlreadyExists({})
+            if ingredients := self.driver.read(
+                    Ingredient,
+                    filters=[{
+                        Ingredient.fields.simple_name: simple_name
+                    }]):
+                raise IngredientAlreadyExists(ingredients[0])
 
             args[Ingredient.fields.simple_name] = simple_name
 
@@ -224,12 +224,12 @@ class Store:
         if not recipe.simple_name:
             raise InvalidValue(Recipe.fields.name, recipe.name)
 
-        if self.driver.read(Recipe,
-                            filters=[{
-                                Recipe.fields.simple_name:
-                                recipe.simple_name
-                            }]):
-            raise RecipeAlreadyExists(recipe.name)
+        if recipes := self.driver.read(Recipe,
+                                       filters=[{
+                                           Recipe.fields.simple_name:
+                                           recipe.simple_name
+                                       }]):
+            raise RecipeAlreadyExists(recipes[0])
 
         self.driver.write(Recipe, recipe.params)
         return recipe.serializable
@@ -339,13 +339,13 @@ class Store:
             if not simple_name:
                 raise InvalidValue(Recipe.fields.name, name)
 
-            stored = self.driver.read(Recipe,
-                                      filters=[{
-                                          Recipe.fields.simple_name:
-                                          simple_name
-                                      }])
-            if len(stored) and stored[0]['id'] != recipe_id:
-                raise RecipeAlreadyExists(Recipe(stored[0]).id)
+            if recipes := self.driver.read(Recipe,
+                                           filters=[{
+                                               Recipe.fields.simple_name:
+                                               simple_name
+                                           }]):
+                if recipes[0]['id'] != recipe_id:
+                    raise RecipeAlreadyExists(recipes[0])
 
             args[Recipe.fields.simple_name] = simple_name
 
@@ -729,11 +729,12 @@ class Store:
             if not simple_name or ' ' in name:
                 raise InvalidValue(Label.fields.name, name)
 
-            if self.driver.read(Label,
-                                filters=[{
-                                    Label.fields.simple_name: simple_name
-                                }]):
-                raise LabelAlreadyExists({Label.fields.name: name})
+            if labels := self.driver.read(Label,
+                                          filters=[{
+                                              Label.fields.simple_name:
+                                              simple_name
+                                          }]):
+                raise LabelAlreadyExists(labels[0])
 
             args[Label.fields.simple_name] = simple_name
 
