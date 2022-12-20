@@ -1,6 +1,7 @@
 import os
 import logging
 from flask import Flask
+from flask_cors import CORS
 from knife.routes import setup_routes
 
 if os.environ.get('KNIFE_DEBUG'):
@@ -23,6 +24,7 @@ if os.environ.get('KNIFE_COVERAGE'):
 
 APP = Flask(__name__)
 setup_routes(APP)
+CORS(APP)
 
 if __name__ == '__main__':
     APP.run()
