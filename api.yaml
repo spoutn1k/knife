@@ -1,50 +1,132 @@
 ---
-openapi: 3.0.0
+openapi: 3.1.0
 info:
   title: knife
-  version: '0.3.0'
+  description: Recipe management server
+  version: 0.3.0
 servers:
-- url: http://127.0.0.1:8000
+  - url: http://127.0.0.1:8000
+tags:
+  - name: ingredient
+    description: Ingredient-related endpoint
+  - name: label
+    description: Label-related endpoint
+  - name: recipe
+    description: Recipe-related endpoint
+  - name: requirement
+    description: Requirement-related endpoint
+  - name: dependency
+    description: Dependency-related endpoint
+  - name: tag
+    description: Tag-related endpoint
+  - name: index
+    description: Indexing endpoint
+  - name: pattern
+    description: Supports pattern search
+  - name: insertion
+    description: Create content on the server
+  - name: deletion
+    description: Delete content on the server
+  - name: edition
+    description: Edit content on the server
+  - name: detail
+    description: Access content on the server
 paths:
   /ingredients:
     get:
       summary: List defined ingredients
+      operationId: ingredient-index
+      tags: [ingredient, index, pattern]
       parameters:
       - in: query
         name: name
+        description: Pattern to match recipe names with
         required: false
         schema:
           type: string
+        example: pasta
       responses:
         '200':
-          description: Matching ingredients on server
+          description: Indexed ingredients on server matching the given pattern
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accept:
+                    type: bool
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: string
+                        name: string
   /ingredients/new:
     post:
       summary: Create a new ingredient
+      operationId: ingredient-create
+      tags: [ingredient, insertion]
       parameters:
       - in: header
         name: name
+        description: Name of the ingredient to create
         required: true
         schema:
           type: string
+        example: Avocado
       responses:
         '200':
           description: Ingredient created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accept:
+                    type: bool
+                  data:
+                    type: object
+                    properties:
+                      id: string
+                      name: string
         '400':
-          description: Invalid query
+          description: Invalid parameters for ingredient creation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accept:
+                    type: bool
+                  error:
+                    type: string
         '409':
           description: Ingredient already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accept:
+                    type: bool
+                  error:
+                    type: string
   /ingredients/{ingredient_id}:
     put:
       summary: Edit an ingredient
+      operationId: ingredient-edit
+      tags: [ingredient, edition]
       parameters:
       - in: header
         name: name
+        description: New name for the ingredient
         required: false
         schema:
           type: string
       - in: path
         name: ingredient_id
+        description: Ingredient identifier for the edition target
         required: true
         schema:
           type: string
@@ -58,9 +140,13 @@ paths:
         '409':
           description: Ingredient already exists
     delete:
+      summary: Delete an ingredient
+      operationId: ingredient-delete
+      tags: [ingredient, deletion]
       parameters:
       - in: path
         name: ingredient_id
+        description: Ingredient identifier for the deletion target
         required: true
         schema:
           type: string
@@ -73,9 +159,12 @@ paths:
           description: Ingredient in use
     get:
       summary: Get information about an ingredient
+      operationId: ingredient-show
+      tags: [ingredient, detail]
       parameters:
       - in: path
         name: ingredient_id
+        description: Ingredient identifier
         required: true
         schema:
           type: string
@@ -87,19 +176,24 @@ paths:
   /recipes:
     get:
       summary: Lookup recipe indexes from the server, filtering by name/author/description
+      operationId: recipe-index
+      tags: [recipe, index, pattern]
       parameters:
       - in: query
         name: name
+        description: Pattern to observe in the name of indexed recipes
         required: false
         schema:
           type: string
       - in: query
         name: author
+        description: Pattern to observe in the author of indexed recipes
         required: false
         schema:
           type: string
       - in: query
         name: directions
+        description: Pattern to observe in the directions of indexed recipes
         required: false
         schema:
           type: string
@@ -111,24 +205,30 @@ paths:
   /recipes/{recipe_id}:
     put:
       summary: Edit a recipe
+      operationId: recipe-edit
+      tags: [recipe, edition]
       parameters:
       - in: header
         name: name
+        description: New name for the recipe
         required: false
         schema:
           type: string
       - in: path
         name: recipe_id
+        description: Recipe identifier for the edition target
         required: true
         schema:
           type: string
       - in: header
         name: author
+        description: New author for the recipe
         required: false
         schema:
           type: string
       - in: header
         name: directions
+        description: New directions for the recipe
         required: false
         schema:
           type: string
@@ -143,9 +243,12 @@ paths:
           description: Recipe already exists
     get:
       summary: Show a recipe
+      operationId: recipe-show
+      tags: [recipe, detail]
       parameters:
       - in: path
         name: recipe_id
+        description: Recipe identifier
         required: true
         schema:
           type: string
@@ -156,9 +259,12 @@ paths:
           description: Recipe not found
     delete:
       summary: Delete a recipe
+      operationId: recipe-delete
+      tags: [recipe, deletion]
       parameters:
       - in: path
         name: recipe_id
+        description: Recipe identifier for the deletion target
         required: true
         schema:
           type: string
@@ -170,19 +276,24 @@ paths:
   /recipes/new:
     post:
       summary: Create a recipe
+      operationId: recipe-create
+      tags: [recipe, insertion]
       parameters:
       - in: header
         name: name
+        description: Name for the new recipe
         required: true
         schema:
           type: string
       - in: header
         name: author
+        description: Author for the new recipe
         required: false
         schema:
           type: string
       - in: header
         name: directions
+        description: Directions for the new recipe
         required: false
         schema:
           type: string
@@ -196,9 +307,12 @@ paths:
   /labels:
     get:
       summary: Lookup labels defined on the server
+      operationId: label-index
+      tags: [label, index]
       parameters:
       - in: query
         name: name
+        description: Name pattern to match in the indexed labels
         required: false
         schema:
           type: string
@@ -210,9 +324,12 @@ paths:
   /labels/new:
     post:
       summary: Create a label
+      operationId: label-create
+      tags: [label, insertion]
       parameters:
       - in: header
         name: name
+        description: Name for the new label
         required: false
         schema:
           type: string
@@ -226,9 +343,12 @@ paths:
   /labels/{label_id}:
     delete:
       summary: Delete a label
+      operationId: label-delete
+      tags: [label, deletion]
       parameters:
       - in: path
         name: label_id
+        description: Label identifier for the deletion target
         required: true
         schema:
           type: string
@@ -239,9 +359,12 @@ paths:
           description: Label not found
     get:
       summary: Get label data and recipes tagged with label
+      operationId: label-show
+      tags: [label, detail]
       parameters:
       - in: path
         name: label_id
+        description: Label identifier
         required: true
         schema:
           type: string
@@ -251,14 +374,19 @@ paths:
         '404':
           description: Label not found
     put:
+      summary: Edit a label
+      operationId: label-edit
+      tags: [label, edition]
       parameters:
       - in: header
         name: name
+        description: New label name
         required: false
         schema:
           type: string
       - in: path
         name: label_id
+        description: Label identifier for the edition target
         required: true
         schema:
           type: string
@@ -274,9 +402,12 @@ paths:
   /recipes/{recipe_id}/requirements:
     get:
       summary: List requirements of a recipe
+      operationId: recipe-requirement-index
+      tags: [requirement, recipe, ingredient, index]
       parameters:
       - in: path
         name: recipe_id
+        description: Recipe identifier to list the requirements of
         required: true
         schema:
           type: string
@@ -286,19 +417,24 @@ paths:
   /recipes/{recipe_id}/requirements/add:
     post:
       summary: Add an ingredient and quantity to a recipe
+      operationId: recipe-requirement-create
+      tags: [requirement, recipe, ingredient, insertion]
       parameters:
       - in: header
         name: quantity
+        description: Quantity for the requirement
         required: true
         schema:
           type: string
       - in: header
         name: ingredient_id
+        description: Ingredient identifier to add to the requirement
         required: true
         schema:
           type: string
       - in: path
         name: recipe_id
+        description: Recipe identifier to add the requirement to
         required: true
         schema:
           type: string
@@ -314,19 +450,24 @@ paths:
   /recipes/{recipe_id}/requirements/{ingredient_id}:
     put:
       summary: Edit the quantity of a requirement on a recipe
+      operationId: recipe-requirement-edit
+      tags: [requirement, recipe, ingredient, edition]
       parameters:
       - in: header
         name: quantity
+        description: New quantity for the requirement
         required: false
         schema:
           type: string
       - in: path
         name: ingredient_id
+        description: Ingredient identifier of the requirement to edit
         required: true
         schema:
           type: string
       - in: path
         name: recipe_id
+        description: Recipe identifier of the requirement to edit
         required: true
         schema:
           type: string
@@ -339,14 +480,18 @@ paths:
           description: Recipe or ingredient not found
     delete:
       summary: Delete a requirement on a recipe
+      operationId: recipe-requirement-delete
+      tags: [requirement, recipe, ingredient, deletion]
       parameters:
       - in: path
         name: ingredient_id
+        description: Ingredient identifier of the requirement to delete
         required: true
         schema:
           type: string
       - in: path
         name: recipe_id
+        description: Recipe identifier of the requirement to delete
         required: true
         schema:
           type: string
@@ -358,9 +503,12 @@ paths:
   /recipes/{recipe_id}/dependencies:
     get:
       summary: List the dependencies of a recipe
+      operationId: recipe-dependencies-index
+      tags: [dependency, recipe, index]
       parameters:
       - in: path
         name: recipe_id
+        description: Recipe identifier to list the dependencies of
         required: true
         schema:
           type: string
@@ -372,14 +520,18 @@ paths:
   /recipes/{recipe_id}/dependencies/add:
     post:
       summary: Add a recipe dependency to another recipe
+      operationId: recipe-dependencies-create
+      tags: [dependency, recipe, insertion]
       parameters:
       - in: path
         name: recipe_id
+        description: Recipe identifier to add a dependency to
         required: true
         schema:
           type: string
       - in: header
         name: required_id
+        description: Recipe identifier to add as a dependency
         required: true
         schema:
           type: string
@@ -395,14 +547,18 @@ paths:
   /recipes/{recipe_id}/dependencies/{required_id}:
     delete:
       summary: Delete a recipe dependency
+      operationId: recipe-dependencies-delete
+      tags: [dependency, recipe, deletion]
       parameters:
       - in: path
         name: required_id
+        description: Recipe identifier to remove a dependency from
         required: true
         schema:
           type: string
       - in: path
         name: recipe_id
+        description: Recipe identifier in the dependency to delete
         required: true
         schema:
           type: string
@@ -414,9 +570,12 @@ paths:
   /recipes/{recipe_id}/tags:
     get:
       summary: List tags associated with a recipe
+      operationId: recipe-tag-index
+      tags: [tag, label, recipe, index]
       parameters:
       - in: path
         name: recipe_id
+        description: Recipe identifier to list tags from
         required: true
         schema:
           type: string
@@ -428,14 +587,18 @@ paths:
   /recipes/{recipe_id}/tags/add:
     post:
       summary: Add a tag to a recipe
+      operationId: recipe-tag-create
+      tags: [tag, label, recipe, insertion]
       parameters:
       - in: path
         name: recipe_id
+        description: Recipe identifier to add a tag to
         required: true
         schema:
           type: string
       - in: header
         name: name
+        description: Label name to add as a tag
         required: true
         schema:
           type: string
@@ -451,14 +614,18 @@ paths:
   /recipes/{recipe_id}/tags/{label_id}:
     delete:
       summary: Delete a tag from a recipe
+      operationId: recipe-tag-delete
+      tags: [tag, label, recipe, deletion]
       parameters:
       - in: path
         name: label_id
+        description: Label identifier from the tag to remove
         required: true
         schema:
           type: string
       - in: path
         name: recipe_id
+        description: Recipe identifier to remove a tag from
         required: true
         schema:
           type: string
