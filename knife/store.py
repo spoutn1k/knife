@@ -183,11 +183,16 @@ class Store:
             if not simple_name:
                 raise InvalidValue(Ingredient.fields.name, name)
 
-            if ingredients := self.driver.read(
-                    Ingredient,
-                    filters=[{
-                        Ingredient.fields.simple_name: simple_name
-                    }]):
+            matching_names = self.driver.read(
+                Ingredient,
+                filters=[{
+                    Ingredient.fields.simple_name: simple_name
+                }])
+            name_exists = list(
+                filter(lambda i: i[Ingredient.fields.id] != ingredient_id,
+                       matching_names))
+
+            if name_exists:
                 raise IngredientAlreadyExists(ingredients[0])
 
             args[Ingredient.fields.simple_name] = simple_name
