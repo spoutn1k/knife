@@ -277,7 +277,7 @@ class Store:
                        matching_names))
 
             if name_exists:
-                raise IngredientAlreadyExists(ingredients[0])
+                raise IngredientAlreadyExists(name_exists[0])
 
             args[Ingredient.fields.simple_name] = simple_name
 
