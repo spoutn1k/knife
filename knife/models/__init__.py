@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+from typing import Any
+
+
 class Datatypes():
     integer = 0
     text = 1
@@ -7,33 +11,29 @@ class Datatypes():
     foreign_key = 12
 
 
-class Field():
-
-    def __init__(self, appearance: str, *datatype):
-        self.appearance = appearance
-        self.datatypes = datatype
-
-    def __repr__(self):
-        return self.appearance
-
-    def __str__(self):
-        return self.appearance
+@dataclass
+class Field:
+    name: str
+    datatype: list[Datatypes]
+    default: Any = None
 
 
 class FieldList():
 
     def __init__(self, *fields):
         self.index = 0
-        self.fields = [Field(*f) for f in fields]
-        [self.__setattr__(str(f), str(f)) for f in self.fields]
-        [self.__setattr__(str(f) + '_type', f.datatypes) for f in self.fields]
+        for f in fields:
+            self.__setattr__(f.name, f.name)
+            self.__setattr__(f.name + '_type', f.datatype)
+            self.__setattr__(f.name + '_default', f.default)
+        self.fields = fields
 
     def __iter__(self):
         return self
 
     def __next__(self):
         try:
-            result = str(self.fields[self.index])
+            result = self.fields[self.index].name
 
         except IndexError:
             self.index = 0

@@ -529,8 +529,7 @@ class Store:
                 f"Missing parameter: {Dependency.fields.requisite}")
 
         if not (quantity := request.form.get(Dependency.fields.quantity)):
-            raise InvalidQuery(
-                f"Missing parameter: {Dependency.fields.quantity}")
+            quantity = Dependency.fields.quantity_default
 
         if recipe_id == required_id:
             raise InvalidValue(Dependency.fields.requisite, recipe_id)

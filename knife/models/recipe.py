@@ -1,14 +1,17 @@
 import time
 from knife import helpers
-from knife.models import Datatypes, Ingredient, FieldList
+from knife.models import Datatypes, Ingredient, FieldList, Field
 
 
 class Recipe:
     table_name = 'recipes'
     fields = FieldList(
-        ('id', Datatypes.text, Datatypes.primary_key),
-        ('name', Datatypes.text), ('simple_name', Datatypes.text),
-        ('author', Datatypes.text), ('directions', Datatypes.text))
+        Field(name='id', datatype=[Datatypes.text, Datatypes.primary_key]),
+        Field(name='name', datatype=[Datatypes.text]),
+        Field(name='simple_name', datatype=[Datatypes.text]),
+        Field(name='author', datatype=[Datatypes.text]),
+        Field(name='directions', datatype=[Datatypes.text]),
+    )
 
     def __init__(self, params):
         self._id = params.get('id')

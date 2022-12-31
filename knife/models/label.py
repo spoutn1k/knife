@@ -1,13 +1,15 @@
 import time
 from knife import helpers
-from knife.models import Datatypes, FieldList
+from knife.models import Datatypes, FieldList, Field
 
 
 class Label:
     table_name = 'labels'
-    fields = FieldList(('id', Datatypes.text, Datatypes.primary_key),
-                       ('name', Datatypes.text),
-                       ('simple_name', Datatypes.text))
+    fields = FieldList(
+        Field('id', datatype=[Datatypes.text, Datatypes.primary_key]),
+        Field('name', datatype=[Datatypes.text]),
+        Field('simple_name', datatype=[Datatypes.text]),
+    )
 
     def __init__(self, params):
         self._id = params.get("id")

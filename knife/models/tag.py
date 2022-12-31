@@ -1,7 +1,11 @@
-from knife.models import Datatypes, FieldList
+from knife.models import Datatypes, FieldList, Field
 
 
 class Tag:
     table_name = 'tags'
-    fields = FieldList(('recipe_id', Datatypes.text, Datatypes.primary_key),
-                       ('label_id', Datatypes.text, Datatypes.primary_key))
+    fields = FieldList(
+        Field(name='recipe_id',
+              datatype=[Datatypes.text, Datatypes.primary_key]),
+        Field(name='label_id',
+              datatype=[Datatypes.text, Datatypes.primary_key]),
+    )
