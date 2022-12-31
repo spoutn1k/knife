@@ -535,6 +535,13 @@ paths:
         required: true
         schema:
           type: string
+      - in: header
+        name: quantity
+        description: Quantity of dependency required for the recipe
+        required: true
+        schema:
+          type: string
+        example: 500g
       responses:
         '200':
           description: Dependency addition success
@@ -545,6 +552,23 @@ paths:
         '409':
           description: Dependency already exists
   /recipes/{recipe_id}/dependencies/{required_id}:
+    put:
+      summary: Edit a recipe dependency
+      operationId: recipe-dependencies-edit
+      tags: [dependency, recipe, edition]
+      parameters:
+      - in: header
+        name: quantity
+        description: Updated quantity for the dependency
+        required: true
+        schema:
+          type: string
+        example: 500g
+      responses:
+        '200':
+          description: Dependency edition success
+        '404':
+          description: Recipe not found
     delete:
       summary: Delete a recipe dependency
       operationId: recipe-dependencies-delete
