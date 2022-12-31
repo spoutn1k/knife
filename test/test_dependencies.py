@@ -3,6 +3,7 @@ from test import TestCase, SERVER
 
 RECIPE_NAMES = ('Tartare', 'Frites')
 RECIPE_IDS = []
+DEFAULT_QT = '500g'
 
 
 def create_objects():
@@ -28,8 +29,9 @@ def clear_dependencies():
     for id in RECIPE_IDS:
         for dep in requests.get("%s/recipes/%s/dependencies" %
                                 (SERVER, id)).json().get('data'):
+            recipe_id = dep.get('recipe').get('id')
             requests.delete("%s/recipes/%s/dependencies/%s" %
-                            (SERVER, id, dep.get('id')))
+                            (SERVER, id, recipe_id))
 
 
 class TestDependencyShow(TestCase):
@@ -44,9 +46,10 @@ class TestDependencyShow(TestCase):
 
     def setUp(self):
         self.url = "%s/recipes/%s/dependencies" % (SERVER, RECIPE_IDS[0])
+        clear_dependencies()
 
     def test_index_all(self):
-        params = {'requisite': RECIPE_IDS[1]}
+        params = {'requisite': RECIPE_IDS[1], 'quantity': DEFAULT_QT}
         query = requests.post("%s/add" % self.url, data=params)
 
         self.assertTrue(query.ok, msg=query.json())
@@ -72,7 +75,7 @@ class TestDependencyAdd(TestCase):
         clear_dependencies()
 
     def test_add(self):
-        params = {'requisite': RECIPE_IDS[1]}
+        params = {'requisite': RECIPE_IDS[1], 'quantity': DEFAULT_QT}
         query = requests.post(self.url, data=params)
 
         self.assertTrue(query.ok, msg=query.json())
@@ -84,12 +87,12 @@ class TestDependencyAdd(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_same(self):
-        params = {'requisite': RECIPE_IDS[1]}
+        params = {'requisite': RECIPE_IDS[1], 'quantity': DEFAULT_QT}
         query = requests.post(self.url, data=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
-        params = {'requisite': RECIPE_IDS[1]}
+        params = {'requisite': RECIPE_IDS[1], 'quantity': DEFAULT_QT}
         query = requests.post(self.url, data=params)
 
         self.assertFalse(query.ok, msg=query.json())
@@ -107,15 +110,15 @@ class TestDependencyAdd(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_cycle(self):
-        params = {'requisite': RECIPE_IDS[1]}
+        params = {'requisite': RECIPE_IDS[1], 'quantity': DEFAULT_QT}
         query = requests.post(self.url, data=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
         url = "%s/recipes/%s/dependencies/add" % (SERVER, RECIPE_IDS[1])
-        params = {'requisite': RECIPE_IDS[0]}
-
+        params = {'requisite': RECIPE_IDS[0], 'quantity': DEFAULT_QT}
         query = requests.post(url, data=params)
+
         self.assertFalse(query.ok, msg=query.json())
 
         query = requests.post(self.url, data=params)
@@ -134,9 +137,10 @@ class TestDependencyDelete(TestCase):
 
     def setUp(self):
         self.url = "%s/recipes/%s/dependencies" % (SERVER, RECIPE_IDS[0])
+        clear_dependencies()
 
     def test_delete(self):
-        params = {'requisite': RECIPE_IDS[1]}
+        params = {'requisite': RECIPE_IDS[1], 'quantity': DEFAULT_QT}
         query = requests.post("%s/add" % self.url, data=params)
 
         self.assertTrue(query.ok, msg=query.json())
