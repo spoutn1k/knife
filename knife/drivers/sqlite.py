@@ -21,12 +21,11 @@ def model_definition(model):
     pks = []
 
     for field in model.fields.fields:
-        modifiers = [datatypes[dt] for dt in field.datatypes]
-        columns.append("%s %s" % (str(field), " ".join(modifiers)))
+        modifiers = [datatypes[dt] for dt in field.datatype]
+        columns.append("%s %s" % (field.name, " ".join(modifiers)))
 
-    for field in model.fields.fields:
-        if Datatypes.primary_key in field.datatypes:
-            pks.append(str(field))
+        if Datatypes.primary_key in field.datatype:
+            pks.append(field.name)
 
     columns.append("PRIMARY KEY (%s)" % ", ".join(pks))
 

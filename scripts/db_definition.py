@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import knife
 from knife.drivers import DRIVERS
 from knife.models import OBJECTS
@@ -13,6 +14,8 @@ def default(value):
 
 if __name__ == '__main__':
     serializer = default
+
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
     if not (driver_name := os.environ.get('DATABASE_TYPE')):
         raise ValueError("DATABASE_TYPE is not set. Possible values are: %s" %
