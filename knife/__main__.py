@@ -1,12 +1,15 @@
 import os
+import sys
 import logging
 from flask import Flask
 from flask_cors import CORS
 from knife.routes import setup_routes
 
+level = logging.INFO
 if os.environ.get('KNIFE_DEBUG'):
-    logging.basicConfig(filename="knife.%d.log" % os.getpid(),
-                        level=logging.DEBUG)
+    level = logging.DEBUG
+
+logging.basicConfig(stream=sys.stderr, level=level)
 
 if os.environ.get('KNIFE_COVERAGE'):
     import coverage
