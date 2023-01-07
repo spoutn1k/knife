@@ -8,5 +8,5 @@ class Dependency:
               datatype=[Datatypes.text, Datatypes.primary_key]),
         Field(name='requisite',
               datatype=[Datatypes.text, Datatypes.primary_key]),
-        Field(name='quantity', datatype=[Datatypes.text], default="some"),
+        Field(name='quantity', datatype=[Datatypes.text], default=""),
     )
