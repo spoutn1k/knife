@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export DATABASE_TYPE=sqlite
-export DATABASE_URL=knife-db-clone
+export DATABASE_TYPE=${DATABASE_TYPE:-sqlite}
+export DATABASE_URL=${DATABASE_URL:-$HOME/.knife.sqlite}
 
-gunicorn knife.__main__:APP -w 4 -b 0.0.0.0:7000
+gunicorn knife.__main__:APP -b 0.0.0.0:8000
