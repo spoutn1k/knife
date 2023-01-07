@@ -9,23 +9,24 @@ from knife import helpers
 from knife.models import (Recipe, Label, Ingredient, Requirement, Tag,
                           Dependency)
 from knife.exceptions import (
-    InvalidValue,
-    RecipeNotFound,
-    RecipeAlreadyExists,
-    RequirementNotFound,
-    RequirementAlreadyExists,
-    LabelNotFound,
-    LabelAlreadyExists,
-    TagNotFound,
-    TagAlreadyExists,
-    IngredientNotFound,
+    DependencyAlreadyExists,
+    DependencyCycle,
+    DependencyNotFound,
+    EmptyQuery,
     IngredientAlreadyExists,
     IngredientInUse,
-    DependencyNotFound,
-    DepencyAlreadyExists,
+    IngredientNotFound,
     InvalidQuery,
-    EmptyQuery,
+    InvalidValue,
     KnifeError,
+    LabelAlreadyExists,
+    LabelNotFound,
+    RecipeAlreadyExists,
+    RecipeNotFound,
+    RequirementAlreadyExists,
+    RequirementNotFound,
+    TagAlreadyExists,
+    TagNotFound,
 )
 
 
@@ -55,6 +56,33 @@ def format_output(func):
 
     wrapper.__name__ = func.__name__.strip('_')
     return wrapper
+
+
+def dependency_nodes(driver, recipe_id: str) -> set[str]:
+    """
+    Recursively follow all dependencies from a recipe, and output all the
+    encountered ids. This *should* terminate as a dependency cycle should not
+    be allowed, but there is a failsafe just in case.
+    """
+    nodes = set()
+    to_visit = {recipe_id}
+
+    while to_visit:
+        next_tier = set()
+
+        for recipe_id in to_visit:
+            for dependency in driver.read(
+                    Dependency,
+                    columns=(Dependency.fields.requisite, ),
+                    filters=[{
+                        Dependency.fields.required_by: recipe_id
+                    }]):
+                next_tier.add(dependency[Dependency.fields.requisite])
+
+        nodes = nodes | to_visit
+        to_visit = next_tier - nodes
+
+    return nodes
 
 
 def requirement_list(driver, recipe_id):
@@ -550,11 +578,12 @@ class Store:
                             filters=[{
                                 Dependency.fields.required_by: recipe_id,
                                 Dependency.fields.requisite: required_id
-                            }, {
-                                Dependency.fields.required_by: required_id,
-                                Dependency.fields.requisite: recipe_id
                             }]):
-            raise DepencyAlreadyExists()
+            raise DependencyAlreadyExists()
+
+        if (recipe_id in dependency_nodes(self.driver, required_id)
+                or required_id in dependency_nodes(self.driver, recipe_id)):
+            raise DependencyCycle()
 
         self.driver.write(
             Dependency, {

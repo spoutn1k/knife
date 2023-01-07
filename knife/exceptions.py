@@ -1,4 +1,5 @@
 class KnifeError(Exception):
+
     def __init__(self):
         super().__init__()
         self.data = None
@@ -6,6 +7,7 @@ class KnifeError(Exception):
 
 
 class InvalidQuery(KnifeError):
+
     def __init__(self, param):
         super().__init__()
         self.param = param
@@ -16,6 +18,7 @@ class InvalidQuery(KnifeError):
 
 
 class EmptyQuery(KnifeError):
+
     def __init__(self):
         super().__init__()
         self.status = 400
@@ -25,6 +28,7 @@ class EmptyQuery(KnifeError):
 
 
 class InvalidValue(KnifeError):
+
     def __init__(self, field, value):
         super().__init__()
         self.field = field
@@ -35,6 +39,7 @@ class InvalidValue(KnifeError):
 
 
 class IngredientNotFound(KnifeError):
+
     def __init__(self, ingredient_id):
         super().__init__()
         self.ingredient_id = ingredient_id
@@ -45,6 +50,7 @@ class IngredientNotFound(KnifeError):
 
 
 class IngredientAlreadyExists(KnifeError):
+
     def __init__(self, ingredient_data):
         super().__init__()
         self.data = ingredient_data
@@ -55,6 +61,7 @@ class IngredientAlreadyExists(KnifeError):
 
 
 class IngredientInUse(KnifeError):
+
     def __init__(self, use_count):
         super().__init__()
         self.use_count = use_count
@@ -65,6 +72,7 @@ class IngredientInUse(KnifeError):
 
 
 class RecipeNotFound(KnifeError):
+
     def __init__(self, recipe_id):
         super().__init__()
         self.recipe_id = recipe_id
@@ -75,6 +83,7 @@ class RecipeNotFound(KnifeError):
 
 
 class RecipeAlreadyExists(KnifeError):
+
     def __init__(self, recipe_id):
         super().__init__()
         self.recipe_id = recipe_id
@@ -85,6 +94,7 @@ class RecipeAlreadyExists(KnifeError):
 
 
 class RequirementNotFound(KnifeError):
+
     def __init__(self, recipe_id, ingredient_id):
         super().__init__()
         self.recipe_id = recipe_id
@@ -96,6 +106,7 @@ class RequirementNotFound(KnifeError):
 
 
 class RequirementAlreadyExists(KnifeError):
+
     def __init__(self, recipe_id, ingredient_id):
         super().__init__()
         self.recipe_id = recipe_id
@@ -107,6 +118,7 @@ class RequirementAlreadyExists(KnifeError):
 
 
 class LabelInvalid(KnifeError):
+
     def __init__(self, label_name):
         super().__init__()
         self.label_name = label_name
@@ -117,6 +129,7 @@ class LabelInvalid(KnifeError):
 
 
 class LabelAlreadyExists(KnifeError):
+
     def __init__(self, label_data):
         super().__init__()
         self.data = label_data
@@ -127,6 +140,7 @@ class LabelAlreadyExists(KnifeError):
 
 
 class LabelNotFound(KnifeError):
+
     def __init__(self, label_id):
         super().__init__()
         self.label_id = label_id
@@ -137,6 +151,7 @@ class LabelNotFound(KnifeError):
 
 
 class TagAlreadyExists(KnifeError):
+
     def __init__(self, recipe_id, label_id):
         super().__init__()
         self.recipe_id = recipe_id
@@ -148,6 +163,7 @@ class TagAlreadyExists(KnifeError):
 
 
 class TagNotFound(KnifeError):
+
     def __init__(self, recipe_id, label_id):
         super().__init__()
         self.recipe_id = recipe_id
@@ -158,7 +174,8 @@ class TagNotFound(KnifeError):
         return "Tag not found"
 
 
-class DepencyAlreadyExists(KnifeError):
+class DependencyAlreadyExists(KnifeError):
+
     def __init__(self):
         super().__init__()
         self.status = 409
@@ -168,6 +185,7 @@ class DepencyAlreadyExists(KnifeError):
 
 
 class DependencyNotFound(KnifeError):
+
     def __init__(self, recipe_id, required_id):
         super().__init__()
         self.recipe_id = recipe_id
@@ -176,3 +194,13 @@ class DependencyNotFound(KnifeError):
 
     def __str__(self):
         return "Dependency not found"
+
+
+class DependencyCycle(KnifeError):
+
+    def __init__(self):
+        super().__init__()
+        self.status = 409
+
+    def __str__(self):
+        return "Dependency cycle detected"
