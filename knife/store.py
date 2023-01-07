@@ -52,6 +52,12 @@ def format_output(func):
                 'error': str(kerr),
                 'data': kerr.data
             }, kerr.status))
+        except Exception as err:
+            return make_response(({
+                'accept': False,
+                'error': str(err),
+                'data': None
+            }, 500))
         return make_response(({'accept': True, 'data': data}, 200))
 
     wrapper.__name__ = func.__name__.strip('_')
