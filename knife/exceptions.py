@@ -33,6 +33,7 @@ class InvalidValue(KnifeError):
         super().__init__()
         self.field = field
         self.value = value
+        self.status = 400
 
     def __str__(self):
         return "Invalid field %s (%s)" % (self.field, self.value)
@@ -84,9 +85,9 @@ class RecipeNotFound(KnifeError):
 
 class RecipeAlreadyExists(KnifeError):
 
-    def __init__(self, recipe_id):
+    def __init__(self, recipe_data):
         super().__init__()
-        self.recipe_id = recipe_id
+        self.data = recipe_data
         self.status = 409
 
     def __str__(self):

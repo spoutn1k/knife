@@ -8,5 +8,6 @@ MarkupSafe>=1.1.1
 psycopg2>=2.8.4
 Unidecode>=1.1.1
 Werkzeug>=0.16.0
+tinydb==4.7.0
 requests
 coverage

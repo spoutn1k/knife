@@ -118,7 +118,7 @@ def requirement_list(driver, recipe_id):
 
 def dependency_list(driver, recipe_id):
     data = driver.read(
-        (Recipe, Dependency, Recipe.fields.id, Dependency.fields.requisite),
+        (Dependency, Recipe, Dependency.fields.requisite, Recipe.fields.id),
         columns=(
             Recipe.fields.id,
             Recipe.fields.name,
