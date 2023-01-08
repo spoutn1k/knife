@@ -367,6 +367,7 @@ class Store:
             Recipe.fields.name, Recipe.fields.id, Recipe.fields.author,
             Recipe.fields.directions
         ])
+
         if args.get(Recipe.fields.name):
             args[Recipe.fields.simple_name] = helpers.simplify(
                 args.pop(Recipe.fields.name))
@@ -660,14 +661,16 @@ class Store:
         ingredient_id = args.get(Requirement.fields.ingredient_id)
         quantity = args.get(Requirement.fields.quantity)
 
+        if not ingredient_id:
+            raise InvalidValue(Requirement.fields.ingredient_id, None)
+        if not quantity:
+            raise InvalidValue(Requirement.fields.quantity, quantity)
+
         if not self.driver.read(Recipe,
                                 filters=[{
                                     Recipe.fields.id: recipe_id
                                 }]):
             raise RecipeNotFound(recipe_id)
-
-        if not quantity:
-            raise InvalidValue(Requirement.fields.quantity, quantity)
 
         if not self.driver.read(Ingredient,
                                 filters=[{
