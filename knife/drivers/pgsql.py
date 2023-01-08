@@ -4,7 +4,6 @@ from knife.drivers import AbstractDriver
 from knife.models import Datatypes
 
 DRIVER_NAME = 'pgsql'
-DBURL = complain('DATABASE_URL')
 
 
 def model_definition(model):
@@ -92,7 +91,8 @@ def transaction(func):
 class PostGresDriver(AbstractDriver):
 
     def setup(self, params=None):
-        self.connexion = psycopg2.connect(DBURL, sslmode='require')
+        self.connexion = psycopg2.connect(self.database_location,
+                                          sslmode='require')
         self.cursor = self.connexion.cursor()
 
     def close(self):

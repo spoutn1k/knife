@@ -5,8 +5,6 @@ from knife.drivers import AbstractDriver
 from knife.models import Datatypes
 
 DRIVER_NAME = 'sqlite'
-DBPATH = complain('DATABASE_URL')
-LOGGER = logging.getLogger(__name__)
 
 
 def model_definition(model):
@@ -71,7 +69,7 @@ def transaction(func):
         driver.setup()
         template, parameters = func(*args, **kwargs)
 
-        LOGGER.debug("%s %s" % (template, str(parameters)))
+        logging.debug("%s %s" % (template, str(parameters)))
 
         driver.cursor.execute(template, parameters)
         data = driver.cursor.fetchall()
@@ -91,7 +89,7 @@ def transaction(func):
 class SqliteDriver(AbstractDriver):
 
     def setup(self, params=None):
-        self.connexion = sqlite3.connect(DBPATH)
+        self.connexion = sqlite3.connect(self.database_location)
 
         if params:
             self.connexion.execute(params)

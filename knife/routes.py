@@ -5,13 +5,7 @@ from knife.helpers import complain
 
 LOGGER = logging.getLogger(__name__)
 
-driver_name = complain('DATABASE_TYPE')
-if driver_name.lower() not in DRIVERS.keys():
-    raise ValueError("DATABASE_TYPE is not valid. Possible values are: %s" %
-                     ", ".join(DRIVERS.keys()))
-
-LOGGER.info('Starting with driver %s', driver_name)
-BACK_END = Store(DRIVERS[driver_name.lower()])
+BACK_END = Store(None)
 
 ROUTES = (
     (['GET'], BACK_END.ingredient_lookup, '/ingredients'),
@@ -49,7 +43,9 @@ ROUTES = (
 )
 
 
-def setup_routes(application):
+def setup_routes(application, driver):
+    BACK_END.driver = driver
+
     for methods, view_func, rule in ROUTES:
         application.add_url_rule(rule=rule,
                                  endpoint=view_func.__name__,

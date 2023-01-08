@@ -155,7 +155,7 @@ class Store:
     """
 
     def __init__(self, driver):
-        self.driver = driver()
+        self.driver = driver
 
         for method in [
                 self._dependency_add,

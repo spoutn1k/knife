@@ -5,7 +5,6 @@ from knife.drivers import AbstractDriver
 from knife.models import Datatypes
 
 DRIVER_NAME = 'json'
-DBPATH = complain('DATABASE_URL')
 
 
 def build_query(filters, exact):
@@ -54,11 +53,8 @@ def select(mapping: dict, fields: list[str]):
 
 class JSONDriver(AbstractDriver):
 
-    def __init__(self):
-        self.db = TinyDB(DBPATH)
-
-    def close(self):
-        del self.db
+    def __init__(self, database_location):
+        self.db = TinyDB(database_location)
 
     def read(self,
              model: object,
