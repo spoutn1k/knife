@@ -2,9 +2,9 @@ import os
 import sys
 import unittest
 
-SERVER = os.environ.get('KNIFE_SERVER')
-
-if not SERVER:
+try:
+    SERVER = f"http://{os.environ['KNIFE_SERVER']}:{os.environ['KNIFE_PORT']}"
+except KeyError:
     print("KNIFE_SERVER is not set. Aborting.", file=sys.stderr)
     exit(1)
 

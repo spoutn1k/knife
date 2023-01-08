@@ -2,5 +2,6 @@
 
 export DATABASE_TYPE=${DATABASE_TYPE:-sqlite}
 export DATABASE_URL=${DATABASE_URL:-$HOME/.knife.sqlite}
+export PORT=${PORT:-8000}
 
-gunicorn knife.__main__:APP -b 0.0.0.0:8000
+gunicorn knife.__main__:APP -b 0.0.0.0:$PORT
