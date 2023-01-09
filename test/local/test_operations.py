@@ -177,6 +177,7 @@ class TestOperations(TestCase):
 
     def tearDown(self):
         self.datafile.close()
+        self.driver.db.close()
         Path(self.datafile.name).unlink()
 
     def test_dependency_nodes(self):

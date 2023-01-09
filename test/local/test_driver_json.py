@@ -8,6 +8,9 @@ from tempfile import NamedTemporaryFile
 
 class TestDriverJSONRead(TestCase):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def setUp(self):
         json = """{
     "recipes": {
@@ -70,6 +73,7 @@ class TestDriverJSONRead(TestCase):
 
     def tearDown(self):
         self.datafile.close()
+        self.driver.db.close()
         Path(self.datafile.name).unlink()
 
     def test_read_model(self):
@@ -207,6 +211,7 @@ class TestDriverJSONWrite(TestCase):
 
     def tearDown(self):
         self.datafile.close()
+        self.driver.db.close()
         Path(self.datafile.name).unlink()
 
     def test_write_model(self):
@@ -221,6 +226,7 @@ class TestDriverJSONWrite(TestCase):
 
         with open(self.datafile.name, 'r') as datafile:
             dump = datafile.read()
+            datafile.close()
 
         self.assertIn('"name": "Guacamole"', dump)
         self.assertIn('"directions": "Split the avocados, ..."', dump)
@@ -280,6 +286,7 @@ class TestDriverJSONErase(TestCase):
 
     def tearDown(self):
         self.datafile.close()
+        self.driver.db.close()
         Path(self.datafile.name).unlink()
 
     def test_erase_model(self):
