@@ -1,5 +1,4 @@
 import psycopg2
-from knife.helpers import complain
 from knife.drivers import AbstractDriver
 from knife.models import Datatypes
 

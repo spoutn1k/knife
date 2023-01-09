@@ -1,6 +1,5 @@
 import sqlite3
 import logging
-from knife.helpers import complain
 from knife.drivers import AbstractDriver
 from knife.models import Datatypes
 

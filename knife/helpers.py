@@ -1,4 +1,3 @@
-import os
 import hashlib
 from unidecode import unidecode
 
@@ -24,13 +23,3 @@ def hash256(string):
 
 def simplify(string):
     return unidecode(string.lower()).replace(' ', '_').replace("'", '_')
-
-
-def complain(key):
-    """
-    Get a value from the environment, or get mad about it
-    """
-    if not (value := os.environ.get(key)):
-        raise RuntimeError("%s is not set as an environment variable." % key)
-
-    return value

@@ -1,8 +1,5 @@
 from tinydb import (Query, TinyDB)
-import logging
-from knife.helpers import complain
 from knife.drivers import AbstractDriver
-from knife.models import Datatypes
 
 DRIVER_NAME = 'json'
 
