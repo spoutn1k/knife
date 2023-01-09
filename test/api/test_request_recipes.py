@@ -1,5 +1,5 @@
 import requests
-from test import TestCase, SERVER
+from test.api import APITestCase, SERVER
 
 
 def clear_recipes():
@@ -8,7 +8,7 @@ def clear_recipes():
         requests.delete("%s/recipes/%s" % (SERVER, recipe.get('id')))
 
 
-class TestRecipeIndex(TestCase):
+class TestRecipeIndex(APITestCase):
 
     def setUp(self):
         endpoint = 'recipes'
@@ -68,7 +68,7 @@ class TestRecipeIndex(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestRecipeCreate(TestCase):
+class TestRecipeCreate(APITestCase):
 
     def setUp(self):
         endpoint = 'recipes/new'
@@ -132,7 +132,7 @@ class TestRecipeCreate(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestRecipeDelete(TestCase):
+class TestRecipeDelete(APITestCase):
 
     def setUp(self):
         clear_recipes()
@@ -158,7 +158,7 @@ class TestRecipeDelete(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestRecipeEdit(TestCase):
+class TestRecipeEdit(APITestCase):
 
     def setUp(self):
         clear_recipes()
@@ -274,7 +274,7 @@ class TestRecipeEdit(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestRecipeShow(TestCase):
+class TestRecipeShow(APITestCase):
 
     def setUp(self):
         clear_recipes()

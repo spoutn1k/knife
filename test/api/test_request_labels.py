@@ -1,5 +1,5 @@
 import requests
-from test import TestCase, SERVER
+from test.api import APITestCase, SERVER
 
 
 def clear_labels():
@@ -8,7 +8,7 @@ def clear_labels():
         requests.delete("%s/labels/%s" % (SERVER, label.get('id')))
 
 
-class TestLabelIndex(TestCase):
+class TestLabelIndex(APITestCase):
 
     def setUp(self):
         endpoint = 'labels'
@@ -54,7 +54,7 @@ class TestLabelIndex(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestLabelCreate(TestCase):
+class TestLabelCreate(APITestCase):
 
     def setUp(self):
         endpoint = 'labels/new'
@@ -105,7 +105,7 @@ class TestLabelCreate(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestLabelDelete(TestCase):
+class TestLabelDelete(APITestCase):
 
     def setUp(self):
         clear_labels()
@@ -131,7 +131,7 @@ class TestLabelDelete(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestLabelEdit(TestCase):
+class TestLabelEdit(APITestCase):
 
     def setUp(self):
         clear_labels()

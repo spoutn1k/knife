@@ -1,5 +1,5 @@
 import requests
-from test import TestCase, SERVER
+from test.api import APITestCase, SERVER
 
 RECIPE_NAME = 'Tartare'
 RECIPE_ID = 'Not set'
@@ -52,7 +52,7 @@ def clear_requirements():
             (SERVER, RECIPE_ID, requirement.get('ingredient').get('id')))
 
 
-class TestRequirementShow(TestCase):
+class TestRequirementShow(APITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -77,7 +77,7 @@ class TestRequirementShow(TestCase):
         self.assertIsInstance(query.json().get('data'), list)
 
 
-class TestRequirementAdd(TestCase):
+class TestRequirementAdd(APITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -146,7 +146,7 @@ class TestRequirementAdd(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestRequirementDelete(TestCase):
+class TestRequirementDelete(APITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -175,7 +175,7 @@ class TestRequirementDelete(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestRequirementEdit(TestCase):
+class TestRequirementEdit(APITestCase):
 
     @classmethod
     def setUpClass(cls):

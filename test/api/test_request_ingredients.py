@@ -1,5 +1,5 @@
 import requests
-from test import TestCase, SERVER
+from test.api import APITestCase, SERVER
 
 
 def clear_ingredients():
@@ -8,7 +8,7 @@ def clear_ingredients():
         requests.delete("%s/ingredients/%s" % (SERVER, ingredient.get('id')))
 
 
-class TestIngredientIndex(TestCase):
+class TestIngredientIndex(APITestCase):
 
     def setUp(self):
         endpoint = 'ingredients'
@@ -54,7 +54,7 @@ class TestIngredientIndex(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestIngredientCreate(TestCase):
+class TestIngredientCreate(APITestCase):
 
     def setUp(self):
         endpoint = 'ingredients/new'
@@ -105,7 +105,7 @@ class TestIngredientCreate(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestIngredientDelete(TestCase):
+class TestIngredientDelete(APITestCase):
 
     def setUp(self):
         clear_ingredients()
@@ -131,7 +131,7 @@ class TestIngredientDelete(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestIngredientEdit(TestCase):
+class TestIngredientEdit(APITestCase):
 
     def setUp(self):
         clear_ingredients()

@@ -1,5 +1,5 @@
 import requests
-from test import TestCase, SERVER
+from test.api import APITestCase, SERVER
 
 RECIPE_NAME = 'Tartare'
 RECIPE_ID = 'Not set'
@@ -48,7 +48,7 @@ def clear_tags():
                         (SERVER, RECIPE_ID, tag.get('id')))
 
 
-class TestTagShow(TestCase):
+class TestTagShow(APITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -68,7 +68,7 @@ class TestTagShow(TestCase):
         self.assertIsInstance(query.json().get('data'), list)
 
 
-class TestTagAdd(TestCase):
+class TestTagAdd(APITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -112,7 +112,7 @@ class TestTagAdd(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestTagDelete(TestCase):
+class TestTagDelete(APITestCase):
 
     @classmethod
     def setUpClass(cls):

@@ -1,5 +1,5 @@
 import requests
-from test import TestCase, SERVER
+from test.api import APITestCase, SERVER
 
 RECIPE_NAMES = ('Tartare', 'Frites')
 RECIPE_IDS = []
@@ -33,7 +33,7 @@ def clear_dependencies():
                             (SERVER, id, recipe_id))
 
 
-class TestDependencyShow(TestCase):
+class TestDependencyShow(APITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -59,7 +59,7 @@ class TestDependencyShow(TestCase):
         self.assertIsInstance(query.json().get('data'), list)
 
 
-class TestDependencyAdd(TestCase):
+class TestDependencyAdd(APITestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -124,7 +124,7 @@ class TestDependencyAdd(TestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
-class TestDependencyDelete(TestCase):
+class TestDependencyDelete(APITestCase):
 
     @classmethod
     def setUpClass(cls):
