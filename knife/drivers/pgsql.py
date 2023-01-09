@@ -1,6 +1,6 @@
 import psycopg2
 from knife.drivers import AbstractDriver
-from knife.models import Datatypes
+from knife.models.knife_model import Datatypes
 
 DRIVER_NAME = 'pgsql'
 

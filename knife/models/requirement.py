@@ -1,4 +1,4 @@
-from knife.models import Datatypes, FieldList, Field
+from knife.models.knife_model import Datatypes, FieldList, Field
 
 
 class Requirement:

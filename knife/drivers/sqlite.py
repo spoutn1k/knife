@@ -1,7 +1,7 @@
 import sqlite3
 import logging
 from knife.drivers import AbstractDriver
-from knife.models import Datatypes
+from knife.models.knife_model import Datatypes
 
 DRIVER_NAME = 'sqlite'
 
