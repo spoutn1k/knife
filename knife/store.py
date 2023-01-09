@@ -335,13 +335,13 @@ class Store:
                 }])):
             raise RecipeNotFound(recipe_id)
 
-        recipe_data = results[0]
+        recipe_data = Recipe(results[0]).serializable
 
         recipe_data['requirements'] = requirement_list(self.driver, recipe_id)
         recipe_data['dependencies'] = dependency_list(self.driver, recipe_id)
         recipe_data['tags'] = tag_list(self.driver, recipe_id)
 
-        return Recipe(recipe_data).serializable
+        return recipe_data
 
     def _recipe_requirements(self, recipe_id, args=None, form=None):
         if not self.driver.read(Recipe,
