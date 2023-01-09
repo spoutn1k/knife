@@ -41,6 +41,13 @@ class TestDriverJSONRead(TestCase):
             "simple_name": "chipotle_chicken",
             "author": "",
             "directions": ""
+        },
+        "5": {
+            "id": "5e020bbbd8f2dbfab1a3b3d768dc141b036c26342e5cc4ea966cdae168455b0e",
+            "name": "Chipotle Chicken Jaliscan",
+            "simple_name": "chipotle_chicken_jaliscan",
+            "author": "",
+            "directions": ""
         }
     },
     "dependencies": {
@@ -79,16 +86,18 @@ class TestDriverJSONRead(TestCase):
     def test_read_model(self):
         dump = self.driver.read(Recipe)
 
-        self.assertEqual(len(dump), 4)
+        self.assertEqual(len(dump), 5)
         self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields))
 
         names = set(filter(None, map(lambda x: x.get('name'), dump)))
-        self.assertSetEqual(names, {
-            'Fajitas',
-            'Guacamole',
-            'Pico de Gallo',
-            'Chipotle Chicken',
-        })
+        self.assertSetEqual(
+            names, {
+                'Fajitas',
+                'Guacamole',
+                'Pico de Gallo',
+                'Chipotle Chicken',
+                'Chipotle Chicken Jaliscan',
+            })
 
     def test_read_model_filtered(self):
         dump = self.driver.read(Recipe,
@@ -114,10 +123,31 @@ class TestDriverJSONRead(TestCase):
         names = set(filter(None, map(lambda x: x.get('name'), dump)))
         self.assertSetEqual(names, {'Fajitas'})
 
+        dump = self.driver.read(Recipe,
+                                filters=[{
+                                    Recipe.fields.simple_name:
+                                    'chipotle_chicken'
+                                }],
+                                exact=False)
+        self.assertEqual(len(dump), 2)
+        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        self.assertSetEqual(names,
+                            {'Chipotle Chicken', 'Chipotle Chicken Jaliscan'})
+
+        dump = self.driver.read(Recipe,
+                                filters=[{
+                                    Recipe.fields.simple_name:
+                                    'chipotle_chicken'
+                                }],
+                                exact=True)
+        self.assertEqual(len(dump), 1)
+        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        self.assertSetEqual(names, {'Chipotle Chicken'})
+
     def test_read_model_columns(self):
         dump = self.driver.read(Recipe, columns=['*'])
 
-        self.assertEqual(len(dump), 4)
+        self.assertEqual(len(dump), 5)
         self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields))
 
         columns = {Recipe.fields.name, Recipe.fields.author}

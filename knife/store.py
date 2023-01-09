@@ -136,7 +136,8 @@ class Store:
                                       filters=[{
                                           Ingredient.fields.simple_name:
                                           ing.simple_name
-                                      }]):
+                                      }],
+                                      exact=True):
             raise IngredientAlreadyExists(Ingredient(stored[0]).serializable)
 
         self.driver.write(Ingredient, ing.params)

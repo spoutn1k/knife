@@ -10,7 +10,7 @@ def build_query(filters, exact):
         current = None
         for field, value in rule.items():
             if exact:
-                fragment = getattr(Query(), field).matches(value)
+                fragment = getattr(Query(), field) == value
             else:
                 fragment = getattr(Query(), field).search(value)
             current = (current & fragment) if current else fragment
@@ -69,7 +69,7 @@ class JSONDriver(AbstractDriver):
             table = self.db.table(model.table_name, cache_size=0)
 
             if query := build_query(filters, exact):
-                matches = table.search(build_query(filters, exact))
+                matches = table.search(query)
             else:
                 matches = table.all()
 
