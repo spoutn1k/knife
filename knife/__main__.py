@@ -6,20 +6,6 @@ from flask_cors import CORS
 from knife.routes import setup_routes
 from knife.drivers import DRIVERS, get_driver
 
-if os.environ.get('KNIFE_COVERAGE'):
-    import coverage
-    import atexit
-
-    cov = coverage.Coverage(branch=True)
-    cov.start()
-
-    def save_coverage():
-        logging.info("Saving coverage")
-        cov.stop()
-        cov.save()
-
-    atexit.register(save_coverage)
-
 level = logging.INFO
 if os.environ.get('KNIFE_DEBUG'):
     level = logging.DEBUG
