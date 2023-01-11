@@ -7,9 +7,11 @@ DRIVER_NAME = 'pgsql'
 
 def model_definition(model):
     datatypes = {
-        Datatypes.text: 'TEXT',
-        Datatypes.required: 'NOT NULL',
-        Datatypes.primary_key: ''
+        Datatypes.TEXT: 'TEXT',
+        Datatypes.INTEGER: 'INTEGER',
+        Datatypes.BOOLEAN: 'BOOLEAN',
+        Datatypes.REQUIRED: 'NOT NULL',
+        Datatypes.PRIMARY_KEY: ''
     }
 
     TEMPLATE = "CREATE TABLE %s (%%s)" % model.table_name
@@ -20,7 +22,7 @@ def model_definition(model):
         modifiers = [datatypes[dt] for dt in field.datatype]
         columns.append("%s %s" % (field.name, " ".join(modifiers)))
 
-        if Datatypes.primary_key in field.datatype:
+        if Datatypes.PRIMARY_KEY in field.datatype:
             pks.append(field.name)
 
     columns.append("PRIMARY KEY (%s)" % ", ".join(pks))

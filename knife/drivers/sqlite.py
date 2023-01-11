@@ -8,9 +8,11 @@ DRIVER_NAME = 'sqlite'
 
 def model_definition(model):
     datatypes = {
-        Datatypes.text: 'TEXT',
-        Datatypes.required: 'NOT NULL',
-        Datatypes.primary_key: ''
+        Datatypes.TEXT: 'TEXT',
+        Datatypes.INTEGER: 'INTEGER',
+        Datatypes.BOOLEAN: 'INTEGER',
+        Datatypes.REQUIRED: 'NOT NULL',
+        Datatypes.PRIMARY_KEY: ''
     }
 
     TEMPLATE = "CREATE TABLE %s (%%s)" % model.table_name
@@ -21,7 +23,7 @@ def model_definition(model):
         modifiers = [datatypes[dt] for dt in field.datatype]
         columns.append("%s %s" % (field.name, " ".join(modifiers)))
 
-        if Datatypes.primary_key in field.datatype:
+        if Datatypes.PRIMARY_KEY in field.datatype:
             pks.append(field.name)
 
     columns.append("PRIMARY KEY (%s)" % ", ".join(pks))
@@ -32,7 +34,7 @@ def model_definition(model):
 def match_string(filters: list, exact: bool):
     parameters = {}
 
-    if valid_filters := list(filter(lambda x: x, filters)):
+    if valid_filters := list(filter(None, filters)):
         match_operator = '=' if exact else 'LIKE'
         template = ' WHERE '
 

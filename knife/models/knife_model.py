@@ -5,12 +5,13 @@ from typing import Any
 
 
 class Datatypes():
-    integer = 0
-    text = 1
+    INTEGER = 0
+    TEXT = 1
+    BOOLEAN = 2
 
-    required = 10
-    primary_key = 11
-    foreign_key = 12
+    REQUIRED = 10
+    PRIMARY_KEY = 11
+    FOREIGN_KEY = 12
 
 
 @dataclass

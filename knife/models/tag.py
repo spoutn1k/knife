@@ -5,7 +5,7 @@ class Tag:
     table_name = 'tags'
     fields = FieldList(
         Field(name='recipe_id',
-              datatype=[Datatypes.text, Datatypes.primary_key]),
+              datatype=[Datatypes.TEXT, Datatypes.PRIMARY_KEY]),
         Field(name='label_id',
-              datatype=[Datatypes.text, Datatypes.primary_key]),
+              datatype=[Datatypes.TEXT, Datatypes.PRIMARY_KEY]),
     )
