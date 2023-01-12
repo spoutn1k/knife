@@ -1,5 +1,7 @@
 from tinydb import (Query, TinyDB)
+from typing import Any
 from knife.drivers import AbstractDriver
+from knife.models.knife_model import Field, KnifeModel
 
 DRIVER_NAME = 'json'
 
@@ -10,9 +12,9 @@ def build_query(filters, exact):
         current = None
         for field, value in rule.items():
             if exact:
-                fragment = getattr(Query(), field) == value
+                fragment = getattr(Query(), field.name) == value
             else:
-                fragment = getattr(Query(), field).search(value)
+                fragment = getattr(Query(), field.name).search(value)
             current = (current & fragment) if current else fragment
         query = (query | current) if query else current
 
@@ -20,6 +22,7 @@ def build_query(filters, exact):
 
 
 def join(db, join_params, query):
+    """Mimic SQL join by querying twice and merging the records"""
     model1, model2, field1, field2 = join_params
 
     if query:
@@ -29,23 +32,32 @@ def join(db, join_params, query):
 
     for document in lhs:
         assert len(document.keys()) == len(model1.fields.fields)
-        query = getattr(Query(), field2).matches(document[field1])
+        query = getattr(Query(), field2.name).matches(document[field1.name])
         rhs = db.table(model2.table_name, cache_size=0).search(query)
 
         for other in rhs:
             yield document | other
 
 
-def select(mapping: dict, fields: list[str]):
+def select(mapping: dict, fields: list[Field], model: KnifeModel):
+    """Filter a mapping and return only the fields present in fields"""
     if fields == ['*']:
-        return mapping
+        if isinstance(model, tuple):
+            fields = set(model[0].fields.fields) | set(model[1].fields.fields)
+        else:
+            fields = model.fields.fields
 
-    keys = list(mapping.keys())
-    for field in keys:
-        if field not in fields:
-            del mapping[field]
+    def cast_fields(
+        mapping: dict[str, Any],
+        fields: set[Field],
+    ) -> dict[Field, Any]:
+        """Transform mapping keys in model fields"""
+        target_field_names = dict(map(lambda x: (x.name, x), fields))
+        for field_name, value in mapping.items():
+            if field_name in target_field_names:
+                yield (target_field_names[field_name], value)
 
-    return mapping
+    return dict(cast_fields(mapping, fields))
 
 
 class JSONDriver(AbstractDriver):
@@ -73,17 +85,23 @@ class JSONDriver(AbstractDriver):
             else:
                 matches = table.all()
 
-        return list(map(lambda x: select(x, columns), matches))
+        return list(map(lambda x: select(x, columns, model), matches))
 
     def write(self, model: object, record: dict, filters=[]) -> None:
         table = self.db.table(model.table_name, cache_size=0)
 
+        cast_record = dict(
+            map(
+                lambda k_v: (k_v[0].name, k_v[1]),
+                record.items(),
+            ))
+
         if filters:
             query = build_query(filters, True)
-            table.update(record, query)
+            table.update(cast_record, query)
 
         else:
-            table.insert(record)
+            table.insert(cast_record)
 
     def erase(self, model: object, filters=[]) -> None:
         table = self.db.table(model.table_name, cache_size=0)

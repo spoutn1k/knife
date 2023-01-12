@@ -65,17 +65,20 @@ class TestOperations(TestCase):
         "4": {
             "required_by": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "requisite": "8a97dd5724a9e3060191f7b616f5aaa3f529cdb5c555995f6a6dee2f5f79dfd2",
-            "quantity": ""
+            "quantity": "",
+            "optional": false
         },
         "5": {
             "required_by": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "requisite": "5158f09fa8e396a478095953a3177b1e3ec353078050b94f13a7a2cf54371cf2",
-            "quantity": ""
+            "quantity": "",
+            "optional": false
         },
         "6": {
             "required_by": "8a97dd5724a9e3060191f7b616f5aaa3f529cdb5c555995f6a6dee2f5f79dfd2",
             "requisite": "a86eb5eae40d8d58f38b3416f48b414e6d82e4ba6a7c7bce89ed05f0c4e8d536",
-            "quantity": ""
+            "quantity": "",
+            "optional": false
         }
     },
     "labels": {

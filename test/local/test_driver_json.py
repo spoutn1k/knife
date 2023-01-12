@@ -1,6 +1,7 @@
 from pathlib import Path
 from knife.store import Store
 from knife.models import Recipe, Dependency
+from knife.models.knife_model import Field
 from knife.drivers.json import JSONDriver
 from test import TestCase
 from tempfile import NamedTemporaryFile
@@ -54,17 +55,20 @@ class TestDriverJSONRead(TestCase):
         "1": {
             "required_by": "7fa1f29e27a48cc8dc73cbdcdec7231ff4923bd1520fc8e6e3413547172d490d",
             "requisite": "06faab5fe9048cf9a5d009952e3e491fb4b785cf38a6230f450167004f3733ed",
-            "quantity": ""
+            "quantity": "",
+            "optional": false
         },
         "2": {
             "required_by": "7fa1f29e27a48cc8dc73cbdcdec7231ff4923bd1520fc8e6e3413547172d490d",
             "requisite": "4e020bbbd8f2dbfab1a3b3d768dc141b036c26342e5cc4ea966cdae168455b0e",
-            "quantity": ""
+            "quantity": "",
+            "optional": false
         },
         "3": {
             "required_by": "06faab5fe9048cf9a5d009952e3e491fb4b785cf38a6230f450167004f3733ed",
             "requisite": "8a69388e1a2c4c6f766f5f5c7e2f8d578789c4fb11e32de0b808658b4eea32d9",
-            "quantity": ""
+            "quantity": "",
+            "optional": false
         }
     }
 }
@@ -87,9 +91,10 @@ class TestDriverJSONRead(TestCase):
         dump = self.driver.read(Recipe)
 
         self.assertEqual(len(dump), 5)
-        self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields))
+        self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields.fields))
 
-        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        names = set(
+            filter(None, map(lambda x: x.get(Recipe.fields.name), dump)))
         self.assertSetEqual(
             names, {
                 'Fajitas',
@@ -106,9 +111,10 @@ class TestDriverJSONRead(TestCase):
                                 }])
 
         self.assertEqual(len(dump), 1)
-        self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields))
+        self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields.fields))
 
-        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        names = set(
+            filter(None, map(lambda x: x.get(Recipe.fields.name), dump)))
         self.assertSetEqual(names, {'Fajitas'})
 
     def test_read_model_filtered_exact(self):
@@ -120,7 +126,8 @@ class TestDriverJSONRead(TestCase):
                                     Recipe.fields.name: 'ji'
                                 }],
                                 exact=False)
-        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        names = set(
+            filter(None, map(lambda x: x.get(Recipe.fields.name), dump)))
         self.assertSetEqual(names, {'Fajitas'})
 
         dump = self.driver.read(Recipe,
@@ -130,7 +137,8 @@ class TestDriverJSONRead(TestCase):
                                 }],
                                 exact=False)
         self.assertEqual(len(dump), 2)
-        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        names = set(
+            filter(None, map(lambda x: x.get(Recipe.fields.name), dump)))
         self.assertSetEqual(names,
                             {'Chipotle Chicken', 'Chipotle Chicken Jaliscan'})
 
@@ -141,14 +149,15 @@ class TestDriverJSONRead(TestCase):
                                 }],
                                 exact=True)
         self.assertEqual(len(dump), 1)
-        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        names = set(
+            filter(None, map(lambda x: x.get(Recipe.fields.name), dump)))
         self.assertSetEqual(names, {'Chipotle Chicken'})
 
     def test_read_model_columns(self):
         dump = self.driver.read(Recipe, columns=['*'])
 
         self.assertEqual(len(dump), 5)
-        self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields))
+        self.assertSetEqual(set(dump[0].keys()), set(Recipe.fields.fields))
 
         columns = {Recipe.fields.name, Recipe.fields.author}
         dump = self.driver.read(Recipe, columns=columns)
@@ -163,8 +172,9 @@ class TestDriverJSONRead(TestCase):
         ))
 
         self.assertEqual(len(dump), 3)
-        self.assertSetEqual(set(dump[0].keys()),
-                            set(Recipe.fields) | set(Dependency.fields))
+        self.assertSetEqual(
+            set(dump[0].keys()),
+            set(Recipe.fields.fields) | set(Dependency.fields.fields))
 
         names = set(filter(None, map(lambda x: x.get('name'), dump)))
         self.assertNotIn('Pico de Gallo', names)
@@ -184,14 +194,16 @@ class TestDriverJSONRead(TestCase):
         )
 
         self.assertEqual(len(dump), 2)
-        self.assertSetEqual(set(dump[0].keys()),
-                            set(Recipe.fields) | set(Dependency.fields))
+        self.assertSetEqual(
+            set(dump[0].keys()),
+            set(Recipe.fields.fields) | set(Dependency.fields.fields))
 
-        names = set(filter(None, map(lambda x: x.get('name'), dump)))
+        names = set(
+            filter(None, map(lambda x: x.get(Recipe.fields.name), dump)))
         self.assertNotIn('Pico de Gallo', names)
         self.assertNotIn('Guacamole', names)
 
-        ids = set(filter(None, map(lambda x: x.get('id'), dump)))
+        ids = set(filter(None, map(lambda x: x.get(Recipe.fields.id), dump)))
         self.assertSetEqual({fajitas_id}, ids)
 
     def test_read_join_model_columns(self):
@@ -265,10 +277,10 @@ class TestDriverJSONWrite(TestCase):
         fajitas_id = '7fa1f29e27a48cc8dc73cbdcdec7231ff4923bd1520fc8e6e3413547172d490d'
         self.driver.write(
             Recipe,
-            dict(
-                name="Fajititas",
-                simple_name="fajititas",
-            ),
+            {
+                Recipe.fields.name: "Fajititas",
+                Recipe.fields.simple_name: "fajititas",
+            },
             filters=[{
                 Recipe.fields.id: fajitas_id
             }],

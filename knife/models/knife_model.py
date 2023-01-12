@@ -14,11 +14,21 @@ class Datatypes():
     FOREIGN_KEY = 12
 
 
-@dataclass
+@dataclass(frozen=True)
 class Field:
     name: str
-    datatype: list[Datatypes]
+    datatype: frozenset[Datatypes]
     default: Any = None
+
+    def __init__(self, name, datatype, default=None):
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "datatype", frozenset(datatype))
+        object.__setattr__(self, "default", default)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.name == other.name and self.datatype == other.datatype
 
 
 class FieldList():
@@ -26,7 +36,7 @@ class FieldList():
     def __init__(self, *fields):
         self.index = 0
         for f in fields:
-            self.__setattr__(f.name, f.name)
+            self.__setattr__(f.name, f)
             self.__setattr__(f.name + '_type', f.datatype)
             self.__setattr__(f.name + '_default', f.default)
         self.fields = fields
@@ -60,7 +70,10 @@ class KnifeModel:
 
     @property
     def params(self):
-        components = map(lambda f: (f, getattr(self, f, None)), self.fields)
+        components = map(
+            lambda f: (f, getattr(self, f.name, None)),
+            self.fields.fields,
+        )
 
         return dict(components)
 

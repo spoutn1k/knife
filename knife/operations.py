@@ -51,10 +51,11 @@ def requirement_list(driver, recipe_id):
     def _format(record):
         return {
             'ingredient': {
-                Ingredient.fields.id: record[Ingredient.fields.id],
-                Ingredient.fields.name: record[Ingredient.fields.name],
+                Ingredient.fields.id.name: record[Ingredient.fields.id],
+                Ingredient.fields.name.name: record[Ingredient.fields.name],
             },
-            Requirement.fields.quantity: record[Requirement.fields.quantity]
+            Requirement.fields.quantity.name:
+            record[Requirement.fields.quantity]
         }
 
     return list(map(_format, data))
@@ -75,18 +76,26 @@ def dependency_list(driver, recipe_id):
     def _format(record):
         return {
             'recipe': {
-                Recipe.fields.id: record[Recipe.fields.id],
-                Recipe.fields.name: record[Recipe.fields.name],
+                Recipe.fields.id.name: record[Recipe.fields.id],
+                Recipe.fields.name.name: record[Recipe.fields.name],
             },
-            Dependency.fields.quantity: record[Dependency.fields.quantity]
+            Dependency.fields.quantity.name: record[Dependency.fields.quantity]
         }
 
     return list(map(_format, data))
 
 
 def tag_list(driver, recipe_id):
-    return driver.read((Tag, Label, Tag.fields.label_id, Label.fields.id),
+    data = driver.read((Tag, Label, Tag.fields.label_id, Label.fields.id),
                        filters=[{
                            Tag.fields.recipe_id: recipe_id
                        }],
                        columns=[Label.fields.name, Label.fields.id])
+
+    def _format(record):
+        return {
+            Label.fields.id.name: record[Label.fields.id],
+            Label.fields.name.name: record[Label.fields.name],
+        }
+
+    return list(map(_format, data))
