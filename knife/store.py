@@ -4,6 +4,7 @@ store.py
 Implementation of the Store class
 """
 
+from typing import Any
 from flask import request, make_response
 from knife import helpers
 from knife.models.knife_model import Datatypes, Field
@@ -53,10 +54,23 @@ def validate_query(
         if key not in authorized_keys:
             raise InvalidQuery({key: args_dict.get(key)})
 
+    def _cast(datatype: set[Datatypes], arg: Any):
+        if Datatypes.INTEGER in datatype:
+            return int(arg)
+        elif Datatypes.TEXT in datatype:
+            return str(arg)
+        elif Datatypes.BOOLEAN in datatype:
+            return str(arg) in {'True', 'true'}
+        raise InvalidValue(datatype)
+
     def _extract():
         for field in authorized_fields:
             if field.name in args_dict:
-                yield (field, args_dict[field.name])
+                try:
+                    value = _cast(field.datatype, args_dict[field.name])
+                except InvalidValue:
+                    continue
+                yield (field, value)
 
     return dict(_extract())
 
@@ -593,10 +607,10 @@ class Store:
         """
         Modify the quantity of a required recipe
         """
-        validate_query(form, [Dependency.fields.quantity])
-
-        if not form.get(Dependency.fields.quantity.name):
-            raise InvalidValue(Dependency.fields.quantity, "")
+        params = validate_query(form, [
+            Dependency.fields.quantity,
+            Dependency.fields.optional,
+        ])
 
         if not self.driver.read(
                 Dependency,
@@ -607,7 +621,7 @@ class Store:
             raise DependencyNotFound(recipe_id, required_id)
 
         self.driver.write(Dependency,
-                          dict(convert(form, Dependency)),
+                          params,
                           filters=[{
                               Dependency.fields.required_by: recipe_id,
                               Dependency.fields.requisite: required_id

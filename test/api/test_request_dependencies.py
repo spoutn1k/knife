@@ -124,6 +124,77 @@ class TestDependencyAdd(APITestCase):
         self.assertFalse(query.ok, msg=query.json())
 
 
+class TestDependencyEdit(APITestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        create_objects()
+
+    @classmethod
+    def tearDownClass(cls):
+        delete_objects()
+
+    def setUp(self):
+        self.url = "%s/recipes/%s/dependencies" % (SERVER, RECIPE_IDS[0])
+        clear_dependencies()
+
+    def test_edit_quantity(self):
+        params = dict(
+            requisite=RECIPE_IDS[1],
+            quantity='A ton',
+        )
+        query = requests.post(f"{self.url}/add", data=params)
+        self.assertTrue(query.ok, msg='')
+
+        params = {'quantity': 'some amount'}
+        query = requests.put(f"{self.url}/{RECIPE_IDS[1]}", data=params)
+        self.assertTrue(query.ok,
+                        msg=f"Status code {query.status_code} returned")
+
+        query = requests.get(f"{self.url}")
+        self.assertTrue(query.ok,
+                        msg=f"Status code {query.status_code} returned")
+        data = list(
+            filter(
+                lambda x: x.get('recipe', {}).get('id', '') == RECIPE_IDS[1],
+                query.json()['data'],
+            ))
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(
+            data[0],
+            data[0] | {'quantity': 'some amount'},
+        )
+
+    def test_edit_optional(self):
+        params = dict(
+            requisite=RECIPE_IDS[1],
+            optional=True,
+        )
+        query = requests.post(f"{self.url}/add", data=params)
+        self.assertTrue(query.ok)
+
+        params = dict(optional=False)
+        query = requests.put(f"{self.url}/{RECIPE_IDS[1]}", data=params)
+        self.assertTrue(query.ok,
+                        msg=f"Status code {query.status_code} returned")
+
+        query = requests.get(f"{self.url}")
+        self.assertTrue(query.ok,
+                        msg=f"Status code {query.status_code} returned")
+        data = list(
+            filter(
+                lambda x: x.get('recipe', {}).get('id', '') == RECIPE_IDS[1],
+                query.json()['data'],
+            ))
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(
+            data[0],
+            data[0] | dict(optional=False),
+        )
+
+
 class TestDependencyDelete(APITestCase):
 
     @classmethod

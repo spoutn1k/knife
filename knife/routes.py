@@ -35,6 +35,8 @@ ROUTES = (
      '/recipes/<recipe_id>/requirements/<ingredient_id>'),
     (['POST'], BACK_END.dependency_add,
      '/recipes/<recipe_id>/dependencies/add'),
+    (['PUT'], BACK_END.dependency_edit,
+     '/recipes/<recipe_id>/dependencies/<required_id>'),
     (['DELETE'], BACK_END.dependency_delete,
      '/recipes/<recipe_id>/dependencies/<required_id>'),
     (['POST'], BACK_END.tag_add, '/recipes/<recipe_id>/tags/add'),
