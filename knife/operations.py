@@ -68,6 +68,7 @@ def dependency_list(driver, recipe_id):
             Recipe.fields.id,
             Recipe.fields.name,
             Dependency.fields.quantity,
+            Dependency.fields.optional,
         ),
         filters=[{
             Dependency.fields.required_by: recipe_id
@@ -79,7 +80,9 @@ def dependency_list(driver, recipe_id):
                 Recipe.fields.id.name: record[Recipe.fields.id],
                 Recipe.fields.name.name: record[Recipe.fields.name],
             },
-            Dependency.fields.quantity.name: record[Dependency.fields.quantity]
+            Dependency.fields.quantity.name:
+            record[Dependency.fields.quantity],
+            Dependency.fields.optional.name: record[Dependency.fields.optional]
         }
 
     return list(map(_format, data))

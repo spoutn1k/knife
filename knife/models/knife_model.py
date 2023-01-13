@@ -79,4 +79,9 @@ class KnifeModel:
 
     @property
     def serializable(self):
-        return self.params
+        components = map(
+            lambda f: (f.name, getattr(self, f.name, None)),
+            self.fields.fields,
+        )
+
+        return dict(components)

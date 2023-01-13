@@ -6,10 +6,21 @@ Implementation of the Store class
 
 from flask import request, make_response
 from knife import helpers
-from knife.models import (Recipe, Label, Ingredient, Requirement, Tag,
-                          Dependency)
-from knife.operations import (requirement_list, dependency_nodes,
-                              dependency_list, tag_list)
+from knife.models.knife_model import Datatypes, Field
+from knife.models import (
+    Dependency,
+    Ingredient,
+    Label,
+    Recipe,
+    Requirement,
+    Tag,
+)
+from knife.operations import (
+    dependency_list,
+    dependency_nodes,
+    requirement_list,
+    tag_list,
+)
 from knife.exceptions import (
     DependencyAlreadyExists,
     DependencyCycle,
@@ -32,10 +43,35 @@ from knife.exceptions import (
 )
 
 
-def validate_query(args_dict, authorized_keys):
+def validate_query(
+    args_dict: dict[str, str],
+    authorized_fields: set[Field],
+) -> dict[Field, str]:
+    authorized_keys = set(map(lambda x: x.name, authorized_fields))
+
     for key in list(args_dict.keys()):
         if key not in authorized_keys:
-            raise InvalidQuery({key, args_dict.get(key)})
+            raise InvalidQuery({key: args_dict.get(key)})
+
+    def _extract():
+        for field in authorized_fields:
+            if field.name in args_dict:
+                yield (field, args_dict[field.name])
+
+    return dict(_extract())
+
+
+def convert(form, model):
+    for field in model.fields.fields:
+        if Datatypes.PRIMARY_KEY not in field.datatype:
+            yield field, form.get(field.name, field.default)
+
+
+def format_as_index(record, model):
+    return {
+        model.fields.id.name: record[model.fields.id],
+        model.fields.name.name: record[model.fields.name],
+    }
 
 
 def format_output(func):
@@ -59,12 +95,12 @@ def format_output(func):
                 'error': str(kerr),
                 'data': kerr.data
             }, kerr.status))
-        except Exception as err:
+        """except Exception as err:
             return make_response(({
                 'accept': False,
                 'error': str(err),
                 'data': None
-            }, 500))
+            }, 500))"""
         return make_response(({'accept': True, 'data': data}, 200))
 
     wrapper.__name__ = func.__name__.strip('_')
@@ -124,13 +160,13 @@ class Store:
         """
         validate_query(form, [Ingredient.fields.name])
 
-        if Ingredient.fields.name not in form.keys():
+        if Ingredient.fields.name.name not in form.keys():
             raise InvalidQuery(form)
 
         ing = Ingredient(form)
 
         if not ing.simple_name:
-            raise InvalidValue(Ingredient.fields.name, ing.name)
+            raise InvalidValue(Ingredient.fields.name.name, ing.name)
 
         if stored := self.driver.read(Ingredient,
                                       filters=[{
@@ -138,7 +174,8 @@ class Store:
                                           ing.simple_name
                                       }],
                                       exact=True):
-            raise IngredientAlreadyExists(Ingredient(stored[0]).serializable)
+            raise IngredientAlreadyExists(
+                format_as_index(stored[0], Ingredient))
 
         self.driver.write(Ingredient, ing.params)
         return ing.serializable
@@ -147,17 +184,24 @@ class Store:
         """
         Get an ingredient list, matching the parameters passed in args
         """
-        validate_query(args, [Ingredient.fields.id, Ingredient.fields.name])
+        filters = validate_query(args, [
+            Ingredient.fields.id,
+            Ingredient.fields.name,
+        ])
 
-        if args.get(Ingredient.fields.name):
-            args[Ingredient.fields.simple_name] = helpers.simplify(
-                args.pop(Ingredient.fields.name))
+        if pattern := filters.get(Ingredient.fields.name):
+            filters[Ingredient.fields.simple_name] = helpers.simplify(pattern)
+            filters.pop(Ingredient.fields.name)
 
-        return self.driver.read(
+        read = self.driver.read(
             Ingredient,
-            filters=[args],
+            filters=[filters],
             columns=[Ingredient.fields.id, Ingredient.fields.name],
             exact=False)
+
+        format_ing = lambda x: format_as_index(x, Ingredient)
+
+        return list(map(format_ing, read))
 
     def _ingredient_show(self, ingredient_id, args=None, form=None):
         """
@@ -167,7 +211,7 @@ class Store:
                 Ingredient, filters=[{
                     Ingredient.fields.id: ingredient_id
                 }])):
-            raise LabelNotFound(ingredient_id)
+            raise IngredientNotFound(ingredient_id)
 
         recipes = self.driver.read(
             (Requirement, Recipe, Requirement.fields.recipe_id,
@@ -177,8 +221,11 @@ class Store:
             }],
             columns=(Recipe.fields.id, Recipe.fields.name))
 
-        ingredient = stored[0]
-        ingredient.update({'used_in': recipes})
+        format_ing = lambda x: format_as_index(x, Ingredient)
+        format_recipe = lambda x: format_as_index(x, Recipe)
+
+        ingredient = format_ing(stored[0])
+        ingredient['used_in'] = list(map(format_recipe, recipes))
 
         return ingredient
 
@@ -214,12 +261,12 @@ class Store:
 
         validate_query(form, [Ingredient.fields.name])
 
-        if Ingredient.fields.name in form:
-            name = form[Ingredient.fields.name]
+        if Ingredient.fields.name.name in form:
+            name = form[Ingredient.fields.name.name]
             simple_name = helpers.simplify(name)
 
             if not simple_name:
-                raise InvalidValue(Ingredient.fields.name, name)
+                raise InvalidValue(Ingredient.fields.name.name, name)
 
             matching_names = self.driver.read(
                 Ingredient,
@@ -231,12 +278,13 @@ class Store:
                        matching_names))
 
             if name_exists:
-                raise IngredientAlreadyExists(name_exists[0])
+                raise IngredientAlreadyExists(
+                    format_as_index(name_exists[0], Ingredient))
 
-            form[Ingredient.fields.simple_name] = simple_name
+            form[Ingredient.fields.simple_name.name] = simple_name
 
         self.driver.write(Ingredient,
-                          form,
+                          dict(convert(form, Ingredient)),
                           filters=[{
                               Ingredient.fields.id: ingredient_id
                           }])
@@ -252,13 +300,15 @@ class Store:
         Create a recipe object from the params in arguments
         """
         validate_query(form, [
-            Recipe.fields.name, Recipe.fields.author, Recipe.fields.directions
+            Recipe.fields.name,
+            Recipe.fields.author,
+            Recipe.fields.directions,
         ])
 
         if not form:
             raise EmptyQuery()
 
-        if Recipe.fields.name not in form:
+        if Recipe.fields.name.name not in form:
             raise InvalidQuery(form)
 
         recipe = Recipe(form)
@@ -271,7 +321,7 @@ class Store:
                                            Recipe.fields.simple_name:
                                            recipe.simple_name
                                        }]):
-            raise RecipeAlreadyExists(recipes[0])
+            raise RecipeAlreadyExists(format_as_index(recipes[0], Recipe))
 
         self.driver.write(Recipe, recipe.params)
         return recipe.serializable
@@ -280,19 +330,25 @@ class Store:
         """
         Get a recipe list, matching the parameters passed in args
         """
-        validate_query(args, [
-            Recipe.fields.name, Recipe.fields.id, Recipe.fields.author,
-            Recipe.fields.directions
+        filters = validate_query(args, [
+            Recipe.fields.name,
+            Recipe.fields.id,
+            Recipe.fields.author,
+            Recipe.fields.directions,
         ])
 
-        if args.get(Recipe.fields.name):
-            args[Recipe.fields.simple_name] = helpers.simplify(
-                args.pop(Recipe.fields.name))
+        if pattern := filters.get(Recipe.fields.name):
+            filters[Recipe.fields.simple_name] = helpers.simplify(pattern)
+            filters.pop(Recipe.fields.name)
 
-        return self.driver.read(Recipe,
-                                filters=[args],
+        read = self.driver.read(Recipe,
+                                filters=[filters],
                                 columns=(Recipe.fields.id, Recipe.fields.name),
                                 exact=False)
+
+        format_recipe = lambda x: format_as_index(x, Recipe)
+
+        return list(map(format_recipe, read))
 
     def _recipe_delete(self, recipe_id, args=None, form=None):
         """
@@ -336,7 +392,19 @@ class Store:
                 }])):
             raise RecipeNotFound(recipe_id)
 
-        recipe_data = Recipe(results[0]).serializable
+        def _format(recipe_data):
+            return {
+                Recipe.fields.id.name:
+                recipe_data[Recipe.fields.id],
+                Recipe.fields.name.name:
+                recipe_data[Recipe.fields.name],
+                Recipe.fields.author.name:
+                recipe_data[Recipe.fields.author],
+                Recipe.fields.directions.name:
+                recipe_data[Recipe.fields.directions],
+            }
+
+        recipe_data = _format(results[0])
 
         recipe_data['requirements'] = requirement_list(self.driver, recipe_id)
         recipe_data['dependencies'] = dependency_list(self.driver, recipe_id)
@@ -383,28 +451,31 @@ class Store:
             raise RecipeNotFound(recipe_id)
 
         validate_query(form, [
-            Recipe.fields.name, Recipe.fields.author, Recipe.fields.directions
+            Recipe.fields.name,
+            Recipe.fields.author,
+            Recipe.fields.directions,
         ])
 
-        if Recipe.fields.name in form:
-            name = form[Recipe.fields.name]
+        if Recipe.fields.name.name in form:
+            name = form[Recipe.fields.name.name]
             simple_name = helpers.simplify(name)
 
             if not simple_name:
-                raise InvalidValue(Recipe.fields.name, name)
+                raise InvalidValue(Recipe.fields.name.name, name)
 
             if recipes := self.driver.read(Recipe,
                                            filters=[{
                                                Recipe.fields.simple_name:
                                                simple_name
                                            }]):
-                if recipes[0]['id'] != recipe_id:
-                    raise RecipeAlreadyExists(recipes[0])
+                if recipes[0][Recipe.fields.id] != recipe_id:
+                    raise RecipeAlreadyExists(
+                        format_as_index(recipes[0], Recipe))
 
-            form[Recipe.fields.simple_name] = simple_name
+            form[Recipe.fields.simple_name.name] = simple_name
 
         self.driver.write(Recipe,
-                          form,
+                          dict(convert(form, Recipe)),
                           filters=[{
                               Recipe.fields.id: recipe_id
                           }])
@@ -415,6 +486,8 @@ class Store:
         """
         Tag a recipe with a label
         """
+        validate_query(form, [Label.fields.name])
+
         if not self.driver.read(Recipe,
                                 filters=[{
                                     Recipe.fields.id: recipe_id
@@ -431,8 +504,7 @@ class Store:
                                           Label.fields.simple_name:
                                           label.simple_name
                                       }]):
-
-            label = Label(stored[0])
+            label = Label(format_as_index(stored[0], Label))
         else:
             self.driver.write(Label, label.params)
 
@@ -452,9 +524,6 @@ class Store:
         """
         Untag a recipe with a label
         """
-        if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
-            raise LabelNotFound(label_id)
-
         if not self.driver.read(Tag,
                                 filters=[{
                                     Tag.fields.recipe_id: recipe_id,
@@ -472,12 +541,25 @@ class Store:
         """
         Specify a recipe requirement for a recipe
         """
-        if not (required_id := form.get(Dependency.fields.requisite)):
-            raise InvalidQuery(
-                f"Missing parameter: {Dependency.fields.requisite}")
+        params = validate_query(form, [
+            Dependency.fields.requisite,
+            Dependency.fields.quantity,
+            Dependency.fields.optional,
+        ])
 
-        if not (quantity := form.get(Dependency.fields.quantity)):
-            quantity = Dependency.fields.quantity_default
+        params[Dependency.fields.required_by] = recipe_id
+
+        if not (required_id := params.get(Dependency.fields.requisite)):
+            raise InvalidQuery(
+                f"Missing parameter: {Dependency.fields.requisite.name}")
+
+        if not (quantity := params.get(Dependency.fields.quantity)):
+            params[Dependency.fields.
+                   quantity] = Dependency.fields.quantity.default
+
+        if not (optional := params.get(Dependency.fields.optional)):
+            params[Dependency.fields.
+                   optional] = Dependency.fields.optional.default
 
         if recipe_id == required_id:
             raise InvalidValue(Dependency.fields.requisite, recipe_id)
@@ -505,12 +587,7 @@ class Store:
                 or required_id in dependency_nodes(self.driver, recipe_id)):
             raise DependencyCycle()
 
-        self.driver.write(
-            Dependency, {
-                Dependency.fields.required_by: recipe_id,
-                Dependency.fields.requisite: required_id,
-                Dependency.fields.quantity: quantity,
-            })
+        self.driver.write(Dependency, params)
 
     def _dependency_edit(self, recipe_id, required_id, args=None, form=None):
         """
@@ -518,7 +595,7 @@ class Store:
         """
         validate_query(form, [Dependency.fields.quantity])
 
-        if not form.get(Dependency.fields.quantity):
+        if not form.get(Dependency.fields.quantity.name):
             raise InvalidValue(Dependency.fields.quantity, "")
 
         if not self.driver.read(
@@ -530,7 +607,7 @@ class Store:
             raise DependencyNotFound(recipe_id, required_id)
 
         self.driver.write(Dependency,
-                          form,
+                          dict(convert(form, Dependency)),
                           filters=[{
                               Dependency.fields.required_by: recipe_id,
                               Dependency.fields.requisite: required_id
@@ -569,13 +646,8 @@ class Store:
             form,
             [Requirement.fields.quantity, Requirement.fields.ingredient_id])
 
-        ingredient_id = form.get(Requirement.fields.ingredient_id)
-        quantity = form.get(Requirement.fields.quantity)
-
-        if not ingredient_id:
-            raise InvalidValue(Requirement.fields.ingredient_id, None)
-        if not quantity:
-            raise InvalidValue(Requirement.fields.quantity, quantity)
+        ingredient_id = form.get(Requirement.fields.ingredient_id.name)
+        quantity = form.get(Requirement.fields.quantity.name)
 
         if not self.driver.read(Recipe,
                                 filters=[{
@@ -583,11 +655,17 @@ class Store:
                                 }]):
             raise RecipeNotFound(recipe_id)
 
+        if not ingredient_id:
+            raise InvalidValue(Requirement.fields.ingredient_id, None)
+
         if not self.driver.read(Ingredient,
                                 filters=[{
                                     Ingredient.fields.id: ingredient_id
                                 }]):
             raise IngredientNotFound(ingredient_id)
+
+        if not quantity:
+            raise InvalidValue(Requirement.fields.quantity, quantity)
 
         if self.driver.read(Requirement,
                             filters=[{
@@ -615,9 +693,8 @@ class Store:
         """
         validate_query(form, [Requirement.fields.quantity])
 
-        if not form.get(Requirement.fields.quantity):
-            raise InvalidValue(Requirement.fields.quantity,
-                               form.get(Requirement.fields.quantity, ''))
+        if not form.get(Requirement.fields.quantity.name):
+            raise InvalidValue(Requirement.fields.quantity.name, '')
 
         if not self.driver.read(
                 Requirement,
@@ -628,7 +705,7 @@ class Store:
             raise RequirementNotFound(recipe_id, ingredient_id)
 
         self.driver.write(Requirement,
-                          form,
+                          dict(convert(form, Requirement)),
                           filters=[{
                               Requirement.fields.recipe_id:
                               recipe_id,
@@ -664,11 +741,22 @@ class Store:
         """
         Get all labels which match the parameters in args
         """
-        validate_query(args, [Label.fields.id, Label.fields.name])
-        return self.driver.read(Label,
-                                filters=[args],
-                                columns=(Label.fields.id, Label.fields.name),
-                                exact=False)
+        filters = validate_query(args, [
+            Label.fields.id,
+            Label.fields.name,
+        ])
+
+        if Label.fields.name in filters:
+            filters[Label.fields.name] = filters.pop(Label.fields.name)
+
+        saved = self.driver.read(Label,
+                                 filters=[filters],
+                                 columns=(Label.fields.id, Label.fields.name),
+                                 exact=False)
+
+        format_label = lambda x: format_as_index(x, Label)
+
+        return list(map(format_label, saved))
 
     def _label_delete(self, label_id, args=None, form=None):
         if not self.driver.read(Label, filters=[{Label.fields.id: label_id}]):
@@ -695,8 +783,7 @@ class Store:
                                           Label.fields.simple_name:
                                           label.simple_name
                                       }]):
-
-            raise LabelAlreadyExists(Label(stored[0]).serializable)
+            raise LabelAlreadyExists(format_as_index(stored[0], Label))
         else:
             self.driver.write(Label, label.params)
 
@@ -719,8 +806,11 @@ class Store:
             }],
             columns=(Recipe.fields.id, Recipe.fields.name))
 
-        label = stored[0]
-        label.update({'tagged_recipes': recipes})
+        format_label = lambda x: format_as_index(x, Label)
+        format_recipe = lambda x: format_as_index(x, Recipe)
+
+        label = format_label(stored[0])
+        label.update({'tagged_recipes': list(map(format_recipe, recipes))})
 
         return label
 
@@ -731,20 +821,26 @@ class Store:
 
         validate_query(form, [Label.fields.name])
 
-        if Label.fields.name in form:
-            name = form[Label.fields.name]
+        if Label.fields.name.name in form:
+            name = form[Label.fields.name.name]
             simple_name = helpers.simplify(name)
 
             if not simple_name or ' ' in name:
-                raise InvalidValue(Label.fields.name, name)
+                raise InvalidValue(Label.fields.name.name, name)
 
             if labels := self.driver.read(Label,
                                           filters=[{
                                               Label.fields.simple_name:
                                               simple_name
                                           }]):
-                raise LabelAlreadyExists(labels[0])
+                raise LabelAlreadyExists(format_as_index(labels[0], Label))
 
-            form[Label.fields.simple_name] = simple_name
+            form[Label.fields.simple_name.name] = simple_name
 
-        self.driver.write(Label, form, filters=[{Label.fields.id: label_id}])
+        self.driver.write(
+            Label,
+            dict(convert(form, Label)),
+            filters=[{
+                Label.fields.id: label_id
+            }],
+        )
