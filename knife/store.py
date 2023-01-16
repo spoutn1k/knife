@@ -172,12 +172,14 @@ class Store:
         """
         Create a ingredient object from the params in arguments
         """
-        validate_query(form, [Ingredient.fields.name])
+        validate_query(form, [
+            Ingredient.fields.name,
+        ])
 
         if Ingredient.fields.name.name not in form.keys():
             raise InvalidQuery(form)
 
-        ing = Ingredient(form)
+        ing = Ingredient(**form)
 
         if not ing.simple_name:
             raise InvalidValue(Ingredient.fields.name.name, ing.name)
@@ -325,7 +327,7 @@ class Store:
         if Recipe.fields.name.name not in form:
             raise InvalidQuery(form)
 
-        recipe = Recipe(form)
+        recipe = Recipe(**form)
 
         if not recipe.simple_name:
             raise InvalidValue(Recipe.fields.name, recipe.name)
@@ -508,7 +510,7 @@ class Store:
                                 }]):
             raise RecipeNotFound(recipe_id)
 
-        label = Label(form)
+        label = Label(**form)
 
         if not label.simple_name or " " in label.name:
             raise InvalidValue(Label.fields.name, label.name)
@@ -518,7 +520,7 @@ class Store:
                                           Label.fields.simple_name:
                                           label.simple_name
                                       }]):
-            label = Label(format_as_index(stored[0], Label))
+            label = Label(**format_as_index(stored[0], Label))
         else:
             self.driver.write(Label, label.params)
 
@@ -662,6 +664,8 @@ class Store:
 
         ingredient_id = form.get(Requirement.fields.ingredient_id.name)
         quantity = form.get(Requirement.fields.quantity.name)
+        optional = form.get(Requirement.fields.optional.name,
+                            Requirement.fields.optional.default)
 
         if not self.driver.read(Recipe,
                                 filters=[{
@@ -694,7 +698,8 @@ class Store:
             Requirement, {
                 Requirement.fields.recipe_id: recipe_id,
                 Requirement.fields.ingredient_id: ingredient_id,
-                Requirement.fields.quantity: quantity
+                Requirement.fields.quantity: quantity,
+                Requirement.fields.optional: optional
             })
 
     def _requirement_edit(self,
@@ -787,7 +792,7 @@ class Store:
     def _label_create(self, args=None, form=None):
         validate_query(form, [Label.fields.name])
 
-        label = Label(form)
+        label = Label(**form)
 
         if not label.simple_name or " " in label.name:
             raise InvalidValue(Label.fields.name, label.name)

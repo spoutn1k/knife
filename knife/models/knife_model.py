@@ -58,11 +58,17 @@ class FieldList():
 
 class KnifeModel:
 
-    @property
-    def id(self):
-        if not self._id:
-            self._id = helpers.hash256("{}{}".format(self.name, time.time()))
-        return self._id
+    def __init__(self, *args, **kwargs):
+        for field in self.fields.fields:
+            if field.name in kwargs:
+                self.__setattr__(field.name, kwargs.get(field.name))
+            elif field.default is not None:
+                self.__setattr__(field.name, field.default)
+
+        if 'id' in set(self.fields) and 'id' not in kwargs:
+            generated_id = helpers.hash256("{}{}".format(
+                self.name, time.time()))
+            self.__setattr__('id', generated_id)
 
     @property
     def simple_name(self):
