@@ -9,4 +9,6 @@ class Requirement:
         Field(name='ingredient_id',
               datatype=[Datatypes.TEXT, Datatypes.PRIMARY_KEY]),
         Field(name='quantity', datatype=[Datatypes.TEXT]),
+        Field(name='optional', datatype=[Datatypes.BOOLEAN], default=False),
+        Field(name='group', datatype=[Datatypes.TEXT], default=""),
     )

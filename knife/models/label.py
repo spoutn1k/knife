@@ -8,7 +8,3 @@ class Label(KnifeModel):
         Field('name', datatype=[Datatypes.TEXT]),
         Field('simple_name', datatype=[Datatypes.TEXT]),
     )
-
-    def __init__(self, params):
-        self._id = params.get("id")
-        self.name = params.get("name", '').rstrip()

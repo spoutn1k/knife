@@ -7,8 +7,10 @@ class Ingredient(KnifeModel):
         Field(name='id', datatype=[Datatypes.TEXT, Datatypes.PRIMARY_KEY]),
         Field(name='name', datatype=[Datatypes.TEXT]),
         Field(name='simple_name', datatype=[Datatypes.TEXT]),
+        Field(name='dairy', datatype=[Datatypes.BOOLEAN], default=False),
+        Field(name='gluten', datatype=[Datatypes.BOOLEAN], default=False),
+        Field(name='meat', datatype=[Datatypes.BOOLEAN], default=False),
+        Field(name='animal-product',
+              datatype=[Datatypes.BOOLEAN],
+              default=False),
     )
-
-    def __init__(self, params):
-        self._id = params.get("id")
-        self.name = params.get("name", '').rstrip()

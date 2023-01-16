@@ -20,35 +20,40 @@ class TestDriverJSONRead(TestCase):
             "name": "Fajitas",
             "simple_name": "fajitas",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         },
         "2": {
             "id": "06faab5fe9048cf9a5d009952e3e491fb4b785cf38a6230f450167004f3733ed",
             "name": "Guacamole",
             "simple_name": "guacamole",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         },
         "3": {
             "id": "8a69388e1a2c4c6f766f5f5c7e2f8d578789c4fb11e32de0b808658b4eea32d9",
             "name": "Pico de Gallo",
             "simple_name": "pico_de_gallo",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         },
         "4": {
             "id": "4e020bbbd8f2dbfab1a3b3d768dc141b036c26342e5cc4ea966cdae168455b0e",
             "name": "Chipotle Chicken",
             "simple_name": "chipotle_chicken",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         },
         "5": {
             "id": "5e020bbbd8f2dbfab1a3b3d768dc141b036c26342e5cc4ea966cdae168455b0e",
             "name": "Chipotle Chicken Jaliscan",
             "simple_name": "chipotle_chicken_jaliscan",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         }
     },
     "dependencies": {
@@ -237,7 +242,8 @@ class TestDriverJSONWrite(TestCase):
             "name": "Fajitas",
             "simple_name": "fajitas",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         }
     }
 }
@@ -259,12 +265,11 @@ class TestDriverJSONWrite(TestCase):
     def test_write_model(self):
         self.driver.write(
             Recipe,
-            Recipe(
-                dict(
-                    name="Guacamole",
-                    author="jb",
-                    directions="Split the avocados, ...",
-                )).params)
+            Recipe(**dict(
+                name="Guacamole",
+                author="jb",
+                directions="Split the avocados, ...",
+            )).params)
 
         with open(self.datafile.name, 'r') as datafile:
             dump = datafile.read()
@@ -305,14 +310,16 @@ class TestDriverJSONErase(TestCase):
             "name": "Fajitas",
             "simple_name": "fajitas",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         },
         "2": {
             "id": "06faab5fe9048cf9a5d009952e3e491fb4b785cf38a6230f450167004f3733ed",
             "name": "Guacamole",
             "simple_name": "guacamole",
             "author": "",
-            "directions": ""
+            "directions": "",
+            "information": ""
         }
     }
 }
