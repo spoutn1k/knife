@@ -14,6 +14,8 @@ def dependency_nodes(driver, recipe_id: str) -> set[str]:
     encountered ids. This *should* terminate as a dependency cycle should not
     be allowed, but there is a failsafe just in case.
     """
+    df = Dependency.fields
+
     nodes = set()
     to_visit = {recipe_id}
 
@@ -21,13 +23,12 @@ def dependency_nodes(driver, recipe_id: str) -> set[str]:
         next_tier = set()
 
         for recipe_id in to_visit:
-            for dependency in driver.read(
-                    Dependency,
-                    columns=(Dependency.fields.requisite, ),
-                    filters=[{
-                        Dependency.fields.required_by: recipe_id
-                    }]):
-                next_tier.add(dependency[Dependency.fields.requisite])
+            for dependency in driver.read(Dependency,
+                                          columns=(df.requisite, ),
+                                          filters=[{
+                                              df.required_by: recipe_id
+                                          }]):
+                next_tier.add(dependency[df.requisite])
 
         nodes = nodes | to_visit
         to_visit = next_tier - nodes
@@ -36,53 +37,57 @@ def dependency_nodes(driver, recipe_id: str) -> set[str]:
 
 
 def requirement_list(driver, recipe_id):
-    data = driver.read(
-        (Requirement, Ingredient, Requirement.fields.ingredient_id,
-         Ingredient.fields.id),
-        columns=(
-            Ingredient.fields.id,
-            Ingredient.fields.name,
-            Requirement.fields.quantity,
-        ),
-        filters=[{
-            Requirement.fields.recipe_id: recipe_id
-        }])
+    if_ = Ingredient.fields
+    rf = Requirement.fields
+
+    data = driver.read((Requirement, Ingredient, rf.ingredient_id, if_.id),
+                       columns=(
+                           if_.id,
+                           if_.name,
+                           rf.quantity,
+                           rf.optional,
+                           rf.group,
+                       ),
+                       filters=[{
+                           rf.recipe_id: recipe_id
+                       }])
 
     def _format(record):
         return {
             'ingredient': {
-                Ingredient.fields.id.name: record[Ingredient.fields.id],
-                Ingredient.fields.name.name: record[Ingredient.fields.name],
+                if_.id.name: record[if_.id],
+                if_.name.name: record[if_.name],
             },
-            Requirement.fields.quantity.name:
-            record[Requirement.fields.quantity]
+            rf.quantity.name: record[rf.quantity],
+            rf.optional.name: record[rf.optional],
+            rf.group.name: record[Requirement.fields.group]
         }
 
     return list(map(_format, data))
 
 
 def dependency_list(driver, recipe_id):
-    data = driver.read(
-        (Dependency, Recipe, Dependency.fields.requisite, Recipe.fields.id),
-        columns=(
-            Recipe.fields.id,
-            Recipe.fields.name,
-            Dependency.fields.quantity,
-            Dependency.fields.optional,
-        ),
-        filters=[{
-            Dependency.fields.required_by: recipe_id
-        }])
+    rf = Recipe.fields
+    df = Dependency.fields
+    data = driver.read((Dependency, Recipe, df.requisite, rf.id),
+                       columns=(
+                           rf.id,
+                           rf.name,
+                           df.quantity,
+                           df.optional,
+                       ),
+                       filters=[{
+                           df.required_by: recipe_id
+                       }])
 
     def _format(record):
         return {
             'recipe': {
-                Recipe.fields.id.name: record[Recipe.fields.id],
-                Recipe.fields.name.name: record[Recipe.fields.name],
+                rf.id.name: record[rf.id],
+                rf.name.name: record[rf.name],
             },
-            Dependency.fields.quantity.name:
-            record[Dependency.fields.quantity],
-            Dependency.fields.optional.name: record[Dependency.fields.optional]
+            df.quantity.name: record[df.quantity],
+            df.optional.name: record[df.optional]
         }
 
     return list(map(_format, data))

@@ -400,22 +400,19 @@ class Store:
         """
         Get full details about the recipe of the specified id
         """
-        if not (results := self.driver.read(
-                Recipe, filters=[{
-                    Recipe.fields.id: recipe_id
-                }])):
+        rf = Recipe.fields
+        if not (results := self.driver.read(Recipe,
+                                            filters=[{
+                                                rf.id: recipe_id
+                                            }])):
             raise RecipeNotFound(recipe_id)
 
         def _format(recipe_data):
             return {
-                Recipe.fields.id.name:
-                recipe_data[Recipe.fields.id],
-                Recipe.fields.name.name:
-                recipe_data[Recipe.fields.name],
-                Recipe.fields.author.name:
-                recipe_data[Recipe.fields.author],
-                Recipe.fields.directions.name:
-                recipe_data[Recipe.fields.directions],
+                rf.id.name: recipe_data[rf.id],
+                rf.name.name: recipe_data[rf.name],
+                rf.author.name: recipe_data[rf.author],
+                rf.directions.name: recipe_data[rf.directions],
             }
 
         recipe_data = _format(results[0])
