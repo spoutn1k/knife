@@ -1,7 +1,7 @@
 import time
 from knife import helpers
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional, Mapping
 
 
 class Datatypes():
@@ -56,23 +56,37 @@ class FieldList():
         return result
 
 
+def get_field(field: Field, data: Mapping) -> Optional[Any]:
+    if not field in data:
+        if field.default is not None:
+            return field.default
+        return None
+    elif field in data:
+        raw_data = data[field]
+    elif field.name in data:
+        raw_data = data[field]
+
+    if Datatypes.INTEGER in field.datatype:
+        return int(raw_data)
+    elif Datatypes.BOOLEAN in field.datatype:
+        return raw_data in ['true', True, 'True']
+    elif Datatypes.TEXT in field.datatype:
+        return str(raw_data)
+
+    return raw_data
+
+
 class KnifeModel:
 
     def __init__(self, *args, **kwargs):
         if len(args) == 1 and isinstance(args[0], dict):
-            kwargs = dict(
-                map(
-                    lambda k_v: (k_v[0].name, k_v[1]),
-                    args[0].items(),
-                ))
-
+            kwargs = args[0]
         for field in self.fields.fields:
             if field.name == 'simple_name':
                 continue
-            if field.name in kwargs:
-                self.__setattr__(field.name, kwargs.get(field.name))
-            elif field.default is not None:
-                self.__setattr__(field.name, field.default)
+            value = get_field(field, kwargs)
+            if value is not None:
+                self.__setattr__(field.name, value)
 
         if 'id' in set(self.fields) and 'id' not in kwargs:
             generated_id = helpers.hash256("{}{}".format(
