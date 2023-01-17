@@ -60,6 +60,7 @@ class TestStore(TestCase):
             "name": "Fajitas",
             "simple_name": "fajitas",
             "author": "",
+            "information": "",
             "directions": ""
         },
         "7": {
@@ -67,6 +68,7 @@ class TestStore(TestCase):
             "name": "Guacamole",
             "simple_name": "guacamole",
             "author": "",
+            "information": "",
             "directions": ""
         },
         "8": {
@@ -74,6 +76,7 @@ class TestStore(TestCase):
             "name": "Chipotle Chicken",
             "simple_name": "chipotle_chicken",
             "author": "",
+            "information": "",
             "directions": ""
         },
         "9": {
@@ -81,6 +84,7 @@ class TestStore(TestCase):
             "name": "Pico de Gallo",
             "simple_name": "pico_de_gallo",
             "author": "",
+            "information": "",
             "directions": ""
         },
         "10": {
@@ -88,6 +92,7 @@ class TestStore(TestCase):
             "name": "Horchata",
             "simple_name": "horchata",
             "author": "",
+            "information": "",
             "directions": ""
         }
     },
@@ -189,22 +194,30 @@ class TestStore(TestCase):
         "5": {
             "recipe_id": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "ingredient_id": "16ec950875db0fc61feb72f31c82d94af9e6ca572b1b350e287d32dd2314fbe1",
-            "quantity": "4"
+            "quantity": "4",
+            "optional": "False",
+            "group": ""
         },
         "6": {
             "recipe_id": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "ingredient_id": "99c6b45b97f6e6aef1a3cdc6acfbf2fa3122f0b73c70c6256e94b86b258547fb",
-            "quantity": "1"
+            "quantity": "1",
+            "optional": "False",
+            "group": ""
         },
         "7": {
             "recipe_id": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "ingredient_id": "3cf03e09ac3b0f0d5aaa53c018a038614dc321fb7bc7295a4fbc7a4c3ce28665",
-            "quantity": "2"
+            "quantity": "2",
+            "optional": "False",
+            "group": ""
         },
         "8": {
             "recipe_id": "a86eb5eae40d8d58f38b3416f48b414e6d82e4ba6a7c7bce89ed05f0c4e8d536",
             "ingredient_id": "3cf03e09ac3b0f0d5aaa53c018a038614dc321fb7bc7295a4fbc7a4c3ce28665",
-            "quantity": "2"
+            "quantity": "2",
+            "optional": "False",
+            "group": ""
         }
     }
 }
@@ -556,8 +569,84 @@ class TestStore(TestCase):
             saved[0],
             saved[0] | {
                 Ingredient.fields.name: 'Habanero',
+                Ingredient.fields.dairy: False,
+                Ingredient.fields.meat: False,
+                Ingredient.fields.gluten: False,
+                Ingredient.fields.animal_product: False,
             },
         )
+
+    def test_ingredient_create_with_restriction(self):
+        self.store._ingredient_create({}, dict(
+            name='Queso',
+            dairy=True,
+        ))
+
+        saved = self.driver.read(Ingredient, [{
+            Ingredient.fields.name: 'Queso'
+        }])
+        self.assertEqual(len(saved), 1)
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Ingredient.fields.name: 'Queso',
+                Ingredient.fields.dairy: True,
+                Ingredient.fields.meat: False,
+                Ingredient.fields.gluten: False,
+                Ingredient.fields.animal_product: False,
+            },
+        )
+
+        self.store._ingredient_create({},
+                                      dict(
+                                          name='Chorizo',
+                                          meat=True,
+                                          animal_product=True,
+                                      ))
+
+        saved = self.driver.read(Ingredient, [{
+            Ingredient.fields.name: 'Chorizo'
+        }])
+        self.assertEqual(len(saved), 1)
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Ingredient.fields.name: 'Chorizo',
+                Ingredient.fields.dairy: False,
+                Ingredient.fields.meat: True,
+                Ingredient.fields.gluten: False,
+                Ingredient.fields.animal_product: True,
+            },
+        )
+
+        self.store._ingredient_create({},
+                                      dict(
+                                          name='Flour tortilla',
+                                          gluten=True,
+                                      ))
+
+        saved = self.driver.read(Ingredient,
+                                 [{
+                                     Ingredient.fields.name: 'Flour tortilla'
+                                 }])
+        self.assertEqual(len(saved), 1)
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Ingredient.fields.name: 'Flour tortilla',
+                Ingredient.fields.dairy: False,
+                Ingredient.fields.meat: False,
+                Ingredient.fields.gluten: True,
+                Ingredient.fields.animal_product: False,
+            },
+        )
+
+    def test_ingredient_create_unnamed(self):
+        with self.assertRaises(InvalidQuery):
+            self.store._ingredient_create({}, dict())
+
+        saved = self.driver.read(Ingredient)
+        self.assertEqual(len(saved), 4)
 
     def test_ingredient_create_existing(self):
         with self.assertRaises(IngredientAlreadyExists):

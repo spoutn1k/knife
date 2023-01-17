@@ -174,6 +174,10 @@ class Store:
         """
         validate_query(form, [
             Ingredient.fields.name,
+            Ingredient.fields.dairy,
+            Ingredient.fields.meat,
+            Ingredient.fields.gluten,
+            Ingredient.fields.animal_product,
         ])
 
         if Ingredient.fields.name.name not in form.keys():
@@ -194,7 +198,7 @@ class Store:
                 format_as_index(stored[0], Ingredient))
 
         self.driver.write(Ingredient, ing.params)
-        return ing.serializable
+        return ing.serializable()
 
     def _ingredient_lookup(self, args=None, form=None):
         """
@@ -273,7 +277,13 @@ class Store:
                                 }]):
             raise IngredientNotFound(ingredient_id)
 
-        validate_query(form, [Ingredient.fields.name])
+        validate_query(form, [
+            Ingredient.fields.name,
+            Ingredient.fields.dairy,
+            Ingredient.fields.meat,
+            Ingredient.fields.gluten,
+            Ingredient.fields.animal_product,
+        ])
 
         if Ingredient.fields.name.name in form:
             name = form[Ingredient.fields.name.name]
