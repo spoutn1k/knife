@@ -237,11 +237,9 @@ class Store:
             }],
             columns=(Recipe.fields.id, Recipe.fields.name))
 
-        format_ing = lambda x: format_as_index(x, Ingredient)
-        format_recipe = lambda x: format_as_index(x, Recipe)
+        used_in = list(map(lambda x: format_as_index(x, Recipe), recipes))
 
-        ingredient = format_ing(stored[0])
-        ingredient['used_in'] = list(map(format_recipe, recipes))
+        ingredient = Ingredient(stored[0]).serializable(used_in=used_in)
 
         return ingredient
 

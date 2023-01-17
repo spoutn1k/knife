@@ -59,7 +59,16 @@ class FieldList():
 class KnifeModel:
 
     def __init__(self, *args, **kwargs):
+        if len(args) == 1 and isinstance(args[0], dict):
+            kwargs = dict(
+                map(
+                    lambda k_v: (k_v[0].name, k_v[1]),
+                    args[0].items(),
+                ))
+
         for field in self.fields.fields:
+            if field.name == 'simple_name':
+                continue
             if field.name in kwargs:
                 self.__setattr__(field.name, kwargs.get(field.name))
             elif field.default is not None:
