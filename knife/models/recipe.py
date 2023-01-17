@@ -11,3 +11,6 @@ class Recipe(KnifeModel):
         Field(name='directions', datatype=[Datatypes.TEXT], default=""),
         Field(name='information', datatype=[Datatypes.TEXT], default=""),
     )
+
+    def serializable(self, **kwargs):
+        return kwargs | super().serializable

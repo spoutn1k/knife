@@ -407,19 +407,11 @@ class Store:
                                             }])):
             raise RecipeNotFound(recipe_id)
 
-        def _format(recipe_data):
-            return {
-                rf.id.name: recipe_data[rf.id],
-                rf.name.name: recipe_data[rf.name],
-                rf.author.name: recipe_data[rf.author],
-                rf.directions.name: recipe_data[rf.directions],
-            }
+        extra = dict(requirements=requirement_list(self.driver, recipe_id),
+                     dependencies=dependency_list(self.driver, recipe_id),
+                     tags=tag_list(self.driver, recipe_id))
 
-        recipe_data = _format(results[0])
-
-        recipe_data['requirements'] = requirement_list(self.driver, recipe_id)
-        recipe_data['dependencies'] = dependency_list(self.driver, recipe_id)
-        recipe_data['tags'] = tag_list(self.driver, recipe_id)
+        recipe_data = Recipe(results[0]).serializable(**extra)
 
         return recipe_data
 
