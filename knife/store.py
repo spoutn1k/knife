@@ -658,14 +658,12 @@ class Store:
         """
         Add a requirement to a recipe
         """
-        validate_query(
-            form,
-            [Requirement.fields.quantity, Requirement.fields.ingredient_id])
-
-        ingredient_id = form.get(Requirement.fields.ingredient_id.name)
-        quantity = form.get(Requirement.fields.quantity.name)
-        optional = form.get(Requirement.fields.optional.name,
-                            Requirement.fields.optional.default)
+        validate_query(form, [
+            Requirement.fields.ingredient_id,
+            Requirement.fields.quantity,
+            Requirement.fields.optional,
+            Requirement.fields.group,
+        ])
 
         if not self.driver.read(Recipe,
                                 filters=[{
@@ -673,7 +671,8 @@ class Store:
                                 }]):
             raise RecipeNotFound(recipe_id)
 
-        if not ingredient_id:
+        if not (ingredient_id := form.get(
+                Requirement.fields.ingredient_id.name)):
             raise InvalidValue(Requirement.fields.ingredient_id, None)
 
         if not self.driver.read(Ingredient,
@@ -682,7 +681,7 @@ class Store:
                                 }]):
             raise IngredientNotFound(ingredient_id)
 
-        if not quantity:
+        if not (quantity := form.get(Requirement.fields.quantity.name)):
             raise InvalidValue(Requirement.fields.quantity, quantity)
 
         if self.driver.read(Requirement,
@@ -694,13 +693,9 @@ class Store:
                             }]):
             raise RequirementAlreadyExists(recipe_id, ingredient_id)
 
-        self.driver.write(
-            Requirement, {
-                Requirement.fields.recipe_id: recipe_id,
-                Requirement.fields.ingredient_id: ingredient_id,
-                Requirement.fields.quantity: quantity,
-                Requirement.fields.optional: optional
-            })
+        requirement = Requirement(**form, recipe_id=recipe_id)
+
+        self.driver.write(Requirement, requirement.params)
 
     def _requirement_edit(self,
                           recipe_id,

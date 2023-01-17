@@ -1,7 +1,7 @@
-from knife.models.knife_model import Datatypes, FieldList, Field
+from knife.models.knife_model import (Datatypes, FieldList, Field, KnifeModel)
 
 
-class Requirement:
+class Requirement(KnifeModel):
     table_name = 'requirements'
     fields = FieldList(
         Field(name='recipe_id',
