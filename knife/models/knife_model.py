@@ -58,22 +58,15 @@ class FieldList():
 
 def get_field(field: Field, data: Mapping) -> Optional[Any]:
     if field in data:
-        raw_data = data[field]
-    elif field.name in data:
-        raw_data = data[field.name]
-    else:
-        if field.default is not None:
-            return field.default
-        return None
+        return data[field]
 
-    if Datatypes.INTEGER in field.datatype:
-        return int(raw_data)
-    elif Datatypes.BOOLEAN in field.datatype:
-        return raw_data in ['true', True, 'True']
-    elif Datatypes.TEXT in field.datatype:
-        return str(raw_data)
+    if field.name in data:
+        return data[field.name]
 
-    return raw_data
+    if field.default is not None:
+        return field.default
+
+    return None
 
 
 class KnifeModel:
