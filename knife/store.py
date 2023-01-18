@@ -4,6 +4,8 @@ store.py
 Implementation of the Store class
 """
 
+import traceback
+import werkzeug
 from typing import Any
 from flask import request, make_response
 from knife import helpers
@@ -97,8 +99,11 @@ def format_output(func):
 
     def wrapper(*orig_args, **orig_kwargs):
         request_args = helpers.fix_args(dict(request.args))
-        request_form = helpers.fix_args(dict(request.form))
+        request_form = {}
+
         try:
+            if request.is_json:
+                request_form = request.get_json()
             data = func(*orig_args,
                         **orig_kwargs,
                         args=request_args,
@@ -109,12 +114,19 @@ def format_output(func):
                 'error': str(kerr),
                 'data': kerr.data
             }, kerr.status))
-        """except Exception as err:
+        except werkzeug.exceptions.BadRequest as err:
             return make_response(({
                 'accept': False,
                 'error': str(err),
                 'data': None
-            }, 500))"""
+            }, 400))
+        except Exception as err:
+            traceback.print_exc()
+            return make_response(({
+                'accept': False,
+                'error': str(err),
+                'data': None
+            }, 500))
         return make_response(({'accept': True, 'data': data}, 200))
 
     wrapper.__name__ = func.__name__.strip('_')
