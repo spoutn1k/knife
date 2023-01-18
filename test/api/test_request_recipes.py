@@ -81,7 +81,7 @@ class TestRecipeCreate(APITestCase):
 
     def test_create_name(self):
         params = {'name': 'Tartare'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertIsInstance(query.json().get('data'), dict)
@@ -89,7 +89,7 @@ class TestRecipeCreate(APITestCase):
 
     def test_create_full(self):
         params = {'name': 'Tartare', 'author': 'jb', 'directions': 'Do stuff'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertIsInstance(query.json().get('data'), dict)
@@ -97,20 +97,20 @@ class TestRecipeCreate(APITestCase):
 
     def test_create_no_name(self):
         params = {'author': 'jb'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_same(self):
         params = {'name': 'Tartare'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertIsInstance(query.json().get('data'), dict)
         self.assertIsInstance(query.json().get('data').get('id'), str)
 
         params = {'name': 'Tartare'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -121,13 +121,13 @@ class TestRecipeCreate(APITestCase):
             'directions': 'Do stuff',
             'metadata': 'stuff'
         }
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_empty(self):
         params = {'name': ''}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -137,7 +137,7 @@ class TestRecipeDelete(APITestCase):
     def setUp(self):
         clear_recipes()
         query = requests.post("%s/recipes/new" % SERVER,
-                              data={'name': 'Tartare'})
+                              json={'name': 'Tartare'})
         recipe_id = query.json().get('data').get('id')
 
         endpoint = "/recipes/%s" % recipe_id
@@ -164,7 +164,7 @@ class TestRecipeEdit(APITestCase):
         clear_recipes()
         self.recipe_name = 'Tartare'
         query = requests.post("%s/recipes/new" % SERVER,
-                              data={'name': self.recipe_name})
+                              json={'name': self.recipe_name})
         recipe_id = query.json().get('data').get('id')
 
         endpoint = "/recipes/%s" % recipe_id
@@ -175,7 +175,7 @@ class TestRecipeEdit(APITestCase):
 
     def test_edit_name(self):
         new_name = 'Tartare Francais'
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -186,7 +186,7 @@ class TestRecipeEdit(APITestCase):
 
     def test_edit_author(self):
         new_author = 'jb'
-        query = requests.put(self.url, data={'author': new_author})
+        query = requests.put(self.url, json={'author': new_author})
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -197,7 +197,7 @@ class TestRecipeEdit(APITestCase):
 
     def test_edit_directions(self):
         new_directions = 'do stuff'
-        query = requests.put(self.url, data={'directions': new_directions})
+        query = requests.put(self.url, json={'directions': new_directions})
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -212,7 +212,7 @@ class TestRecipeEdit(APITestCase):
         new_author = 'jb'
         new_directions = 'do stuff'
         query = requests.put(self.url,
-                             data={
+                             json={
                                  'name': new_name,
                                  'directions': new_directions,
                                  'author': new_author
@@ -230,7 +230,7 @@ class TestRecipeEdit(APITestCase):
 
     def test_edit_name_invalid(self):
         new_name = ''
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -243,7 +243,7 @@ class TestRecipeEdit(APITestCase):
         new_author = 'dark jb'
 
         query = requests.put(self.url,
-                             data={
+                             json={
                                  'name': self.recipe_name,
                                  'author': new_author
                              })
@@ -258,10 +258,10 @@ class TestRecipeEdit(APITestCase):
     def test_edit_name_taken(self):
         new_name = 'Tartare Francais'
         query = requests.post("%s/recipes/new" % SERVER,
-                              data={'name': new_name})
+                              json={'name': new_name})
         self.assertTrue(query.ok, msg=query.json())
 
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
 
         query = requests.get(self.url)
@@ -270,7 +270,7 @@ class TestRecipeEdit(APITestCase):
 
     def test_edit_nonexistent(self):
         new_name = 'Tartare Francais'
-        query = requests.put(self.url + '_bis', data={'name': new_name})
+        query = requests.put(self.url + '_bis', json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
 
 
@@ -279,7 +279,7 @@ class TestRecipeShow(APITestCase):
     def setUp(self):
         clear_recipes()
         query = requests.post("%s/recipes/new" % SERVER,
-                              data={
+                              json={
                                   'name': 'Tartare',
                                   'author': 'jb',
                                   'directions': 'Grind the meat.'

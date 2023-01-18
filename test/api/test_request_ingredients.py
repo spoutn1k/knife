@@ -67,7 +67,7 @@ class TestIngredientCreate(APITestCase):
 
     def test_create_name(self):
         params = {'name': 'Oignon'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertIsInstance(query.json().get('data'), dict)
@@ -75,32 +75,32 @@ class TestIngredientCreate(APITestCase):
 
     def test_create_no_name(self):
         params = {}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_same(self):
         params = {'name': 'Oignon'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertIsInstance(query.json().get('data'), dict)
         self.assertIsInstance(query.json().get('data').get('id'), str)
 
         params = {'name': 'Oignon'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_wrong_params(self):
         params = {'name': 'Oignon', 'metadata': 'stuff'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_empty(self):
         params = {'name': ''}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -110,7 +110,7 @@ class TestIngredientDelete(APITestCase):
     def setUp(self):
         clear_ingredients()
         query = requests.post("%s/ingredients/new" % SERVER,
-                              data={'name': 'Oignon'})
+                              json={'name': 'Oignon'})
         ingredient_id = query.json().get('data').get('id')
 
         endpoint = "/ingredients/%s" % ingredient_id
@@ -136,7 +136,7 @@ class TestIngredientEdit(APITestCase):
     def setUp(self):
         clear_ingredients()
         query = requests.post("%s/ingredients/new" % SERVER,
-                              data={'name': 'Oignon'})
+                              json={'name': 'Oignon'})
         ingredient_id = query.json().get('data').get('id')
 
         endpoint = "/ingredients/%s" % ingredient_id
@@ -147,7 +147,7 @@ class TestIngredientEdit(APITestCase):
 
     def test_edit_name(self):
         new_name = 'Oignon Francais'
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -159,7 +159,7 @@ class TestIngredientEdit(APITestCase):
 
     def test_edit_name_invalid(self):
         new_name = ''
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -171,10 +171,10 @@ class TestIngredientEdit(APITestCase):
     def test_edit_name_taken(self):
         new_name = 'Oignon Francais'
         query = requests.post("%s/ingredients/new" % SERVER,
-                              data={'name': new_name})
+                              json={'name': new_name})
         self.assertTrue(query.ok, msg=query.json())
 
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
 
         query = requests.get(self.url)
@@ -183,5 +183,5 @@ class TestIngredientEdit(APITestCase):
 
     def test_edit_nonexistent(self):
         new_name = 'Oignon Francais'
-        query = requests.put(self.url + '_bis', data={'name': new_name})
+        query = requests.put(self.url + '_bis', json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())

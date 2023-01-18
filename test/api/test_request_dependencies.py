@@ -9,7 +9,11 @@ def create_objects():
     global RECIPE_IDS
 
     for name in RECIPE_NAMES:
-        query = requests.post("%s/recipes/new" % SERVER, data={'name': name})
+        query = requests.post("%s/recipes/new" % SERVER, json={'name': name})
+        if not query.ok and query.status_code != 409:
+            raise Exception(
+                f"Query returned {query.status_code}: {query.json().get('error')}"
+            )
         RECIPE_IDS.append(query.json().get('data').get('id'))
 
 
@@ -26,8 +30,12 @@ def delete_objects():
 
 def clear_dependencies():
     for id in RECIPE_IDS:
-        for dep in requests.get("%s/recipes/%s/dependencies" %
-                                (SERVER, id)).json().get('data'):
+        fetch = requests.get(f"{SERVER}/recipes/{id}/dependencies")
+        if not fetch.ok:
+            raise Exception(
+                f"Fetch returned {fetch.status_code}: {fetch.json().get('error')}"
+            )
+        for dep in fetch.json().get('data', []):
             recipe_id = dep.get('recipe').get('id')
             requests.delete("%s/recipes/%s/dependencies/%s" %
                             (SERVER, id, recipe_id))
@@ -49,7 +57,7 @@ class TestDependencyShow(APITestCase):
 
     def test_index_all(self):
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post("%s/add" % self.url, data=params)
+        query = requests.post("%s/add" % self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -75,52 +83,52 @@ class TestDependencyAdd(APITestCase):
 
     def test_add(self):
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
     def test_add_no_recipe(self):
         params = {}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_same(self):
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_wrong_field(self):
         params = {'ingredient': 'Nonexistsent'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_invalid_recipe(self):
         params = {'requisite': 'nonexistent'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_cycle(self):
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
         url = "%s/recipes/%s/dependencies/add" % (SERVER, RECIPE_IDS[1])
         params = {'requisite': RECIPE_IDS[0]}
-        query = requests.post(url, data=params)
+        query = requests.post(url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
         self.assertFalse(query.ok, msg=query.json())
 
 
@@ -143,11 +151,11 @@ class TestDependencyEdit(APITestCase):
             requisite=RECIPE_IDS[1],
             quantity='A ton',
         )
-        query = requests.post(f"{self.url}/add", data=params)
+        query = requests.post(f"{self.url}/add", json=params)
         self.assertTrue(query.ok, msg='')
 
         params = {'quantity': 'some amount'}
-        query = requests.put(f"{self.url}/{RECIPE_IDS[1]}", data=params)
+        query = requests.put(f"{self.url}/{RECIPE_IDS[1]}", json=params)
         self.assertTrue(query.ok,
                         msg=f"Status code {query.status_code} returned")
 
@@ -171,11 +179,11 @@ class TestDependencyEdit(APITestCase):
             requisite=RECIPE_IDS[1],
             optional=True,
         )
-        query = requests.post(f"{self.url}/add", data=params)
+        query = requests.post(f"{self.url}/add", json=params)
         self.assertTrue(query.ok)
 
         params = dict(optional=False)
-        query = requests.put(f"{self.url}/{RECIPE_IDS[1]}", data=params)
+        query = requests.put(f"{self.url}/{RECIPE_IDS[1]}", json=params)
         self.assertTrue(query.ok,
                         msg=f"Status code {query.status_code} returned")
 
@@ -211,7 +219,7 @@ class TestDependencyDelete(APITestCase):
 
     def test_delete(self):
         params = {'requisite': RECIPE_IDS[1]}
-        query = requests.post("%s/add" % self.url, data=params)
+        query = requests.post("%s/add" % self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
 

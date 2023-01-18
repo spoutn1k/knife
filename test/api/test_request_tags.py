@@ -13,11 +13,11 @@ def create_objects():
     global LABEL_IDS
 
     query = requests.post("%s/recipes/new" % SERVER,
-                          data={'name': RECIPE_NAME})
+                          json={'name': RECIPE_NAME})
     RECIPE_ID = query.json().get('data').get('id')
 
     requests.post("%s/recipes/%s/tags/add" % (SERVER, RECIPE_ID),
-                  data={
+                  json={
                       'name': LABEL_NAMES[0],
                   })
 
@@ -83,31 +83,31 @@ class TestTagAdd(APITestCase):
 
     def test_add(self):
         params = {'name': LABEL_NAMES[1]}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
     def test_add_no_name(self):
         params = {}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_same(self):
         params = {'name': LABEL_NAMES[0]}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_wrong_field(self):
         params = {'ingredient': 'Nonexistsent'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_invalid_name(self):
         params = {'name': ''}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 

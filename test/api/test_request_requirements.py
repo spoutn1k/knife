@@ -13,12 +13,12 @@ def create_objects():
     global INGREDIENT_IDS
 
     query = requests.post("%s/recipes/new" % SERVER,
-                          data={'name': RECIPE_NAME})
+                          json={'name': RECIPE_NAME})
     RECIPE_ID = query.json().get('data').get('id')
 
     for name in INGREDIENT_NAMES:
         query = requests.post("%s/ingredients/new" % SERVER,
-                              data={'name': name})
+                              json={'name': name})
         INGREDIENT_IDS.append(query.json().get('data').get('id'))
 
 
@@ -38,7 +38,7 @@ def delete_objects():
 
 def default_requirements():
     requests.post("%s/recipes/%s/requirements/add" % (SERVER, RECIPE_ID),
-                  data={
+                  json={
                       'ingredient_id': INGREDIENT_IDS[0],
                       'quantity': 4
                   })
@@ -97,31 +97,31 @@ class TestRequirementAdd(APITestCase):
 
     def test_add(self):
         params = {'ingredient_id': INGREDIENT_IDS[1], 'quantity': 3}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
 
     def test_add_no_ingredient(self):
         params = {'quantity': 3}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_no_quantity(self):
         params = {'quantity': 3}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_same(self):
         params = {'ingredient_id': INGREDIENT_IDS[0], 'quantity': 3}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_add_wrong_ingredient(self):
         params = {'ingredient': 'Nonexistsent', 'quantity': 3}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -131,7 +131,7 @@ class TestRequirementAdd(APITestCase):
             'quantity': 3,
             'metadata': 'lol'
         }
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -141,7 +141,7 @@ class TestRequirementAdd(APITestCase):
             'quantity': None,
             'metadata': 'lol'
         }
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -196,7 +196,7 @@ class TestRequirementEdit(APITestCase):
     def test_edit(self):
         new_quantity = '5 cups'
         query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
-                             data={'quantity': new_quantity})
+                             json={'quantity': new_quantity})
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -206,14 +206,14 @@ class TestRequirementEdit(APITestCase):
 
     def test_edit_nonexistent(self):
         query = requests.put("%s/%s" % (self.url, 'nonexistent'),
-                             data={'quantity': 5})
+                             json={'quantity': 5})
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_edit_invalid_quantity(self):
         new_quantity = ''
         query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
-                             data={'quantity': new_quantity})
+                             json={'quantity': new_quantity})
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -224,12 +224,12 @@ class TestRequirementEdit(APITestCase):
     def test_edit_wrong_field(self):
         new_quantity = '5 cups'
         query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
-                             data={'quantitad': new_quantity})
+                             json={'quantitad': new_quantity})
 
         self.assertFalse(query.ok, msg=query.json())
 
         query = requests.put("%s/%s" % (self.url, INGREDIENT_IDS[0]),
-                             data={
+                             json={
                                  'quantity': new_quantity,
                                  'metadata': False
                              })

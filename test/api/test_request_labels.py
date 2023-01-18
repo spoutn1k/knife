@@ -67,7 +67,7 @@ class TestLabelCreate(APITestCase):
 
     def test_create_name(self):
         params = {'name': 'french'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertIsInstance(query.json().get('data'), dict)
@@ -75,32 +75,32 @@ class TestLabelCreate(APITestCase):
 
     def test_create_no_name(self):
         params = {}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_same(self):
         params = {'name': 'french'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertTrue(query.ok, msg=query.json())
         self.assertIsInstance(query.json().get('data'), dict)
         self.assertIsInstance(query.json().get('data').get('id'), str)
 
         params = {'name': 'french'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_wrong_params(self):
         params = {'name': 'french', 'metadata': 'stuff'}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
     def test_create_empty(self):
         params = {'name': ''}
-        query = requests.post(self.url, data=params)
+        query = requests.post(self.url, json=params)
 
         self.assertFalse(query.ok, msg=query.json())
 
@@ -110,7 +110,7 @@ class TestLabelDelete(APITestCase):
     def setUp(self):
         clear_labels()
         query = requests.post("%s/labels/new" % SERVER,
-                              data={'name': 'french'})
+                              json={'name': 'french'})
         label_id = query.json().get('data').get('id')
 
         endpoint = "/labels/%s" % label_id
@@ -136,7 +136,7 @@ class TestLabelEdit(APITestCase):
     def setUp(self):
         clear_labels()
         query = requests.post("%s/labels/new" % SERVER,
-                              data={'name': 'french'})
+                              json={'name': 'french'})
         label_id = query.json().get('data').get('id')
 
         endpoint = "/labels/%s" % label_id
@@ -147,7 +147,7 @@ class TestLabelEdit(APITestCase):
 
     def test_edit_name(self):
         new_name = 'francais'
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
 
         self.assertTrue(query.ok, msg=query.json())
 
@@ -158,7 +158,7 @@ class TestLabelEdit(APITestCase):
 
     def test_edit_name_invalid(self):
         new_name = ''
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
 
         query = requests.get(self.url)
@@ -166,16 +166,16 @@ class TestLabelEdit(APITestCase):
         self.assertNotEqual(query.json().get('data').get('name'), new_name)
 
         new_name = 'name with space'
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
 
     def test_edit_name_taken(self):
         new_name = 'français'
         query = requests.post("%s/labels/new" % SERVER,
-                              data={'name': new_name})
+                              json={'name': new_name})
         self.assertTrue(query.ok, msg=query.json())
 
-        query = requests.put(self.url, data={'name': new_name})
+        query = requests.put(self.url, json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
 
         query = requests.get(self.url)
@@ -184,5 +184,5 @@ class TestLabelEdit(APITestCase):
 
     def test_edit_nonexistent(self):
         new_name = 'Francais'
-        query = requests.put(self.url + '_bis', data={'name': new_name})
+        query = requests.put(self.url + '_bis', json={'name': new_name})
         self.assertFalse(query.ok, msg=query.json())
