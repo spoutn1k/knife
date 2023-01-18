@@ -242,7 +242,6 @@ class Store:
             columns=(Recipe.fields.id, Recipe.fields.name))
 
         used_in = list(map(lambda x: format_as_index(x, Recipe), recipes))
-
         ingredient = Ingredient(stored[0]).serializable(used_in=used_in)
 
         return ingredient
@@ -326,6 +325,7 @@ class Store:
         validate_query(form, [
             Recipe.fields.name,
             Recipe.fields.author,
+            Recipe.fields.information,
             Recipe.fields.directions,
         ])
 
@@ -333,7 +333,7 @@ class Store:
             raise EmptyQuery()
 
         if Recipe.fields.name.name not in form:
-            raise InvalidQuery(form)
+            raise InvalidQuery(dict(name=None))
 
         recipe = Recipe(**form)
 
@@ -348,7 +348,7 @@ class Store:
             raise RecipeAlreadyExists(format_as_index(recipes[0], Recipe))
 
         self.driver.write(Recipe, recipe.params)
-        return recipe.serializable
+        return recipe.serializable()
 
     def _recipe_lookup(self, args=None, form=None):
         """
@@ -467,6 +467,7 @@ class Store:
             Recipe.fields.name,
             Recipe.fields.author,
             Recipe.fields.directions,
+            Recipe.fields.information,
         ])
 
         if Recipe.fields.name.name in form:

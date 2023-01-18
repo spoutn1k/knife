@@ -57,14 +57,14 @@ class FieldList():
 
 
 def get_field(field: Field, data: Mapping) -> Optional[Any]:
-    if not field in data:
+    if field in data:
+        raw_data = data[field]
+    elif field.name in data:
+        raw_data = data[field.name]
+    else:
         if field.default is not None:
             return field.default
         return None
-    elif field in data:
-        raw_data = data[field]
-    elif field.name in data:
-        raw_data = data[field]
 
     if Datatypes.INTEGER in field.datatype:
         return int(raw_data)
@@ -88,9 +88,9 @@ class KnifeModel:
             if value is not None:
                 self.__setattr__(field.name, value)
 
-        if 'id' in set(self.fields) and 'id' not in kwargs:
+        if getattr(self, 'id', None) is None:
             generated_id = helpers.hash256("{}{}".format(
-                self.name, time.time()))
+                getattr(self, 'name', ''), time.time()))
             self.__setattr__('id', generated_id)
 
     @property
