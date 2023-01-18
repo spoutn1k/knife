@@ -575,21 +575,16 @@ class Store:
 
         params[Dependency.fields.required_by] = recipe_id
 
+        # Check the request contains the minimum fields
         if not (required_id := params.get(Dependency.fields.requisite)):
             raise InvalidQuery(
                 f"Missing parameter: {Dependency.fields.requisite.name}")
 
-        if not (quantity := params.get(Dependency.fields.quantity)):
-            params[Dependency.fields.
-                   quantity] = Dependency.fields.quantity.default
-
-        if not (optional := params.get(Dependency.fields.optional)):
-            params[Dependency.fields.
-                   optional] = Dependency.fields.optional.default
-
+        # Check the dependency does not link itself
         if recipe_id == required_id:
             raise InvalidValue(Dependency.fields.requisite, recipe_id)
 
+        # Check the recipes exist
         if not self.driver.read(Recipe,
                                 filters=[{
                                     Recipe.fields.id: recipe_id
@@ -602,6 +597,7 @@ class Store:
                                 }]):
             raise RecipeNotFound(required_id)
 
+        # Check the dependency does not exist
         if self.driver.read(Dependency,
                             filters=[{
                                 Dependency.fields.required_by: recipe_id,
@@ -609,6 +605,17 @@ class Store:
                             }]):
             raise DependencyAlreadyExists()
 
+        # Assert the quantity field is present, or set it to default
+        if not params.get(Dependency.fields.quantity):
+            params[Dependency.fields.
+                   quantity] = Dependency.fields.quantity.default
+
+        # Assert the optional field is present, or set it to default
+        if not params.get(Dependency.fields.optional):
+            params[Dependency.fields.
+                   optional] = Dependency.fields.optional.default
+
+        # Check the dependency does not create a cycle
         if (recipe_id in dependency_nodes(self.driver, required_id)
                 or required_id in dependency_nodes(self.driver, recipe_id)):
             raise DependencyCycle()

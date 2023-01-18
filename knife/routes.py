@@ -1,6 +1,5 @@
 import logging
 from knife.store import Store
-from knife.drivers import DRIVERS
 
 LOGGER = logging.getLogger(__name__)
 
