@@ -500,8 +500,13 @@ class Store:
 
             form[Recipe.fields.simple_name.name] = simple_name
 
+        def _convert(form, model):
+            for field in model.fields.fields:
+                if field.name in form:
+                    yield (field, form.get(field.name))
+
         self.driver.write(Recipe,
-                          dict(convert(form, Recipe)),
+                          dict(_convert(form, Recipe)),
                           filters=[{
                               Recipe.fields.id: recipe_id
                           }])
@@ -722,10 +727,10 @@ class Store:
         """
         Modify the quantity of a required ingredient
         """
-        validate_query(form, [Requirement.fields.quantity])
-
-        if not form.get(Requirement.fields.quantity.name):
-            raise InvalidValue(Requirement.fields.quantity.name, '')
+        validate_query(form, [
+            Requirement.fields.quantity,
+            Requirement.fields.optional,
+        ])
 
         if not self.driver.read(
                 Requirement,
@@ -735,8 +740,13 @@ class Store:
                 }]):
             raise RequirementNotFound(recipe_id, ingredient_id)
 
+        def _convert(form, model):
+            for field in model.fields.fields:
+                if field.name in form:
+                    yield (field, form.get(field.name))
+
         self.driver.write(Requirement,
-                          dict(convert(form, Requirement)),
+                          dict(_convert(form, Requirement)),
                           filters=[{
                               Requirement.fields.recipe_id:
                               recipe_id,

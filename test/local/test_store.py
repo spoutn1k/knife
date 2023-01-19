@@ -2,6 +2,7 @@ from pathlib import Path
 from knife.store import Store
 from knife.exceptions import (
     DependencyNotFound,
+    EmptyQuery,
     IngredientAlreadyExists,
     IngredientInUse,
     IngredientNotFound,
@@ -195,28 +196,28 @@ class TestStore(TestCase):
             "recipe_id": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "ingredient_id": "16ec950875db0fc61feb72f31c82d94af9e6ca572b1b350e287d32dd2314fbe1",
             "quantity": "4",
-            "optional": "False",
+            "optional": false,
             "group": ""
         },
         "6": {
             "recipe_id": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "ingredient_id": "99c6b45b97f6e6aef1a3cdc6acfbf2fa3122f0b73c70c6256e94b86b258547fb",
             "quantity": "1",
-            "optional": "False",
+            "optional": false,
             "group": ""
         },
         "7": {
             "recipe_id": "f220c36c654f994128a0b8c9099ee1aba3349fb446bc8606aae07855194a7a7c",
             "ingredient_id": "3cf03e09ac3b0f0d5aaa53c018a038614dc321fb7bc7295a4fbc7a4c3ce28665",
             "quantity": "2",
-            "optional": "False",
+            "optional": false,
             "group": ""
         },
         "8": {
             "recipe_id": "a86eb5eae40d8d58f38b3416f48b414e6d82e4ba6a7c7bce89ed05f0c4e8d536",
             "ingredient_id": "3cf03e09ac3b0f0d5aaa53c018a038614dc321fb7bc7295a4fbc7a4c3ce28665",
             "quantity": "2",
-            "optional": "False",
+            "optional": false,
             "group": ""
         }
     }
@@ -268,6 +269,20 @@ class TestStore(TestCase):
             exact=True,
         )
         self.assertEqual(len(saved), 1)
+
+    def test_recipe_create_empty(self):
+        with self.assertRaises(EmptyQuery):
+            self.store._recipe_create({}, dict())
+
+        saved = self.driver.read(Recipe)
+        self.assertEqual(len(saved), 5)
+
+    def test_recipe_create_unnamed(self):
+        with self.assertRaises(InvalidQuery):
+            self.store._recipe_create({}, dict(author="me"))
+
+        saved = self.driver.read(Recipe)
+        self.assertEqual(len(saved), 5)
 
     def test_recipe_create_junk_args(self):
         with self.assertRaises(InvalidQuery):
@@ -466,35 +481,11 @@ class TestStore(TestCase):
         with self.assertRaises(RecipeNotFound):
             self.store._recipe_get('badid', {}, {})
 
-    def test_recipe_edit(self):
-        saved = self.store._recipe_edit(
-            self.fajitas_id, {},
-            dict(
-                name='Fajititas',
-                author='Nadie',
-                directions='No se que hacer !',
-            ))
-
-        keys = {
-            'id',
-            'name',
-            'author',
-            'directions',
-            'requirements',
-            'dependencies',
-            'tags',
-        }
-        self.assertTrue(keys.issubset(set(saved)),
-                        msg=f"Missing keys: {set(saved) - keys}")
-
-        self.assertEqual(
-            saved,
-            saved | {
-                "id": self.fajitas_id,
-                "name": "Fajititas",
-                "author": "Nadie",
-                "directions": "No se que hacer !",
-            },
+    def test_recipe_edit_name(self):
+        self.store._recipe_edit(
+            self.fajitas_id,
+            {},
+            dict(name='Fajititas'),
         )
 
         saved = self.driver.read(Recipe, [{
@@ -508,8 +499,85 @@ class TestStore(TestCase):
                 Recipe.fields.id: self.fajitas_id,
                 Recipe.fields.name: "Fajititas",
                 Recipe.fields.simple_name: "fajititas",
-                Recipe.fields.author: "Nadie",
-                Recipe.fields.directions: "No se que hacer !",
+                Recipe.fields.author: "",
+                Recipe.fields.directions: "",
+                Recipe.fields.information: "",
+            },
+        )
+
+    def test_recipe_edit_author(self):
+        self.store._recipe_edit(
+            self.fajitas_id,
+            {},
+            dict(author='me'),
+        )
+
+        saved = self.driver.read(Recipe, [{
+            Recipe.fields.id: self.fajitas_id,
+        }])
+        self.assertEqual(len(saved), 1)
+
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Recipe.fields.id: self.fajitas_id,
+                Recipe.fields.name: "Fajitas",
+                Recipe.fields.simple_name: "fajitas",
+                Recipe.fields.author: "me",
+                Recipe.fields.directions: "",
+                Recipe.fields.information: "",
+            },
+        )
+
+    def test_recipe_edit_directions(self):
+        text = "Do this and that !"
+
+        self.store._recipe_edit(
+            self.fajitas_id,
+            {},
+            dict(directions=text),
+        )
+
+        saved = self.driver.read(Recipe, [{
+            Recipe.fields.id: self.fajitas_id,
+        }])
+        self.assertEqual(len(saved), 1)
+
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Recipe.fields.id: self.fajitas_id,
+                Recipe.fields.name: "Fajitas",
+                Recipe.fields.simple_name: "fajitas",
+                Recipe.fields.author: "",
+                Recipe.fields.directions: text,
+                Recipe.fields.information: "",
+            },
+        )
+
+    def test_recipe_edit_information(self):
+        text = "Do this and that !"
+
+        self.store._recipe_edit(
+            self.fajitas_id,
+            {},
+            dict(information=text),
+        )
+
+        saved = self.driver.read(Recipe, [{
+            Recipe.fields.id: self.fajitas_id,
+        }])
+        self.assertEqual(len(saved), 1)
+
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Recipe.fields.id: self.fajitas_id,
+                Recipe.fields.name: "Fajitas",
+                Recipe.fields.simple_name: "fajitas",
+                Recipe.fields.author: "",
+                Recipe.fields.directions: "",
+                Recipe.fields.information: text,
             },
         )
 
@@ -641,9 +709,16 @@ class TestStore(TestCase):
             },
         )
 
-    def test_ingredient_create_unnamed(self):
+    def test_ingredient_create_empty(self):
         with self.assertRaises(InvalidQuery):
             self.store._ingredient_create({}, dict())
+
+        saved = self.driver.read(Ingredient)
+        self.assertEqual(len(saved), 4)
+
+    def test_ingredient_create_unnamed(self):
+        with self.assertRaises(InvalidQuery):
+            self.store._ingredient_create({}, dict(dairy=True))
 
         saved = self.driver.read(Ingredient)
         self.assertEqual(len(saved), 4)
@@ -1122,7 +1197,7 @@ class TestStore(TestCase):
                 'btw': 'junk'
             })
 
-    def test_dependency_edit(self):
+    def test_dependency_edit_quantity(self):
         self.store._dependency_edit(self.fajitas_id, self.guacamole_id, {}, {
             Dependency.fields.quantity.name: '2 cups',
         })
@@ -1142,6 +1217,31 @@ class TestStore(TestCase):
                 Dependency.fields.required_by: self.fajitas_id,
                 Dependency.fields.requisite: self.guacamole_id,
                 Dependency.fields.quantity: '2 cups',
+                Dependency.fields.optional: False,
+            },
+        )
+
+    def test_dependency_edit_optional(self):
+        self.store._dependency_edit(self.fajitas_id, self.guacamole_id, {}, {
+            Dependency.fields.optional.name: True,
+        })
+
+        saved = self.driver.read(Dependency,
+                                 filters=[{
+                                     Dependency.fields.required_by:
+                                     self.fajitas_id,
+                                     Dependency.fields.requisite:
+                                     self.guacamole_id,
+                                 }])
+        self.assertEqual(len(saved), 1)
+
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Dependency.fields.required_by: self.fajitas_id,
+                Dependency.fields.requisite: self.guacamole_id,
+                Dependency.fields.quantity: '1 cup',
+                Dependency.fields.optional: True,
             },
         )
 
@@ -1265,7 +1365,7 @@ class TestStore(TestCase):
                                  }])
         self.assertEqual(len(saved), 0)
 
-    def test_requirement_edit(self):
+    def test_requirement_edit_quantity(self):
         self.store._requirement_edit(
             self.fajitas_id, self.bell_pepper_id, {}, {
                 Requirement.fields.quantity.name: '2 cups',
@@ -1286,6 +1386,32 @@ class TestStore(TestCase):
                 Requirement.fields.recipe_id: self.fajitas_id,
                 Requirement.fields.ingredient_id: self.bell_pepper_id,
                 Requirement.fields.quantity: '2 cups',
+                Requirement.fields.optional: False,
+            },
+        )
+
+    def test_requirement_edit_optional(self):
+        self.store._requirement_edit(
+            self.fajitas_id, self.bell_pepper_id, {}, {
+                Requirement.fields.optional.name: True,
+            })
+
+        saved = self.driver.read(Requirement,
+                                 filters=[{
+                                     Requirement.fields.recipe_id:
+                                     self.fajitas_id,
+                                     Requirement.fields.ingredient_id:
+                                     self.bell_pepper_id,
+                                 }])
+        self.assertEqual(len(saved), 1)
+
+        self.assertEqual(
+            saved[0],
+            saved[0] | {
+                Requirement.fields.recipe_id: self.fajitas_id,
+                Requirement.fields.ingredient_id: self.bell_pepper_id,
+                Requirement.fields.quantity: '4',
+                Requirement.fields.optional: True,
             },
         )
 
