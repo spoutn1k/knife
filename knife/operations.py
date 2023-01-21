@@ -5,6 +5,7 @@ from knife.models import (
     Recipe,
     Requirement,
     Tag,
+    Classifications,
 )
 
 
@@ -107,3 +108,51 @@ def tag_list(driver, recipe_id):
         }
 
     return list(map(_format, data))
+
+
+def classify(driver, recipe_id):
+    data = driver.read(
+        (
+            Requirement,
+            Ingredient,
+            Requirement.fields.ingredient_id,
+            Ingredient.fields.id,
+        ),
+        filters=[{
+            Requirement.fields.recipe_id: recipe_id
+        }],
+        columns=[
+            Ingredient.fields.dairy,
+            Ingredient.fields.meat,
+            Ingredient.fields.gluten,
+            Ingredient.fields.animal_product,
+        ],
+    )
+
+    final = Classifications()
+
+    for constraints in data:
+        final += Classifications(
+            constraints[Ingredient.fields.dairy],
+            constraints[Ingredient.fields.meat],
+            constraints[Ingredient.fields.gluten],
+            constraints[Ingredient.fields.animal_product],
+        )
+
+    data = driver.read(
+        Dependency,
+        filters=[{
+            Dependency.fields.required_by: recipe_id
+        }],
+        columns=[
+            Dependency.fields.requisite,
+        ],
+    )
+
+    for node in data:
+        final += classify(
+            driver,
+            node[Dependency.fields.requisite],
+        )
+
+    return final

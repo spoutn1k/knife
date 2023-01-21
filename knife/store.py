@@ -23,6 +23,7 @@ from knife.operations import (
     dependency_nodes,
     requirement_list,
     tag_list,
+    classify,
 )
 from knife.exceptions import (
     DependencyAlreadyExists,
@@ -429,9 +430,12 @@ class Store:
                                             }])):
             raise RecipeNotFound(recipe_id)
 
-        extra = dict(requirements=requirement_list(self.driver, recipe_id),
-                     dependencies=dependency_list(self.driver, recipe_id),
-                     tags=tag_list(self.driver, recipe_id))
+        extra = dict(
+            requirements=requirement_list(self.driver, recipe_id),
+            dependencies=dependency_list(self.driver, recipe_id),
+            tags=tag_list(self.driver, recipe_id),
+            classifications=classify(self.driver, recipe_id),
+        )
 
         recipe_data = Recipe(results[0]).serializable(**extra)
 
