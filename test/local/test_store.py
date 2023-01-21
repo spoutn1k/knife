@@ -173,22 +173,42 @@ class TestStore(TestCase):
         "4": {
             "id": "16ec950875db0fc61feb72f31c82d94af9e6ca572b1b350e287d32dd2314fbe1",
             "name": "Bell Pepper",
-            "simple_name": "bell_pepper"
+            "simple_name": "bell_pepper",
+            "dairy": false,
+            "gluten": false,
+            "meat": false,
+            "animal_product": false
+
         },
         "5": {
             "id": "99c6b45b97f6e6aef1a3cdc6acfbf2fa3122f0b73c70c6256e94b86b258547fb",
             "name": "Onion",
-            "simple_name": "onion"
+            "simple_name": "onion",
+            "dairy": false,
+            "gluten": false,
+            "meat": false,
+            "animal_product": false
+
         },
         "6": {
             "id": "3cf03e09ac3b0f0d5aaa53c018a038614dc321fb7bc7295a4fbc7a4c3ce28665",
             "name": "Jalapeño",
-            "simple_name": "jalapeno"
+            "simple_name": "jalapeno",
+            "dairy": false,
+            "gluten": false,
+            "meat": false,
+            "animal_product": false
+
         },
         "7": {
             "id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
             "name": "Serrano",
-            "simple_name": "serrano"
+            "simple_name": "serrano",
+            "dairy": false,
+            "gluten": false,
+            "meat": false,
+            "animal_product": false
+
         }
     },
     "requirements": {
@@ -844,23 +864,12 @@ class TestStore(TestCase):
         with self.assertRaises(IngredientNotFound):
             self.store._ingredient_show('badid', {}, {})
 
-    def test_ingredient_edit(self):
-        saved = self.store._ingredient_edit(self.onion_id, {},
-                                            dict(name='Red Onion', ))
-        """
-        self.assertTrue({
-            'id',
-            'name',
-        }.issubset(set(saved)))
-
-        self.assertEqual(
-            saved,
-            saved | {
-                "id": self.onion_id,
-                "name": "Red Onion",
-            },
+    def test_ingredient_edit_name(self):
+        saved = self.store._ingredient_edit(
+            self.onion_id,
+            {},
+            dict(name='Red Onion'),
         )
-        """
 
         saved = self.driver.read(Ingredient,
                                  [{
@@ -870,10 +879,40 @@ class TestStore(TestCase):
 
         self.assertEqual(
             saved[0],
-            saved[0] | {
+            {
                 Ingredient.fields.id: self.onion_id,
                 Ingredient.fields.name: "Red Onion",
                 Ingredient.fields.simple_name: "red_onion",
+                Ingredient.fields.dairy: False,
+                Ingredient.fields.meat: False,
+                Ingredient.fields.gluten: False,
+                Ingredient.fields.animal_product: False,
+            },
+        )
+
+    def test_ingredient_edit_dairy(self):
+        saved = self.store._ingredient_edit(
+            self.onion_id,
+            {},
+            dict(dairy=True),
+        )
+
+        saved = self.driver.read(Ingredient,
+                                 [{
+                                     Ingredient.fields.id: self.onion_id,
+                                 }])
+        self.assertEqual(len(saved), 1)
+
+        self.assertEqual(
+            saved[0],
+            {
+                Ingredient.fields.id: self.onion_id,
+                Ingredient.fields.name: "Onion",
+                Ingredient.fields.simple_name: "onion",
+                Ingredient.fields.dairy: True,
+                Ingredient.fields.meat: False,
+                Ingredient.fields.gluten: False,
+                Ingredient.fields.animal_product: False,
             },
         )
 

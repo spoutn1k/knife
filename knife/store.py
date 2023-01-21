@@ -77,10 +77,10 @@ def validate_query(
     return dict(_extract())
 
 
-def convert(form, model):
+def _convert(form, model):
     for field in model.fields.fields:
-        if Datatypes.PRIMARY_KEY not in field.datatype:
-            yield field, form.get(field.name, field.default)
+        if field.name in form:
+            yield (field, form.get(field.name))
 
 
 def format_as_index(record, model):
@@ -319,7 +319,7 @@ class Store:
             form[Ingredient.fields.simple_name.name] = simple_name
 
         self.driver.write(Ingredient,
-                          dict(convert(form, Ingredient)),
+                          dict(_convert(form, Ingredient)),
                           filters=[{
                               Ingredient.fields.id: ingredient_id
                           }])
@@ -499,11 +499,6 @@ class Store:
                         format_as_index(recipes[0], Recipe))
 
             form[Recipe.fields.simple_name.name] = simple_name
-
-        def _convert(form, model):
-            for field in model.fields.fields:
-                if field.name in form:
-                    yield (field, form.get(field.name))
 
         self.driver.write(Recipe,
                           dict(_convert(form, Recipe)),
@@ -740,11 +735,6 @@ class Store:
                 }]):
             raise RequirementNotFound(recipe_id, ingredient_id)
 
-        def _convert(form, model):
-            for field in model.fields.fields:
-                if field.name in form:
-                    yield (field, form.get(field.name))
-
         self.driver.write(Requirement,
                           dict(_convert(form, Requirement)),
                           filters=[{
@@ -880,7 +870,7 @@ class Store:
 
         self.driver.write(
             Label,
-            dict(convert(form, Label)),
+            dict(_convert(form, Label)),
             filters=[{
                 Label.fields.id: label_id
             }],
