@@ -1,0 +1,7 @@
+# Only the Rust workspace goes into the image.
+*
+!Cargo.toml
+!Cargo.lock
+!.cargo
+!crates
+crates/*/target

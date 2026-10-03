@@ -5,3 +5,5 @@ build
 dist
 knife.egg-info
 .coverage
+/target
+*-debug.log

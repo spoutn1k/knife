@@ -1,0 +1,15 @@
+[package]
+name = "knife-core"
+description = "Domain types and rules for the knife recipe server, shared by server and frontend"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+deunicode = "1"
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

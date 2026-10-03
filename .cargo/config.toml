@@ -1,0 +1,6 @@
+[alias]
+# Tests that need the Firebase emulators. The Firestore emulator locks far
+# more coarsely than Firestore, so too many concurrent transactions time out:
+# keep the thread count low. Run as
+#   firebase emulators:exec --only auth,firestore "cargo emulator-test"
+emulator-test = "test -p knife-server -- --ignored --test-threads=2"

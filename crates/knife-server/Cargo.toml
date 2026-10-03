@@ -1,0 +1,25 @@
+[package]
+name = "knife-server"
+description = "HTTP API for the knife recipe book, run on Cloud Run behind Firebase Hosting"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+axum = { version = "0.8", features = ["macros"] }
+base64 = "0.23.1"
+firestore = { version = "0.57.2", default-features = false, features = ["tls-webpki-roots"] }
+jsonwebtoken = { version = "11.1.0", default-features = false, features = ["rust_crypto", "use_pem"] }
+knife-core.workspace = true
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+thiserror.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.27.0", features = ["v4"] }
+
+[dev-dependencies]
+tower = "0.5.3"
