@@ -7,3 +7,5 @@ knife.egg-info
 .coverage
 /target
 *-debug.log
+# Exported recipe data
+data.json
