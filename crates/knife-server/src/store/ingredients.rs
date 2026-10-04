@@ -6,16 +6,7 @@ use super::{
 };
 use firestore::FirestoreDb;
 use knife_core::input::{IngredientPatch, NewIngredient};
-use knife_core::{Ingredient, IngredientId, RecipeId, Summary};
-use serde::Serialize;
-
-/// An ingredient and the recipes that use it.
-#[derive(Debug, Serialize)]
-pub struct IngredientDetails {
-    #[serde(flatten)]
-    pub ingredient: Ingredient,
-    pub used_in: Vec<Summary<RecipeId>>,
-}
+use knife_core::{Ingredient, IngredientDetails, IngredientId, Summary};
 
 impl Store {
     pub async fn list_ingredients(&self, prefix: &str) -> Result<Vec<Summary<IngredientId>>> {

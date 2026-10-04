@@ -98,6 +98,28 @@ impl Recipe {
             name: self.name.clone(),
         }
     }
+
+    pub fn listing(&self) -> RecipeListing {
+        RecipeListing {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            author: self.author.clone(),
+            tags: self.tags.clone(),
+            classification: self.classification,
+        }
+    }
+}
+
+/// A recipe as `GET /recipes` lists it: enough for a table of recipes,
+/// without the ingredients and directions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeListing {
+    pub id: RecipeId,
+    pub name: String,
+    pub author: String,
+    /// Simple names of the labels on the recipe.
+    pub tags: BTreeSet<String>,
+    pub classification: Classification,
 }
 
 impl Ingredient {
@@ -133,4 +155,21 @@ pub struct Label {
     pub simple_name: String,
     pub name: String,
     pub recipe_count: u32,
+}
+
+/// An ingredient and the recipes that use it, as `GET /ingredients/{id}`
+/// returns it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IngredientDetails {
+    #[serde(flatten)]
+    pub ingredient: Ingredient,
+    pub used_in: Vec<Summary<RecipeId>>,
+}
+
+/// A label and the recipes tagged with it, as `GET /labels/{name}` returns it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LabelDetails {
+    #[serde(flatten)]
+    pub label: Label,
+    pub recipes: Vec<Summary<RecipeId>>,
 }

@@ -1,4 +1,4 @@
-# Development and deployment of knife-server. `just` lists the recipes.
+# Development and deployment of knife-server and spoon. `just` lists the recipes.
 
 project := env("PROJECT", "knife-c51d5")
 
@@ -29,6 +29,7 @@ default:
 check:
     cargo fmt --check
     cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy -p spoon --target wasm32-unknown-unknown -- -D warnings
     cargo test --workspace
 
 # Run every test that needs the Firebase emulators
@@ -42,6 +43,70 @@ emulators:
 # Run the server against `just emulators`, on port 8000
 serve:
     {{ emulator_env }} RUST_LOG=info cargo run -p {{ service }}
+
+# Serve spoon with hot reload on port 8081, against `just serve` and the emulators
+spoon:
+    FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 dx serve -p spoon --port 8081
+
+# Sign in as dev@example.com / password. `data`, a v0.3 export, is imported
+# with chopstick if it exists. Everything is lost on exit.
+#
+# Run emulators, server and spoon (on http://localhost:8081) with sample data
+local data="data.json":
+    firebase emulators:exec --project {{ project }} --only auth,firestore \
+        "just _local {{ quote(absolute_path(data)) }}"
+
+[private]
+_local data:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    email=dev@example.com password=password
+    auth=http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts
+
+    echo "== Creating $email, a member of the recipe book"
+    body="{\"email\":\"$email\",\"password\":\"$password\",\"returnSecureToken\":true}"
+    uid=$(curl -fsS "$auth:signUp?key=local" -H 'Content-Type: application/json' -d "$body" |
+        sed -E 's/.*"localId": *"([^"]+)".*/\1/')
+    curl -fsS -o /dev/null -X PATCH -H 'Authorization: Bearer owner' \
+        -H 'Content-Type: application/json' -d '{"fields":{"display_name":{"stringValue":"Dev"}}}' \
+        "http://127.0.0.1:8080/v1/projects/{{ project }}/databases/(default)/documents/members/$uid"
+
+    {{ emulator_env }} RUST_LOG=info GOOGLE_CLOUD_PROJECT={{ project }} cargo run -p {{ service }} &
+    server=$!
+    trap 'kill $server' EXIT
+
+    if [[ -f {{ quote(data) }} ]]; then
+        echo "== Waiting for the server"
+        until curl -fsS -o /dev/null http://127.0.0.1:8000/api/health; do sleep 1; done
+
+        echo "== Importing {{ data }} with chopstick"
+        # Keep chopstick's credentials away from the real ones.
+        export XDG_CONFIG_HOME=$(mktemp -d) {{ emulator_env }}
+        trap 'kill $server; rm -rf "$XDG_CONFIG_HOME"' EXIT
+        KNIFE_PASSWORD=$password cargo run -q -p chopstick -- login \
+            --email "$email" --api-key local --url http://127.0.0.1:8000
+        cargo run -q -p chopstick -- import {{ quote(data) }}
+    else
+        echo "== No {{ data }}: starting with an empty recipe book"
+    fi
+
+    just spoon
+
+# Build spoon for Hosting, into target/spoon/public
+spoon-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # spoon reads this at build time and would sign in against the emulator.
+    if [[ -n "${FIREBASE_AUTH_EMULATOR_HOST:-}" ]]; then
+        echo "FIREBASE_AUTH_EMULATOR_HOST is set: unset it for a production build" >&2
+        exit 1
+    fi
+    # dx copies everything in its output folder into the bundle, old builds
+    # included: start from an empty one.
+    target=$(cargo metadata --format-version 1 --no-deps |
+        python3 -c 'import json, sys; print(json.load(sys.stdin)["target_directory"])')
+    rm -rf target/spoon "$target/dx/spoon/release"
+    dx bundle -p spoon --web --release --profile wasm-release --out-dir target/spoon
 
 # --- Image -----------------------------------------------------------------
 
@@ -109,8 +174,8 @@ deploy-server: push
         --set-env-vars GOOGLE_CLOUD_PROJECT={{ project }},RUST_LOG=info \
         --memory 256Mi --max-instances 2 --quiet
 
-# Deploy Hosting (static files and the /api/** rewrite)
-deploy-hosting:
+# Deploy Hosting (spoon and the /api/** rewrite)
+deploy-hosting: spoon-build
     firebase deploy --project {{ project }} --only hosting
 
 # Deploy the Firestore security rules

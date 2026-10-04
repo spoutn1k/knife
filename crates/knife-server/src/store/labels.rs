@@ -5,16 +5,7 @@ use super::{
 };
 use firestore::{FirestoreDb, FirestoreTransaction};
 use knife_core::input::LabelPatch;
-use knife_core::{Label, RecipeId, Summary, simplify};
-use serde::Serialize;
-
-/// A label and the recipes tagged with it.
-#[derive(Debug, Serialize)]
-pub struct LabelDetails {
-    #[serde(flatten)]
-    pub label: Label,
-    pub recipes: Vec<Summary<RecipeId>>,
-}
+use knife_core::{Label, LabelDetails, simplify};
 
 impl Store {
     pub async fn list_labels(&self, prefix: &str) -> Result<Vec<Label>> {

@@ -8,15 +8,15 @@ use super::{
 use firestore::FirestoreDb;
 use knife_core::input::{DependencyInput, NewRecipe, RecipePatch, RequirementInput};
 use knife_core::{
-    Classification, Dependency, IngredientId, Recipe, RecipeId, Requirement, Summary, UserId,
+    Classification, Dependency, IngredientId, Recipe, RecipeId, RecipeListing, Requirement, UserId,
     ValidName, simplify,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
 impl Store {
-    pub async fn list_recipes(&self, prefix: &str) -> Result<Vec<Summary<RecipeId>>> {
+    pub async fn list_recipes(&self, prefix: &str) -> Result<Vec<RecipeListing>> {
         let found: Vec<StoredRecipe> = with_prefix(&self.db, RECIPES, prefix).await?;
-        Ok(found.iter().map(|s| s.recipe.summary()).collect())
+        Ok(found.iter().map(|s| s.recipe.listing()).collect())
     }
 
     pub async fn get_recipe(&self, id: &RecipeId) -> Result<Recipe> {

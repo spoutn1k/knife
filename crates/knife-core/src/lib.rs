@@ -14,6 +14,7 @@ mod names;
 pub use classification::Classification;
 pub use error::Error;
 pub use model::{
-    Dependency, Ingredient, IngredientId, Label, Recipe, RecipeId, Requirement, Summary, UserId,
+    Dependency, Ingredient, IngredientDetails, IngredientId, Label, LabelDetails, Recipe, RecipeId,
+    RecipeListing, Requirement, Summary, UserId,
 };
 pub use names::{MAX_NAME_LEN, ValidName, prefix_bounds, simplify};

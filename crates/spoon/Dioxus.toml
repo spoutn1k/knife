@@ -1,0 +1,9 @@
+[application]
+name = "spoon"
+
+[web.app]
+title = "knife"
+
+# `dx serve` forwards the API to `just serve`.
+[[web.proxy]]
+backend = "http://127.0.0.1:8000/api/"

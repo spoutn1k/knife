@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/chopstick", "crates/knife-core", "crates/knife-server"]
+members = ["crates/chopstick", "crates/knife-core", "crates/knife-server", "crates/spoon"]
 
 [workspace.package]
 version = "0.4.0"
@@ -13,3 +13,11 @@ knife-core = { path = "crates/knife-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+
+# Release build of spoon, optimized for download size: `dx bundle --profile wasm-release`.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"

@@ -18,9 +18,6 @@ mod labels;
 mod loader;
 mod recipes;
 
-pub use ingredients::IngredientDetails;
-pub use labels::LabelDetails;
-
 use firestore::errors::FirestoreError;
 use firestore::{
     FirestoreDb, FirestoreTransaction, FirestoreTransactionId, FirestoreTransactionMode,

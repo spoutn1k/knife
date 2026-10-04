@@ -1,7 +1,7 @@
 //! Request bodies. Unknown fields and wrongly typed values are rejected at
 //! deserialization, so `{"dairy": "yes"}` never reaches storage.
 
-use crate::{Classification, Error, ValidName};
+use crate::{Classification, Error, Requirement, ValidName};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,7 +130,39 @@ pub struct RequirementInput {
     pub group: String,
 }
 
+impl From<&Requirement> for RequirementInput {
+    fn from(requirement: &Requirement) -> Self {
+        Self {
+            quantity: requirement.quantity.clone(),
+            optional: requirement.optional,
+            group: requirement.group.clone(),
+        }
+    }
+}
+
 impl RequirementInput {
+    /// One line for a recipe that required both of two merged ingredients:
+    /// the quantities are joined ("100g + 50g"), the line is optional only if
+    /// both were, and `kept`'s group wins unless it has none.
+    pub fn merged(kept: &Requirement, merged: &Requirement) -> Self {
+        let quantity = [&kept.quantity, &merged.quantity]
+            .into_iter()
+            .filter(|q| !q.is_empty())
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(" + ");
+        let group = if kept.group.is_empty() {
+            &merged.group
+        } else {
+            &kept.group
+        };
+        Self {
+            quantity,
+            optional: kept.optional && merged.optional,
+            group: group.clone(),
+        }
+    }
+
     pub fn validate(&self) -> Result<(), Error> {
         if self.quantity.is_empty() {
             return Err(Error::EmptyQuantity);
@@ -250,6 +282,38 @@ mod tests {
 
         let next = patch.apply(current);
         assert!(next.dairy && next.meat && !next.gluten && !next.animal_product);
+    }
+
+    fn requirement(quantity: &str, optional: bool, group: &str) -> Requirement {
+        Requirement {
+            name: "Onion".into(),
+            classification: Classification::default(),
+            quantity: quantity.into(),
+            optional,
+            group: group.into(),
+        }
+    }
+
+    #[test]
+    fn merged_requirements_join_quantities() {
+        let kept = requirement("1", false, "");
+        let merged = requirement("2 small", true, "for the sauce");
+
+        let input = RequirementInput::merged(&kept, &merged);
+        assert_eq!(input.quantity, "1 + 2 small");
+        assert!(!input.optional);
+        assert_eq!(input.group, "for the sauce");
+        assert_eq!(input.validate(), Ok(()));
+    }
+
+    #[test]
+    fn merged_requirements_keep_the_kept_group() {
+        let kept = requirement("1", true, "garnish");
+        let merged = requirement("1", true, "sauce");
+
+        let input = RequirementInput::merged(&kept, &merged);
+        assert!(input.optional);
+        assert_eq!(input.group, "garnish");
     }
 
     #[test]

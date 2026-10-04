@@ -3,7 +3,7 @@
 
 use crate::auth::CurrentUser;
 use crate::error::ApiError;
-use crate::store::{IngredientDetails, LabelDetails, Store};
+use crate::store::Store;
 use axum::extract::{FromRequest, FromRequestParts, State};
 use axum::http::StatusCode;
 use axum::routing::{get, put};
@@ -12,7 +12,10 @@ use knife_core::input::{
     DependencyInput, IngredientPatch, LabelPatch, NewIngredient, NewRecipe, RecipePatch,
     RequirementInput,
 };
-use knife_core::{Ingredient, IngredientId, Label, Recipe, RecipeId, Summary};
+use knife_core::{
+    Ingredient, IngredientDetails, IngredientId, Label, LabelDetails, Recipe, RecipeId,
+    RecipeListing, Summary,
+};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -117,7 +120,7 @@ async fn delete_ingredient(State(store): Db, Path(id): Path<IngredientId>) -> Re
 async fn list_recipes(
     State(store): Db,
     Query(search): Query<Search>,
-) -> Result<Json<Vec<Summary<RecipeId>>>> {
+) -> Result<Json<Vec<RecipeListing>>> {
     Ok(Json(store.list_recipes(&search.prefix).await?))
 }
 
