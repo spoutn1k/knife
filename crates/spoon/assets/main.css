@@ -219,15 +219,37 @@ ul.diets li {
 }
 ul.diets .icon { width: 1.1em; height: 1.1em; flex: none; }
 
-/* Collapsible filters above the recipe table */
-details.filters {
+/* Filters above the recipe table: the search, always shown, and a toggle
+   that unfolds the diets and labels. */
+.filters {
   border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); margin: 0.5rem 0 1rem; padding: 0 1rem;
+  background: var(--surface); margin: 0.5rem 0 1rem;
 }
-details.filters summary { cursor: pointer; padding: 0.6rem 0; font-weight: 600; }
-details.filters[open] summary { border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; }
-details.filters summary .muted { font-weight: 400; }
-details.filters input.search { margin: 0 0 0.75rem; }
+.filters-head { display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 0.75rem; }
+.filters-head input.search { margin: 0; max-width: none; flex: 1; min-width: 0; }
+.filters-head button.link { color: var(--text); font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem; }
+.filters-head .chevron { color: var(--muted); transition: transform 0.15s; }
+.filters-head [aria-expanded="true"] .chevron { transform: rotate(180deg); }
+.filters .badge {
+  min-width: 1.3em; text-align: center; border-radius: 999px; padding: 0 0.35rem;
+  background: var(--accent); color: var(--accent-text); font-size: 0.75rem;
+}
+.filters .active { margin: 0; padding: 0 0.75rem 0.5rem; font-size: 0.9rem; }
+.filters-body { border-top: 1px solid var(--border); padding: 0.75rem 1rem 0; }
+.filter-heading {
+  margin: 0 0 0.35rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--muted);
+}
+.diet-filter { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; }
+.diet-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: var(--surface); color: var(--ok-text);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 0.1rem 0.7rem 0.1rem 0.5rem; font-size: 0.85rem;
+}
+.diet-chip:hover { border-color: var(--ok-text); text-decoration: none; }
+.diet-chip.selected { background: var(--ok-soft); border-color: var(--ok-text); }
+.diet-chip .icon { width: 1.05rem; height: 1.05rem; display: block; }
 .label-filter { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; }
 .label-filter .tag { font-size: 0.85rem; color: var(--text); }
 .label-filter .tag:hover { text-decoration: none; outline: 1px solid var(--accent); }

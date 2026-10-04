@@ -14,7 +14,7 @@ pub use recipe::RecipePage;
 pub use recipes::{NewRecipe, RecipeList};
 pub use sign_in::SignIn;
 
-use crate::{LabelSet, Route};
+use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 
 #[component]
@@ -22,6 +22,6 @@ pub fn NotFound(segments: Vec<String>) -> Element {
     rsx! {
         h1 { "Not found" }
         p { "There is no page at /{segments.join(\"/\")}." }
-        Link { to: Route::RecipeList { labels: LabelSet::default() }, "Back to the recipes" }
+        Link { to: Route::RecipeList { labels: LabelSet::default(), diets: DietSet::default() }, "Back to the recipes" }
     }
 }

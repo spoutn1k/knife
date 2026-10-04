@@ -11,7 +11,7 @@ mod views;
 
 use api::{Api, use_api};
 use auth::{Identity, Session};
-use components::{ErrorBanner, Loading};
+use components::{Diet, ErrorBanner, Loading};
 use dioxus::prelude::*;
 use std::collections::BTreeSet;
 use std::convert::Infallible;
@@ -31,9 +31,10 @@ const ICON: Asset = asset!("/assets/icon.svg");
 #[rustfmt::skip]
 pub enum Route {
     #[layout(Shell)]
-        /// `?labels=a,b` keeps only the recipes with all those labels.
-        #[route("/?:labels")]
-        RecipeList { labels: LabelSet },
+        /// `?labels=a,b` keeps only the recipes with all those labels, and
+        /// `diets=vegan,gluten-free` only those fitting all those diets.
+        #[route("/?:labels&:diets")]
+        RecipeList { labels: LabelSet, diets: DietSet },
         #[route("/recipes/new")]
         NewRecipe {},
         #[route("/recipes/:id")]
@@ -88,6 +89,37 @@ impl fmt::Display for LabelSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let labels: Vec<&str> = self.0.iter().map(String::as_str).collect();
         f.write_str(&labels.join(","))
+    }
+}
+
+/// Diets selected on the recipe list. In the URL, their slugs are joined by
+/// commas; unknown ones are ignored.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct DietSet(pub BTreeSet<Diet>);
+
+impl DietSet {
+    /// This selection with `diet` added, or removed if it was selected.
+    pub fn toggled(&self, diet: Diet) -> Self {
+        let mut diets = self.0.clone();
+        if !diets.remove(&diet) {
+            diets.insert(diet);
+        }
+        Self(diets)
+    }
+}
+
+impl FromStr for DietSet {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.split(',').filter_map(Diet::from_slug).collect()))
+    }
+}
+
+impl fmt::Display for DietSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let diets: Vec<&str> = self.0.iter().map(|d| d.slug()).collect();
+        f.write_str(&diets.join(","))
     }
 }
 
@@ -151,7 +183,7 @@ fn Shell() -> Element {
         header { class: "top",
             Link {
                 class: "brand",
-                to: Route::RecipeList { labels: LabelSet::default() },
+                to: Route::RecipeList { labels: LabelSet::default(), diets: DietSet::default() },
                 onclick: move |_| menu_open.set(false),
                 "knife"
             }
@@ -244,5 +276,20 @@ mod tests {
         let labels = LabelSet::one("french").toggled("dessert");
         assert_eq!(labels.to_string(), "dessert,french");
         assert_eq!(labels.toggled("dessert"), LabelSet::one("french"));
+    }
+
+    #[test]
+    fn diet_sets_round_trip() {
+        let diets: DietSet = "gluten-free,vegan,unknown".parse().unwrap();
+        assert_eq!(diets.0, BTreeSet::from([Diet::Vegan, Diet::GlutenFree]));
+        assert_eq!(diets.to_string(), "vegan,gluten-free");
+        assert_eq!("".parse::<DietSet>().unwrap(), DietSet::default());
+        assert_eq!(
+            diets
+                .toggled(Diet::Vegan)
+                .toggled(Diet::DairyFree)
+                .to_string(),
+            "dairy-free,gluten-free"
+        );
     }
 }

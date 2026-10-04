@@ -2,11 +2,11 @@
 
 use crate::api::use_api;
 use crate::components::{
-    DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fuzzy_filter,
+    Diet, DietIcon, DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fuzzy_filter,
 };
 use crate::views::edit_recipe::RecipeForm;
 use crate::views::recipe::use_label_names;
-use crate::{LabelSet, Route};
+use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::{Label, RecipeId, RecipeListing, Summary, simplify};
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ use std::collections::HashMap;
 const LABEL_BUDGET: usize = 24;
 
 #[component]
-pub fn RecipeList(labels: LabelSet) -> Element {
+pub fn RecipeList(labels: LabelSet, diets: DietSet) -> Element {
     let api = use_api();
     let search = use_signal(String::new);
     // Every recipe, loaded once and filtered here as the search is typed.
@@ -30,14 +30,11 @@ pub fn RecipeList(labels: LabelSet) -> Element {
         let api = api.clone();
         async move { api.labels("").await }
     });
-    // Open when arriving with labels selected, as from a tag link.
-    let mut open = use_signal(|| !labels.0.is_empty());
+    // Open when arriving with labels or diets selected, as from a tag link.
+    let mut open = use_signal(|| !labels.0.is_empty() || !diets.0.is_empty());
 
-    // What is filtered, shown in the header so it is visible when closed.
+    // What is filtered beyond the search, listed under it when closed.
     let mut active = Vec::new();
-    if !search.read().trim().is_empty() {
-        active.push(format!("“{}”", search.read().trim()));
-    }
     for label in &labels.0 {
         let name = match &*all_labels.read() {
             Some(Ok(all)) => all
@@ -48,38 +45,67 @@ pub fn RecipeList(labels: LabelSet) -> Element {
         };
         active.push(name.unwrap_or_else(|| label.clone()));
     }
+    active.extend(diets.0.iter().map(|d| d.label().to_owned()));
+
+    // The recipes left by the filters and the search, once loaded.
+    let shown = match &*recipes.read() {
+        Some(Ok(list)) => {
+            let labelled: Vec<RecipeListing> = list
+                .iter()
+                .filter(|r| labels.0.is_subset(&r.tags))
+                .filter(|r| diets.0.iter().all(|d| d.allows(r.classification)))
+                .cloned()
+                .collect();
+            Some(fuzzy_filter(&labelled, |r| &r.name, &search.read()))
+        }
+        _ => None,
+    };
+    let mut recap = active.join(" · ");
+    if let Some(shown) = &shown {
+        let noun = if shown.len() == 1 {
+            "recipe"
+        } else {
+            "recipes"
+        };
+        recap.push_str(&format!(" — {} {noun}", shown.len()));
+    }
 
     rsx! {
         div { class: "title-row",
             h1 { "Recipes" }
             Link { class: "button", to: Route::NewRecipe {}, "New recipe" }
         }
-        details { class: "filters", open: open(),
-            summary {
-                onclick: move |e| {
-                    e.prevent_default();
-                    open.toggle();
-                },
-                "Filter"
-                if !active.is_empty() {
-                    span { class: "muted", " · {active.join(\" · \")}" }
+        div { class: "filters",
+            div { class: "filters-head",
+                SearchBox { value: search, placeholder: "Recipe name" }
+                button {
+                    class: "link",
+                    r#type: "button",
+                    "aria-expanded": open(),
+                    onclick: move |_| open.toggle(),
+                    "Filter"
+                    if !active.is_empty() {
+                        span { class: "badge", "{active.len()}" }
+                    }
+                    span { class: "chevron", "aria-hidden": "true", "▾" }
                 }
             }
-            SearchBox { value: search, placeholder: "Recipe name" }
-            if let Some(Ok(all)) = &*all_labels.read() {
-                LabelFilter { labels: all.clone(), selected: labels.clone() }
+            if open() {
+                div { class: "filters-body",
+                    if let Some(Ok(all)) = &*all_labels.read() {
+                        LabelFilter { labels: all.clone(), selected: labels.clone(), diets: diets.clone() }
+                    }
+                    DietFilter { labels: labels.clone(), selected: diets.clone() }
+                }
+            } else if !active.is_empty() {
+                p { class: "active muted", "{recap}" }
             }
         }
-        match &*recipes.read() {
-            None => rsx! { Loading {} },
-            Some(Err(e)) => rsx! { ErrorBanner { message: e.to_string() } },
-            Some(Ok(list)) => {
-                let labelled: Vec<RecipeListing> = list
-                    .iter()
-                    .filter(|r| labels.0.is_subset(&r.tags))
-                    .cloned()
-                    .collect();
-                let shown = fuzzy_filter(&labelled, |r| &r.name, &search.read());
+        match (&*recipes.read(), shown) {
+            (None, _) => rsx! { Loading {} },
+            (Some(Err(e)), _) => rsx! { ErrorBanner { message: e.to_string() } },
+            (Some(Ok(list)), shown) => {
+                let shown = shown.unwrap_or_default();
                 if shown.is_empty() {
                     rsx! {
                         p { class: "muted",
@@ -98,10 +124,30 @@ pub fn RecipeList(labels: LabelSet) -> Element {
     }
 }
 
+/// The diets to filter the list by. Selecting a diet adds it to the page's
+/// `?diets=`, selecting it again removes it; a recipe must fit them all.
+#[component]
+fn DietFilter(labels: LabelSet, selected: DietSet) -> Element {
+    rsx! {
+        p { class: "filter-heading", "Diet" }
+        nav { class: "diet-filter", "aria-label": "Filter by diet",
+            for diet in Diet::ALL {
+                Link {
+                    key: "{diet.slug()}",
+                    class: if selected.0.contains(&diet) { "diet-chip selected" } else { "diet-chip" },
+                    to: Route::RecipeList { labels: labels.clone(), diets: selected.toggled(diet) },
+                    DietIcon { diet }
+                    "{diet.label()}"
+                }
+            }
+        }
+    }
+}
+
 /// The labels to filter the list by. Selecting a label adds it to the page's
 /// `?labels=`, selecting it again removes it, and "All" clears them.
 #[component]
-fn LabelFilter(labels: Vec<Label>, selected: LabelSet) -> Element {
+fn LabelFilter(labels: Vec<Label>, selected: LabelSet, diets: DietSet) -> Element {
     let mut labels: Vec<Label> = labels.into_iter().filter(|l| l.recipe_count > 0).collect();
     labels.sort_by_key(|l| l.simple_name.clone());
     if labels.is_empty() {
@@ -109,17 +155,18 @@ fn LabelFilter(labels: Vec<Label>, selected: LabelSet) -> Element {
     }
 
     rsx! {
+        p { class: "filter-heading", "Labels" }
         nav { class: "label-filter", "aria-label": "Filter by label",
             Link {
                 class: if selected.0.is_empty() { "tag plain selected" } else { "tag plain" },
-                to: Route::RecipeList { labels: LabelSet::default() },
+                to: Route::RecipeList { labels: LabelSet::default(), diets: diets.clone() },
                 "All"
             }
             for label in labels {
                 Link {
                     key: "{label.simple_name}",
                     class: if selected.0.contains(&label.simple_name) { "tag plain selected" } else { "tag plain" },
-                    to: Route::RecipeList { labels: selected.toggled(&label.simple_name) },
+                    to: Route::RecipeList { labels: selected.toggled(&label.simple_name), diets: diets.clone() },
                     "{label.name}"
                     span { class: "count", "{label.recipe_count}" }
                 }
@@ -193,7 +240,7 @@ fn RecipeTags(tags: Vec<String>, labels: HashMap<String, String>) -> Element {
     rsx! {
         span { class: "tags",
             for (tag, name) in names[..shown].iter() {
-                Link { key: "{tag}", class: "tag plain", to: Route::RecipeList { labels: LabelSet::one(tag) }, "{name}" }
+                Link { key: "{tag}", class: "tag plain", to: Route::RecipeList { labels: LabelSet::one(tag), diets: DietSet::default() }, "{name}" }
             }
             if !hidden.is_empty() {
                 span { class: "more", title: hidden.join(", "), "+{hidden.len()}" }

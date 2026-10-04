@@ -6,7 +6,10 @@ use knife_core::Classification;
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 use std::future::Future;
+use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
 
 #[component]
 pub fn Loading() -> Element {
@@ -53,7 +56,7 @@ pub fn DietIcons(classification: Classification) -> Element {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Diet {
     Vegan,
     Vegetarian,
@@ -62,19 +65,46 @@ pub enum Diet {
 }
 
 impl Diet {
+    pub const ALL: [Self; 4] = [
+        Self::Vegan,
+        Self::Vegetarian,
+        Self::DairyFree,
+        Self::GlutenFree,
+    ];
+
+    /// Whether a recipe so classified fits this diet. Vegan recipes fit the
+    /// vegetarian diet too.
+    pub fn allows(self, c: Classification) -> bool {
+        match self {
+            Self::Vegan => !c.meat && !c.dairy && !c.animal_product,
+            Self::Vegetarian => !c.meat,
+            Self::DairyFree => !c.dairy,
+            Self::GlutenFree => !c.gluten,
+        }
+    }
+
     /// The diets a classification allows. Vegan implies vegetarian, so only
     /// the stronger of the two is listed.
     pub fn of(c: Classification) -> Vec<Self> {
-        let vegan = !c.meat && !c.dairy && !c.animal_product;
-        [
-            (Self::Vegan, vegan),
-            (Self::Vegetarian, !c.meat && !vegan),
-            (Self::DairyFree, !c.dairy),
-            (Self::GlutenFree, !c.gluten),
-        ]
-        .into_iter()
-        .filter_map(|(diet, applies)| applies.then_some(diet))
-        .collect()
+        let vegan = Self::Vegan.allows(c);
+        Self::ALL
+            .into_iter()
+            .filter(|diet| diet.allows(c) && !(vegan && *diet == Self::Vegetarian))
+            .collect()
+    }
+
+    /// The diet's name in URLs.
+    pub fn slug(self) -> &'static str {
+        match self {
+            Self::Vegan => "vegan",
+            Self::Vegetarian => "vegetarian",
+            Self::DairyFree => "dairy-free",
+            Self::GlutenFree => "gluten-free",
+        }
+    }
+
+    pub fn from_slug(slug: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|d| d.slug() == slug)
     }
 
     pub fn label(self) -> &'static str {
@@ -225,9 +255,11 @@ pub fn Highlight(text: String, indices: Vec<u32>) -> Element {
     }
 }
 
-/// A search field, filtering a list as it is typed.
+/// A search field, filtering a list as it is typed. Pressing "/" anywhere
+/// but in another field focuses it.
 #[component]
 pub fn SearchBox(value: Signal<String>, placeholder: String) -> Element {
+    use_slash_focus();
     rsx! {
         input {
             class: "search",
@@ -237,6 +269,55 @@ pub fn SearchBox(value: Signal<String>, placeholder: String) -> Element {
             oninput: move |e| value.set(e.value()),
         }
     }
+}
+
+/// Listens, while the calling component is mounted, for "/" pressed outside
+/// a text field, and focuses the page's search field instead of typing it.
+fn use_slash_focus() {
+    let listener = use_hook(|| {
+        let listener =
+            Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(|e: web_sys::KeyboardEvent| {
+                if e.key() != "/" || e.ctrl_key() || e.meta_key() || e.alt_key() {
+                    return;
+                }
+                let Some(document) = web_sys::window().and_then(|w| w.document()) else {
+                    return;
+                };
+                if document.active_element().is_some_and(|el| is_editable(&el)) {
+                    return;
+                }
+                let search = document
+                    .query_selector("input.search")
+                    .ok()
+                    .flatten()
+                    .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok());
+                if let Some(search) = search {
+                    e.prevent_default();
+                    let _ = search.focus();
+                }
+            });
+        if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+            let _ = document
+                .add_event_listener_with_callback("keydown", listener.as_ref().unchecked_ref());
+        }
+        Rc::new(listener)
+    });
+    use_drop(move || {
+        if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+            let _ = document.remove_event_listener_with_callback(
+                "keydown",
+                listener.as_ref().as_ref().unchecked_ref(),
+            );
+        }
+    });
+}
+
+/// Whether typing in `el` enters text, so "/" must reach it.
+fn is_editable(el: &web_sys::Element) -> bool {
+    matches!(el.tag_name().as_str(), "INPUT" | "TEXTAREA" | "SELECT")
+        || el
+            .dyn_ref::<web_sys::HtmlElement>()
+            .is_some_and(|el| el.is_content_editable())
 }
 
 /// The state of a user-triggered write: whether it is running, and why the

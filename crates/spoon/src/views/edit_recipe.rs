@@ -7,7 +7,7 @@ use crate::components::{
 };
 use crate::views::recipe::{by_group, use_label_names};
 use crate::views::recipes::RecipeLinks;
-use crate::{LabelSet, Route};
+use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::input::{
     DependencyInput, NewIngredient, NewRecipe as NewRecipeInput, RecipePatch, RequirementInput,
@@ -59,6 +59,7 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
                 Ok(()) => {
                     navigator.push(Route::RecipeList {
                         labels: LabelSet::default(),
+                        diets: DietSet::default(),
                     });
                     Ok(())
                 }
@@ -242,7 +243,7 @@ pub(super) fn RecipeForm(
                     }
                 } else {
                     button { r#type: "submit", disabled: *mutation.busy.read(), "Create" }
-                    Link { class: "button secondary", to: Route::RecipeList { labels: LabelSet::default() }, "Cancel" }
+                    Link { class: "button secondary", to: Route::RecipeList { labels: LabelSet::default(), diets: DietSet::default() }, "Cancel" }
                 }
             }
         }
@@ -277,7 +278,7 @@ fn Tags(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
         div { class: "tags",
             for tag in recipe.tags.iter().cloned() {
                 span { key: "{tag}", class: "tag",
-                    Link { to: Route::RecipeList { labels: LabelSet::one(&tag) },
+                    Link { to: Route::RecipeList { labels: LabelSet::one(&tag), diets: DietSet::default() },
                         {names.get(&tag).cloned().unwrap_or(tag.clone())}
                     }
                     button {

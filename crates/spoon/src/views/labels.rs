@@ -6,7 +6,7 @@ use crate::api::use_api;
 use crate::components::{
     ErrorBanner, Highlight, Loading, Match, SearchBox, confirm, fuzzy_filter, use_mutation,
 };
-use crate::{LabelSet, Route};
+use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::input::LabelPatch;
 use knife_core::{Label, simplify};
@@ -145,7 +145,7 @@ fn LabelRow(label: Label, indices: Vec<u32>, on_changed: EventHandler<()>) -> El
             } else {
                 Link {
                     class: "tag plain",
-                    to: Route::RecipeList { labels: LabelSet::one(&label.simple_name) },
+                    to: Route::RecipeList { labels: LabelSet::one(&label.simple_name), diets: DietSet::default() },
                     Highlight { text: label.name.clone(), indices }
                 }
                 span { class: "muted", "{recipes}" }
