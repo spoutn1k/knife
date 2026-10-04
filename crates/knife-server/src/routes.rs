@@ -13,8 +13,8 @@ use knife_core::input::{
     RequirementInput,
 };
 use knife_core::{
-    Ingredient, IngredientDetails, IngredientId, Label, LabelDetails, Recipe, RecipeId,
-    RecipeListing, Summary,
+    Ingredient, IngredientDetails, IngredientId, Label, LabelDetails, Recipe, RecipeDetails,
+    RecipeId, RecipeListing, Summary,
 };
 use serde::Deserialize;
 use std::sync::Arc;
@@ -135,7 +135,7 @@ async fn create_recipe(
     ))
 }
 
-async fn get_recipe(State(store): Db, Path(id): Path<RecipeId>) -> Result<Json<Recipe>> {
+async fn get_recipe(State(store): Db, Path(id): Path<RecipeId>) -> Result<Json<RecipeDetails>> {
     Ok(Json(store.get_recipe(&id).await?))
 }
 

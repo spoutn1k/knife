@@ -116,6 +116,8 @@ button.menu-toggle .icon { width: 1.5rem; height: 1.5rem; display: block; }
 /* Recipe page: ingredients take 32% of the width, directions the rest. */
 .recipe .columns { grid-template-columns: minmax(0, 8fr) minmax(0, 17fr); }
 @media (max-width: 760px) { .columns, .recipe .columns { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+/* Below both columns, set apart from the recipe itself. */
+.recipe .used-in { margin-top: 2rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 
 .card {
   background: var(--surface);

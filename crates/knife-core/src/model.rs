@@ -166,6 +166,15 @@ pub struct IngredientDetails {
     pub used_in: Vec<Summary<RecipeId>>,
 }
 
+/// A recipe and the recipes that use it directly, sorted by name, as
+/// `GET /recipes/{id}` returns it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeDetails {
+    #[serde(flatten)]
+    pub recipe: Recipe,
+    pub used_in: Vec<Summary<RecipeId>>,
+}
+
 /// A label and the recipes tagged with it, as `GET /labels/{name}` returns it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LabelDetails {

@@ -9,8 +9,8 @@ use super::{
 use firestore::FirestoreDb;
 use knife_core::input::{DependencyInput, NewRecipe, RecipePatch, RequirementInput};
 use knife_core::{
-    Classification, Dependency, IngredientId, Recipe, RecipeId, RecipeListing, Requirement, UserId,
-    ValidName, simplify,
+    Classification, Dependency, IngredientId, Recipe, RecipeDetails, RecipeId, RecipeListing,
+    Requirement, UserId, ValidName, simplify,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -23,13 +23,24 @@ impl Store {
             .collect())
     }
 
-    pub async fn get_recipe(&self, id: &RecipeId) -> Result<Recipe> {
+    pub async fn get_recipe(&self, id: &RecipeId) -> Result<RecipeDetails> {
         let cached = self.cache.current(&self.db).await?;
-        cached
+        let recipe = cached
             .recipes
             .get(&id.0)
             .cloned()
-            .ok_or_else(|| StoreError::NotFound(format!("recipe {id}")))
+            .ok_or_else(|| StoreError::NotFound(format!("recipe {id}")))?;
+
+        let mut used_in: Vec<&Recipe> = cached
+            .recipes
+            .values()
+            .filter(|r| r.dependencies.contains_key(id))
+            .collect();
+        used_in.sort_by(|a, b| a.simple_name.cmp(&b.simple_name));
+        Ok(RecipeDetails {
+            recipe,
+            used_in: used_in.into_iter().map(Recipe::summary).collect(),
+        })
     }
 
     pub async fn create_recipe(&self, input: &NewRecipe, user: &UserId) -> Result<Recipe> {

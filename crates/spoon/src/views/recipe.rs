@@ -1,13 +1,15 @@
 //! A recipe's page, for reading. Changes are made on its edit page.
 //!
 //! The recipes it uses come first, ingredients and directions, each under a
-//! "For <recipe>" heading, in the order to prepare them.
+//! "For <recipe>" heading, in the order to prepare them. The recipes using
+//! it are listed last.
 
 use crate::api::{Api, use_api};
 use crate::components::{Diets, ErrorBanner, Loading, Markdown, PenIcon};
+use crate::views::recipes::RecipeLinks;
 use crate::{Error, LabelSet, Route};
 use dioxus::prelude::*;
-use knife_core::{IngredientId, Recipe, RecipeId, Requirement, simplify};
+use knife_core::{IngredientId, Recipe, RecipeId, Requirement, Summary, simplify};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[component]
@@ -16,17 +18,21 @@ pub fn RecipePage(id: String) -> Element {
     let loaded = use_resource(use_reactive!(|id| {
         let api = api.clone();
         async move {
-            let recipe = api.recipe(&RecipeId(id)).await?;
-            let requisites = requisites(&api, &recipe).await?;
-            Ok::<_, Error>((recipe, requisites))
+            let details = api.recipe_details(&RecipeId(id)).await?;
+            let requisites = requisites(&api, &details.recipe).await?;
+            Ok::<_, Error>((details, requisites))
         }
     }));
 
     match &*loaded.read() {
         None => rsx! { Loading {} },
         Some(Err(e)) => rsx! { ErrorBanner { message: e.to_string() } },
-        Some(Ok((recipe, requisites))) => rsx! {
-            RecipeView { recipe: recipe.clone(), requisites: requisites.clone() }
+        Some(Ok((details, requisites))) => rsx! {
+            RecipeView {
+                recipe: details.recipe.clone(),
+                requisites: requisites.clone(),
+                used_in: details.used_in.clone(),
+            }
         },
     }
 }
@@ -78,7 +84,7 @@ fn sorted_dependencies(recipe: &Recipe) -> Vec<&RecipeId> {
 }
 
 #[component]
-fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>) -> Element {
+fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>, used_in: Vec<Summary<RecipeId>>) -> Element {
     let labels = use_label_names();
     let with_ingredients: Vec<&Recipe> = requisites
         .iter()
@@ -165,6 +171,13 @@ fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>) -> Element {
                         h2 { "Notes" }
                         Markdown { text: recipe.information.clone() }
                     }
+                }
+            }
+
+            if !used_in.is_empty() {
+                section { class: "used-in",
+                    h2 { "Used in" }
+                    RecipeLinks { recipes: used_in }
                 }
             }
         }

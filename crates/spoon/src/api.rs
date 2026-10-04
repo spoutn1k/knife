@@ -7,7 +7,8 @@ use knife_core::input::{
     RequirementInput,
 };
 use knife_core::{
-    Ingredient, IngredientDetails, IngredientId, Label, Recipe, RecipeId, RecipeListing, Summary,
+    Ingredient, IngredientDetails, IngredientId, Label, Recipe, RecipeDetails, RecipeId,
+    RecipeListing, Summary,
 };
 use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
@@ -239,6 +240,11 @@ impl Api {
     }
 
     pub async fn recipe(&self, id: &RecipeId) -> Result<Recipe> {
+        Ok(self.recipe_details(id).await?.recipe)
+    }
+
+    /// A recipe with the recipes that use it.
+    pub async fn recipe_details(&self, id: &RecipeId) -> Result<RecipeDetails> {
         self.get(&["recipes", &id.0], &[]).await
     }
 

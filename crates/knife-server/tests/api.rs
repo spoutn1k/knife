@@ -336,6 +336,16 @@ async fn dependency_rules() {
     let (status, _) = client.put(&dep(&fajitas, "missing"), json!({})).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 
+    // A recipe lists the recipes using it directly, by name.
+    let (_, shown) = client.get(&format!("/api/recipes/{pico}")).await;
+    let used_in: Vec<_> = shown["used_in"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(used_in, [fajitas.as_str(), guacamole.as_str()]);
+
     // Recipes others depend on cannot be deleted.
     let (status, conflict) = client.delete(&format!("/api/recipes/{pico}")).await;
     assert_eq!(status, StatusCode::CONFLICT);
