@@ -43,9 +43,6 @@ pub enum Error {
     #[error("unexpected response from the server: {0}")]
     Response(#[from] serde_json::Error),
 
-    #[error("there is no recipe named {0:?}")]
-    NoSuchRecipe(String),
-
     #[error("there is no ingredient named {0:?}")]
     NoSuchIngredient(String),
 

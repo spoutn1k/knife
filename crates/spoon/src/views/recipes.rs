@@ -1,7 +1,9 @@
 //! The recipe list, and the page to create a recipe.
 
 use crate::api::use_api;
-use crate::components::{DietIcons, ErrorBanner, Loading, SearchBox};
+use crate::components::{
+    DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fuzzy_filter,
+};
 use crate::views::edit_recipe::RecipeForm;
 use crate::views::recipe::use_label_names;
 use crate::{LabelSet, Route};
@@ -16,12 +18,12 @@ const LABEL_BUDGET: usize = 24;
 pub fn RecipeList(labels: LabelSet) -> Element {
     let api = use_api();
     let search = use_signal(String::new);
+    // Every recipe, loaded once and filtered here as the search is typed.
     let recipes = use_resource({
         let api = api.clone();
         move || {
             let api = api.clone();
-            let prefix = search();
-            async move { api.recipes(&prefix).await }
+            async move { api.recipes("").await }
         }
     });
     let all_labels = use_resource(move || {
@@ -72,15 +74,16 @@ pub fn RecipeList(labels: LabelSet) -> Element {
             None => rsx! { Loading {} },
             Some(Err(e)) => rsx! { ErrorBanner { message: e.to_string() } },
             Some(Ok(list)) => {
-                let shown: Vec<RecipeListing> = list
+                let labelled: Vec<RecipeListing> = list
                     .iter()
                     .filter(|r| labels.0.is_subset(&r.tags))
                     .cloned()
                     .collect();
+                let shown = fuzzy_filter(&labelled, |r| &r.name, &search.read());
                 if shown.is_empty() {
                     rsx! {
                         p { class: "muted",
-                            if list.is_empty() && search.read().is_empty() {
+                            if list.is_empty() {
                                 "No recipes yet."
                             } else {
                                 "No recipe matches."
@@ -126,7 +129,7 @@ fn LabelFilter(labels: Vec<Label>, selected: LabelSet) -> Element {
 }
 
 #[component]
-fn RecipeTable(recipes: Vec<RecipeListing>) -> Element {
+fn RecipeTable(recipes: Vec<Match<RecipeListing>>) -> Element {
     let labels = use_label_names();
 
     rsx! {
@@ -140,10 +143,12 @@ fn RecipeTable(recipes: Vec<RecipeListing>) -> Element {
                 }
             }
             tbody {
-                for recipe in recipes {
+                for Match { item: recipe, indices } in recipes {
                     tr { key: "{recipe.id}",
                         td {
-                            Link { to: Route::RecipePage { id: recipe.id.0.clone() }, "{recipe.name}" }
+                            Link { to: Route::RecipePage { id: recipe.id.0.clone() },
+                                Highlight { text: recipe.name.clone(), indices }
+                            }
                         }
                         td { DietIcons { classification: recipe.classification } }
                         td { class: "labels",

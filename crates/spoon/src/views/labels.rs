@@ -3,7 +3,9 @@
 
 use crate::Error;
 use crate::api::use_api;
-use crate::components::{ErrorBanner, Loading, SearchBox, confirm, use_mutation};
+use crate::components::{
+    ErrorBanner, Highlight, Loading, Match, SearchBox, confirm, fuzzy_filter, use_mutation,
+};
 use crate::{LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::input::LabelPatch;
@@ -13,10 +15,10 @@ use knife_core::{Label, simplify};
 pub fn LabelList() -> Element {
     let api = use_api();
     let search = use_signal(String::new);
+    // Every label, loaded once and filtered here as the search is typed.
     let mut labels = use_resource(move || {
         let api = api.clone();
-        let prefix = search();
-        async move { api.labels(&prefix).await }
+        async move { api.labels("").await }
     });
 
     rsx! {
@@ -26,18 +28,26 @@ pub fn LabelList() -> Element {
         match &*labels.read() {
             None => rsx! { Loading {} },
             Some(Err(e)) => rsx! { ErrorBanner { message: e.to_string() } },
-            Some(Ok(list)) if list.is_empty() => rsx! { p { class: "muted", "No labels found." } },
-            Some(Ok(list)) => rsx! {
-                ul { class: "label-rows",
-                    for label in list.iter() {
-                        LabelRow {
-                            key: "{label.simple_name}",
-                            label: label.clone(),
-                            on_changed: move |_| labels.restart(),
+            Some(Ok(list)) if list.is_empty() => rsx! { p { class: "muted", "No labels yet." } },
+            Some(Ok(list)) => {
+                let shown = fuzzy_filter(list, |l| &l.name, &search.read());
+                if shown.is_empty() {
+                    rsx! { p { class: "muted", "No label matches." } }
+                } else {
+                    rsx! {
+                        ul { class: "label-rows",
+                            for Match { item: label, indices } in shown {
+                                LabelRow {
+                                    key: "{label.simple_name}",
+                                    label,
+                                    indices,
+                                    on_changed: move |_| labels.restart(),
+                                }
+                            }
                         }
                     }
                 }
-            },
+            }
         }
     }
 }
@@ -51,9 +61,9 @@ enum Mode {
 }
 
 /// A label with its recipe count, renamed in place, merged into another or
-/// deleted.
+/// deleted. `indices` are the letters of its name matched by the search.
 #[component]
-fn LabelRow(label: Label, on_changed: EventHandler<()>) -> Element {
+fn LabelRow(label: Label, indices: Vec<u32>, on_changed: EventHandler<()>) -> Element {
     let api = use_api();
     let mutation = use_mutation();
     let mut mode = use_signal(|| Mode::View);
@@ -136,7 +146,7 @@ fn LabelRow(label: Label, on_changed: EventHandler<()>) -> Element {
                 Link {
                     class: "tag plain",
                     to: Route::RecipeList { labels: LabelSet::one(&label.simple_name) },
-                    "{label.name}"
+                    Highlight { text: label.name.clone(), indices }
                 }
                 span { class: "muted", "{recipes}" }
                 span { class: "actions",
@@ -164,12 +174,12 @@ fn MergeForm(label: Label, on_merged: EventHandler<()>, on_cancel: EventHandler<
     let mut target = use_signal(String::new);
     let mut new_name = use_signal(String::new);
 
+    // Every label, suggested by the field, which filters them itself.
     let suggestions = use_resource({
         let api = api.clone();
         move || {
             let api = api.clone();
-            let prefix = target();
-            async move { api.labels(&prefix).await }
+            async move { api.labels("").await }
         }
     });
     // The label the typed name refers to, other than this one.

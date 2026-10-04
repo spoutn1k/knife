@@ -3,7 +3,10 @@
 use crate::Error;
 use dioxus::prelude::*;
 use knife_core::Classification;
+use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
+use nucleo_matcher::{Config, Matcher, Utf32Str};
 use std::future::Future;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[component]
 pub fn Loading() -> Element {
@@ -140,7 +143,89 @@ pub fn PenIcon() -> Element {
     }
 }
 
-/// A search field for a prefix filter.
+/// An item kept by [`fuzzy_filter`], with the positions of the characters
+/// of its name that matched, for [`Highlight`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct Match<T> {
+    pub item: T,
+    /// Grapheme positions, sorted.
+    pub indices: Vec<u32>,
+}
+
+/// The `items` whose name matches `search` as fzf would match it, best
+/// match first; ties keep their order in `items`.
+///
+/// Each word of `search` must match, in any order, as letters appearing in
+/// that order: "trt pom" finds "Tarte aux pommes". Case and accents are
+/// ignored, and fzf's operators work: `^tar` starts with, `'pom` contains
+/// exactly, `!choc` excludes.
+pub fn fuzzy_filter<T: Clone>(
+    items: &[T],
+    name: impl Fn(&T) -> &str,
+    search: &str,
+) -> Vec<Match<T>> {
+    let pattern = Pattern::parse(search, CaseMatching::Ignore, Normalization::Smart);
+    let mut matcher = Matcher::new(Config::DEFAULT);
+    let mut chars = Vec::new();
+    let mut indices = Vec::new();
+    let mut scored: Vec<(u32, Match<T>)> = items
+        .iter()
+        .filter_map(|item| {
+            let name = name(item);
+            // One char per grapheme, as `Highlight` counts them. Unlike
+            // `Utf32Str::new`, never falls back to bytes for non-ASCII text.
+            let haystack = if name.is_ascii() {
+                Utf32Str::Ascii(name.as_bytes())
+            } else {
+                chars.clear();
+                chars.extend(nucleo_matcher::chars::graphemes(name));
+                Utf32Str::Unicode(&chars)
+            };
+            indices.clear();
+            let score = pattern.indices(haystack, &mut matcher, &mut indices)?;
+            // Each word's positions are appended separately.
+            let mut matched = indices.clone();
+            matched.sort_unstable();
+            matched.dedup();
+            let item = item.clone();
+            Some((
+                score,
+                Match {
+                    item,
+                    indices: matched,
+                },
+            ))
+        })
+        .collect();
+    // Stable, so equal scores stay in the given order.
+    scored.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+    scored.into_iter().map(|(_, m)| m).collect()
+}
+
+/// `text` with the graphemes at `indices`, as a [`Match`] gives them, marked.
+#[component]
+pub fn Highlight(text: String, indices: Vec<u32>) -> Element {
+    // Runs of matched and unmatched text.
+    let mut runs: Vec<(String, bool)> = Vec::new();
+    for (i, grapheme) in text.graphemes(true).enumerate() {
+        let hit = indices.binary_search(&(i as u32)).is_ok();
+        match runs.last_mut() {
+            Some((run, was_hit)) if *was_hit == hit => run.push_str(grapheme),
+            _ => runs.push((grapheme.to_owned(), hit)),
+        }
+    }
+    rsx! {
+        for (run, hit) in runs {
+            if hit {
+                mark { class: "match", "{run}" }
+            } else {
+                "{run}"
+            }
+        }
+    }
+}
+
+/// A search field, filtering a list as it is typed.
 #[component]
 pub fn SearchBox(value: Signal<String>, placeholder: String) -> Element {
     rsx! {
@@ -233,5 +318,64 @@ pub fn ContainsChecks(value: Classification, onchange: EventHandler<Classificati
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fuzzy_filter;
+
+    fn search(query: &str) -> Vec<&'static str> {
+        let names = [
+            "Crème brûlée",
+            "Pâte brisée",
+            "Tarte aux pommes",
+            "Tarte tatin",
+            "Compote de pommes",
+        ];
+        fuzzy_filter(&names, |n| n, query)
+            .into_iter()
+            .map(|m| m.item)
+            .collect()
+    }
+
+    #[test]
+    fn empty_search_keeps_everything_in_order() {
+        assert_eq!(search("").len(), 5);
+        assert_eq!(search("  ")[0], "Crème brûlée");
+    }
+
+    #[test]
+    fn letters_in_order_and_words_in_any_order() {
+        assert_eq!(search("trt pom"), ["Tarte aux pommes"]);
+        assert_eq!(search("pommes tarte"), ["Tarte aux pommes"]);
+    }
+
+    #[test]
+    fn case_and_accents_are_ignored() {
+        assert_eq!(search("CREME"), ["Crème brûlée"]);
+        assert_eq!(search("pate"), ["Pâte brisée"]);
+    }
+
+    #[test]
+    fn better_matches_come_first() {
+        assert_eq!(
+            search("pommes")[..2],
+            ["Tarte aux pommes", "Compote de pommes"]
+        );
+        assert_eq!(search("tatin")[0], "Tarte tatin");
+    }
+
+    #[test]
+    fn fzf_operators_work() {
+        assert_eq!(search("^tarte !tatin"), ["Tarte aux pommes"]);
+    }
+
+    #[test]
+    fn matched_positions_count_graphemes() {
+        let names = ["Crème brûlée"];
+        let found = fuzzy_filter(&names, |n| n, "brule");
+        // "b r û l é" are graphemes 6 to 10, after "Crème ".
+        assert_eq!(found[0].indices, [6, 7, 8, 9, 10]);
     }
 }

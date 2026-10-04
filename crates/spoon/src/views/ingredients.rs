@@ -3,7 +3,8 @@
 use crate::Route;
 use crate::api::use_api;
 use crate::components::{
-    ContainsChecks, Diets, ErrorBanner, Loading, SearchBox, confirm, use_mutation,
+    ContainsChecks, Diets, ErrorBanner, Highlight, Loading, Match, SearchBox, confirm,
+    fuzzy_filter, use_mutation,
 };
 use crate::views::recipes::RecipeLinks;
 use dioxus::prelude::*;
@@ -15,12 +16,12 @@ pub fn IngredientList() -> Element {
     let api = use_api();
     let navigator = use_navigator();
     let search = use_signal(String::new);
+    // Every ingredient, loaded once and filtered here as the search is typed.
     let ingredients = use_resource({
         let api = api.clone();
         move || {
             let api = api.clone();
-            let prefix = search();
-            async move { api.ingredients(&prefix).await }
+            async move { api.ingredients("").await }
         }
     });
 
@@ -55,16 +56,15 @@ pub fn IngredientList() -> Element {
         match &*ingredients.read() {
             None => rsx! { Loading {} },
             Some(Err(e)) => rsx! { ErrorBanner { message: e.to_string() } },
-            Some(Ok(list)) if list.is_empty() => rsx! { p { class: "muted", "No ingredients found." } },
-            Some(Ok(list)) => rsx! {
-                ul { class: "links",
-                    for ingredient in list.iter() {
-                        li { key: "{ingredient.id}",
-                            Link { to: Route::IngredientPage { id: ingredient.id.0.clone() }, "{ingredient.name}" }
-                        }
-                    }
+            Some(Ok(list)) if list.is_empty() => rsx! { p { class: "muted", "No ingredients yet." } },
+            Some(Ok(list)) => {
+                let shown = fuzzy_filter(list, |i| &i.name, &search.read());
+                if shown.is_empty() {
+                    rsx! { p { class: "muted", "No ingredient matches." } }
+                } else {
+                    rsx! { IngredientLinks { ingredients: shown } }
                 }
-            },
+            }
         }
         form { class: "card stack", onsubmit: create,
             h2 { "New ingredient" }
@@ -81,6 +81,22 @@ pub fn IngredientList() -> Element {
             {mutation.banner()}
             div { class: "row",
                 button { r#type: "submit", disabled: *mutation.busy.read(), "Create" }
+            }
+        }
+    }
+}
+
+/// A list of links to ingredients, their matched letters marked.
+#[component]
+fn IngredientLinks(ingredients: Vec<Match<Summary<IngredientId>>>) -> Element {
+    rsx! {
+        ul { class: "links",
+            for Match { item: ingredient, indices } in ingredients {
+                li { key: "{ingredient.id}",
+                    Link { to: Route::IngredientPage { id: ingredient.id.0.clone() },
+                        Highlight { text: ingredient.name.clone(), indices }
+                    }
+                }
             }
         }
     }
@@ -234,12 +250,12 @@ fn MergeForm(details: IngredientDetails) -> Element {
     let mut new_name = use_signal(String::new);
     let source = details.ingredient.clone();
 
+    // Every ingredient, suggested by the field, which filters them itself.
     let suggestions = use_resource({
         let api = api.clone();
         move || {
             let api = api.clone();
-            let prefix = target();
-            async move { api.ingredients(&prefix).await }
+            async move { api.ingredients("").await }
         }
     });
     // The ingredient the typed name refers to, other than this one.

@@ -273,3 +273,36 @@ table.recipes .author { white-space: nowrap; }
 .markdown th, .markdown td { border: 1px solid var(--border); padding: 0.25em 0.6em; text-align: left; }
 .markdown img { max-width: 100%; }
 h4 { font-size: 0.95rem; color: var(--muted); margin: 0.75em 0 0.25em; font-weight: 600; }
+
+/* Dialogs, such as the recipe picker. The page behind does not scroll. */
+body:has(.dialog-backdrop) { overflow: hidden; }
+button.picker { text-align: left; overflow: hidden; text-overflow: ellipsis; }
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 20;
+  background: rgb(0 0 0 / 0.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+/* A fixed height, so the dialog does not jump as its list is filtered. dvh
+   follows the browser toolbar sliding in and out on phones; vh does not. */
+.dialog {
+  width: 100%; max-width: 28rem;
+  height: min(32rem, 85vh); height: min(32rem, calc(100dvh - 2rem));
+  display: flex; flex-direction: column; gap: 0.75rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem;
+}
+.dialog-head { display: flex; align-items: center; justify-content: space-between; }
+.dialog-head h2 { margin: 0; }
+.dialog ul.choices { flex: 1; min-height: 0; list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; }
+.dialog ul.choices button {
+  display: block; width: 100%; text-align: left; white-space: normal;
+  background: none; border: none; border-bottom: 1px solid var(--border); border-radius: 0;
+  color: var(--text); font-weight: 400; padding: 0.6rem 0.25rem;
+}
+.dialog ul.choices button:hover { background: var(--accent-soft); }
+
+/* Letters matched by a search */
+mark.match { background: var(--accent-soft); color: inherit; border-radius: 2px; }
+/* Tags already use the soft accent: mark them with the strong one. */
+.tag mark.match { background: var(--accent); color: var(--accent-text); }

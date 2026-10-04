@@ -2,7 +2,9 @@
 //! recipes it uses. Each change to those is saved as it is made.
 
 use crate::api::{Api, use_api};
-use crate::components::{ContainsChecks, ErrorBanner, Loading, confirm, use_mutation};
+use crate::components::{
+    ContainsChecks, ErrorBanner, Highlight, Loading, Match, confirm, fuzzy_filter, use_mutation,
+};
 use crate::views::recipe::{by_group, use_label_names};
 use crate::views::recipes::RecipeLinks;
 use crate::{LabelSet, Route};
@@ -324,6 +326,20 @@ fn Requirements(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     let mut editing = use_signal(|| None::<(IngredientId, Requirement)>);
     // Bumped after each save, to reset the form.
     let mut saves = use_signal(|| 0u32);
+    // Every ingredient, suggested by the form, which filters them itself.
+    // Loaded again after a save, which may have created one.
+    let mut ingredients = use_resource({
+        let api = api.clone();
+        move || {
+            let api = api.clone();
+            async move { api.ingredients("").await }
+        }
+    });
+    let ingredient_list = ingredients
+        .read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .cloned();
 
     let groups = by_group(&recipe);
     let group_names: Vec<String> = groups
@@ -394,9 +410,11 @@ fn Requirements(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
                 recipe_id: recipe.id.clone(),
                 editing: editing(),
                 groups: group_names,
+                ingredients: ingredient_list,
                 on_saved: move |updated| {
                     editing.set(None);
                     saves += 1;
+                    ingredients.restart();
                     on_saved(updated);
                 },
                 on_cancel: move |_| editing.set(None),
@@ -412,6 +430,8 @@ fn RequirementForm(
     recipe_id: RecipeId,
     editing: Option<(IngredientId, Requirement)>,
     groups: Vec<String>,
+    /// Every ingredient, once loaded.
+    ingredients: Option<Vec<Summary<IngredientId>>>,
     on_saved: EventHandler<Recipe>,
     on_cancel: EventHandler<()>,
 ) -> Element {
@@ -440,30 +460,17 @@ fn RequirementForm(
     // Flags for an ingredient created by this form.
     let mut flags = use_signal(Classification::default);
 
-    let suggestions = use_resource({
-        let api = api.clone();
-        move || {
-            let api = api.clone();
-            let prefix = name();
-            async move { api.ingredients(&prefix).await }
-        }
-    });
     // The ingredient the typed name refers to, if it exists.
     let matched: Option<IngredientId> = match &editing {
         Some((id, _)) => Some(id.clone()),
-        None => suggestions
-            .read()
-            .as_ref()
-            .and_then(|r| r.as_ref().ok())
-            .and_then(|list| {
-                let wanted = simplify(&name.read());
-                list.iter()
-                    .find(|s| simplify(&s.name) == wanted)
-                    .map(|s| s.id.clone())
-            }),
+        None => ingredients.as_ref().and_then(|list| {
+            let wanted = simplify(&name.read());
+            list.iter()
+                .find(|s| simplify(&s.name) == wanted)
+                .map(|s| s.id.clone())
+        }),
     };
-    let is_new =
-        matched.is_none() && !simplify(&name.read()).is_empty() && suggestions.read().is_some();
+    let is_new = matched.is_none() && !simplify(&name.read()).is_empty() && ingredients.is_some();
 
     let submit = {
         let matched = matched.clone();
@@ -502,7 +509,7 @@ fn RequirementForm(
                     oninput: move |e| name.set(e.value()),
                 }
                 datalist { id: "ingredient-names",
-                    if let Some(Ok(list)) = &*suggestions.read() {
+                    if let Some(list) = &ingredients {
                         for s in list.iter() {
                             option { key: "{s.id}", value: "{s.name}" }
                         }
@@ -594,6 +601,27 @@ fn Dependencies(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     let mut editing = use_signal(|| None::<(RecipeId, Dependency)>);
     // Bumped after each save, to reset the form.
     let mut saves = use_signal(|| 0u32);
+    // The recipes the form offers: all but this one and those it uses.
+    let recipes = use_resource({
+        let api = api.clone();
+        move || {
+            let api = api.clone();
+            async move { api.recipes("").await }
+        }
+    });
+    let recipe_list: Option<Vec<Summary<RecipeId>>> = recipes
+        .read()
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|list| {
+            list.iter()
+                .filter(|r| r.id != recipe.id && !recipe.dependencies.contains_key(&r.id))
+                .map(|r| Summary {
+                    id: r.id.clone(),
+                    name: r.name.clone(),
+                })
+                .collect()
+        });
 
     let mut dependencies: Vec<_> = recipe.dependencies.iter().collect();
     dependencies.sort_by_key(|(_, d)| simplify(&d.name));
@@ -650,6 +678,7 @@ fn Dependencies(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
                 key: "{form_key}",
                 recipe_id: recipe.id.clone(),
                 editing: editing(),
+                recipes: recipe_list,
                 on_saved: move |updated| {
                     editing.set(None);
                     saves += 1;
@@ -661,92 +690,64 @@ fn Dependencies(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     }
 }
 
-/// Makes the recipe use another, or changes how much of it it uses.
+/// Makes the recipe use another, picked in a [`RecipePicker`], or changes
+/// how much of it it uses.
 #[component]
 fn DependencyForm(
     recipe_id: RecipeId,
     editing: Option<(RecipeId, Dependency)>,
+    /// The recipes to pick from, once loaded.
+    recipes: Option<Vec<Summary<RecipeId>>>,
     on_saved: EventHandler<Recipe>,
     on_cancel: EventHandler<()>,
 ) -> Element {
     let api = use_api();
     let mutation = use_mutation();
-    let existing = editing.as_ref().map(|(_, d)| d.clone());
-    let mut name = use_signal(|| {
-        existing
-            .as_ref()
-            .map(|d| d.name.clone())
-            .unwrap_or_default()
+    let existing = editing.as_ref().map(|(id, d)| Summary {
+        id: id.clone(),
+        name: d.name.clone(),
     });
+    let mut chosen = use_signal(|| existing.clone());
     let mut quantity = use_signal(|| {
-        existing
+        editing
             .as_ref()
-            .map(|d| d.quantity.clone())
+            .map(|(_, d)| d.quantity.clone())
             .unwrap_or_default()
     });
-    let mut optional = use_signal(|| existing.as_ref().is_some_and(|d| d.optional));
+    let mut optional = use_signal(|| editing.as_ref().is_some_and(|(_, d)| d.optional));
+    let mut picking = use_signal(|| false);
 
-    let suggestions = use_resource({
-        let api = api.clone();
-        move || {
-            let api = api.clone();
-            let prefix = name();
-            async move { api.recipes(&prefix).await }
-        }
-    });
-    // The recipe the typed name refers to, if it exists.
-    let matched: Option<RecipeId> = match &editing {
-        Some((id, _)) => Some(id.clone()),
-        None => suggestions
-            .read()
-            .as_ref()
-            .and_then(|r| r.as_ref().ok())
-            .and_then(|list| {
-                let wanted = simplify(&name.read());
-                list.iter()
-                    .find(|s| simplify(&s.name) == wanted)
-                    .map(|s| s.id.clone())
-            }),
-    };
-
-    let submit = {
-        let recipe_id = recipe_id.clone();
-        move |e: FormEvent| {
-            e.prevent_default();
-            let (api, id, matched) = (api.clone(), recipe_id.clone(), matched.clone());
-            mutation.run(async move {
-                let Some(requisite) = matched else {
-                    return Err(crate::Error::NoSuchRecipe(name()));
-                };
-                let input = DependencyInput {
-                    quantity: quantity().trim().to_owned(),
-                    optional: optional(),
-                };
-                on_saved(api.put_dependency(&id, &requisite, &input).await?);
-                Ok(())
-            });
-        }
+    let submit = move |e: FormEvent| {
+        e.prevent_default();
+        let Some(requisite) = chosen() else { return };
+        let (api, id) = (api.clone(), recipe_id.clone());
+        mutation.run(async move {
+            let input = DependencyInput {
+                quantity: quantity().trim().to_owned(),
+                optional: optional(),
+            };
+            on_saved(api.put_dependency(&id, &requisite.id, &input).await?);
+            Ok(())
+        });
     };
 
     rsx! {
         form { class: "card stack", onsubmit: submit,
             h3 {
-                if editing.is_some() { "Change {name}" } else { "Use another recipe" }
+                match &existing {
+                    Some(r) => rsx! { "Change {r.name}" },
+                    None => rsx! { "Use another recipe" },
+                }
             }
             div { class: "row wrap",
-                input {
-                    class: "grow",
-                    placeholder: "Recipe, such as a sauce or a dough",
-                    list: "recipe-names",
-                    required: true,
-                    disabled: editing.is_some(),
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value()),
-                }
-                datalist { id: "recipe-names",
-                    if let Some(Ok(list)) = &*suggestions.read() {
-                        for s in list.iter().filter(|s| s.id != recipe_id) {
-                            option { key: "{s.id}", value: "{s.name}" }
+                if existing.is_none() {
+                    button {
+                        r#type: "button",
+                        class: "secondary picker grow",
+                        onclick: move |_| picking.set(true),
+                        match chosen() {
+                            Some(r) => rsx! { "{r.name}" },
+                            None => rsx! { "Choose a recipe…" },
                         }
                     }
                 }
@@ -767,15 +768,96 @@ fn DependencyForm(
             }
             {mutation.banner()}
             div { class: "row",
-                button { r#type: "submit", disabled: *mutation.busy.read(),
-                    if editing.is_some() { "Save" } else { "Add" }
+                button {
+                    r#type: "submit",
+                    disabled: chosen.read().is_none() || *mutation.busy.read(),
+                    if existing.is_some() { "Save" } else { "Add" }
                 }
-                if editing.is_some() {
+                if existing.is_some() {
                     button {
                         r#type: "button",
                         class: "secondary",
                         onclick: move |_| on_cancel(()),
                         "Cancel"
+                    }
+                }
+            }
+        }
+        if picking() {
+            RecipePicker {
+                recipes,
+                on_pick: move |r| {
+                    chosen.set(Some(r));
+                    picking.set(false);
+                },
+                on_close: move |_| picking.set(false),
+            }
+        }
+    }
+}
+
+/// A dialog listing `recipes`, narrowed by a fuzzy search on their names
+/// (see [`fuzzy_filter`]). Picking one passes it to `on_pick`.
+#[component]
+fn RecipePicker(
+    recipes: Option<Vec<Summary<RecipeId>>>,
+    on_pick: EventHandler<Summary<RecipeId>>,
+    on_close: EventHandler<()>,
+) -> Element {
+    let mut search = use_signal(String::new);
+    let mut sorted = recipes.clone().unwrap_or_default();
+    sorted.sort_by_key(|r| simplify(&r.name));
+    let shown = fuzzy_filter(&sorted, |r| &r.name, &search.read());
+
+    rsx! {
+        div {
+            class: "dialog-backdrop",
+            onclick: move |_| on_close(()),
+            onkeydown: move |e| {
+                if e.key() == Key::Escape {
+                    on_close(());
+                }
+            },
+            div {
+                class: "dialog",
+                role: "dialog",
+                "aria-modal": "true",
+                "aria-label": "Choose a recipe",
+                onclick: move |e| e.stop_propagation(),
+                div { class: "dialog-head",
+                    h2 { "Choose a recipe" }
+                    button {
+                        r#type: "button",
+                        class: "remove",
+                        title: "Close",
+                        onclick: move |_| on_close(()),
+                        "×"
+                    }
+                }
+                input {
+                    r#type: "search",
+                    placeholder: "Search",
+                    value: "{search}",
+                    oninput: move |e| search.set(e.value()),
+                }
+                if recipes.is_none() {
+                    Loading {}
+                } else if shown.is_empty() {
+                    p { class: "muted", "No recipe matches." }
+                } else {
+                    ul { class: "choices",
+                        for Match { item: r, indices } in shown {
+                            li { key: "{r.id}",
+                                button {
+                                    r#type: "button",
+                                    onclick: {
+                                        let r = r.clone();
+                                        move |_| on_pick(r.clone())
+                                    },
+                                    Highlight { text: r.name.clone(), indices }
+                                }
+                            }
+                        }
                     }
                 }
             }
