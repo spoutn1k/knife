@@ -1,13 +1,14 @@
-//! `chopstick import`: upload a v0.3 export through the API.
+//! `chopstick import`: upload a `chopstick export` through the API.
 //!
 //! Safe to rerun: a name the server already holds is reused (the 409 names
 //! the existing record), and requirements, dependencies and tags are PUTs.
+//! The server gives every record a new id and credits the import's user.
 
 use crate::Error;
 use crate::client::Client;
-use crate::export::{Export, Recipe};
-use knife_core::input::{DependencyInput, NewIngredient, NewRecipe, RequirementInput};
-use knife_core::{Classification, ValidName};
+use crate::export::{Export, Recipe, VERSION};
+use knife_core::input::{NewIngredient, NewRecipe};
+use knife_core::{Classification, ValidName, simplify};
 use reqwest::Method;
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -17,14 +18,26 @@ use std::path::Path;
 pub fn read(path: &Path) -> Result<Export, Error> {
     let fail = |reason: String| Error::Export(path.into(), reason);
     let text = std::fs::read_to_string(path).map_err(|e| fail(e.to_string()))?;
-    serde_json::from_str(&text).map_err(|e| fail(e.to_string()))
+    let value: Value = serde_json::from_str(&text).map_err(|e| fail(e.to_string()))?;
+    // Checked first, so an older file says so instead of naming a field.
+    match value["version"].as_u64() {
+        Some(version) if version == u64::from(VERSION) => {}
+        Some(version) => return Err(fail(format!("version {version}, expected {VERSION}"))),
+        None => {
+            return Err(fail(
+                "no format version; was it written by `export`?".into(),
+            ));
+        }
+    }
+    serde_json::from_value(value).map_err(|e| fail(e.to_string()))
 }
 
 /// Check the export against the server's rules and that every reference
 /// resolves, so an upload does not stop half way on bad data.
 pub fn check(export: &Export) -> Result<Value, Error> {
-    let ingredients: BTreeSet<&str> = export.ingredients.iter().map(|i| i.id.as_str()).collect();
-    let recipes: BTreeSet<&str> = export.recipes.iter().map(|r| r.id.as_str()).collect();
+    let ingredients: BTreeMap<_, _> = export.ingredients.iter().map(|i| (&i.id, i)).collect();
+    let recipes: BTreeSet<_> = export.recipes.iter().map(|r| &r.id).collect();
+    let mut labels = BTreeSet::new();
     let mut problems = Vec::new();
 
     for ingredient in &export.ingredients {
@@ -34,6 +47,14 @@ pub fn check(export: &Export) -> Result<Value, Error> {
             ValidName::new(&ingredient.name).map(drop),
         );
     }
+    for label in &export.labels {
+        match ValidName::label(label) {
+            Ok(valid) => {
+                labels.insert(valid.simple_name);
+            }
+            Err(e) => problems.push(format!("label {label:?}: {e}")),
+        }
+    }
     for recipe in &export.recipes {
         let what = |detail: &str| format!("recipe {:?}, {detail}", recipe.name);
         note(
@@ -41,36 +62,26 @@ pub fn check(export: &Export) -> Result<Value, Error> {
             what("name"),
             ValidName::new(&recipe.name).map(drop),
         );
-        for requirement in &recipe.requirements {
-            let ingredient = &requirement.ingredient;
-            if !ingredients.contains(ingredient.id.as_str()) {
-                problems.push(what(&format!("unknown ingredient {:?}", ingredient.name)));
-            }
+        for (id, requirement) in &recipe.requirements {
+            let Some(ingredient) = ingredients.get(id) else {
+                problems.push(what(&format!("unknown ingredient {id}")));
+                continue;
+            };
             note(
                 &mut problems,
                 what(&format!("quantity of {:?}", ingredient.name)),
-                RequirementInput {
-                    quantity: requirement.quantity.trim().into(),
-                    optional: requirement.optional,
-                    group: requirement.group.clone(),
-                }
-                .validate(),
+                requirement.validate(),
             );
         }
-        for dependency in &recipe.dependencies {
-            if !recipes.contains(dependency.recipe.id.as_str()) {
-                problems.push(what(&format!(
-                    "unknown recipe {:?}",
-                    dependency.recipe.name
-                )));
+        for id in recipe.dependencies.keys() {
+            if !recipes.contains(id) {
+                problems.push(what(&format!("unknown recipe {id}")));
             }
         }
         for tag in &recipe.tags {
-            note(
-                &mut problems,
-                what(&format!("label {:?}", tag.name)),
-                ValidName::label(&tag.name).map(drop),
-            );
+            if !labels.contains(tag) {
+                problems.push(what(&format!("unknown label {tag:?}")));
+            }
         }
     }
 
@@ -81,6 +92,7 @@ pub fn check(export: &Export) -> Result<Value, Error> {
     let count = |f: fn(&Recipe) -> usize| export.recipes.iter().map(f).sum::<usize>();
     Ok(json!({
         "ingredients": export.ingredients.len(),
+        "labels": export.labels.len(),
         "recipes": export.recipes.len(),
         "requirements": count(|r| r.requirements.len()),
         "dependencies": count(|r| r.dependencies.len()),
@@ -103,16 +115,22 @@ struct Tally {
 
 /// Upload the export; returns a report of what happened.
 pub fn upload(client: &Client, export: &Export) -> Result<Value, Error> {
-    // Old ids to new ids.
+    // Exported ids to the server's ids.
     let mut ingredient_ids = BTreeMap::new();
     let mut recipe_ids = BTreeMap::new();
     let mut ingredients = Tally::default();
     let mut recipes = Tally::default();
     let mut flag_conflicts = Vec::new();
+    // Tags are PUT by display name, so a new label gets the exported one.
+    let labels: BTreeMap<String, &str> = export
+        .labels
+        .iter()
+        .map(|name| (simplify(name), name.as_str()))
+        .collect();
 
     eprintln!("Ingredients ({})", export.ingredients.len());
     for ingredient in &export.ingredients {
-        let flags = ingredient.classifications;
+        let flags = ingredient.classification;
         let body = NewIngredient {
             name: ingredient.name.clone(),
             dairy: flags.dairy,
@@ -132,7 +150,7 @@ pub fn upload(client: &Client, export: &Export) -> Result<Value, Error> {
                 flag_conflicts.push(ingredient.name.clone());
             }
         }
-        ingredient_ids.insert(ingredient.id.as_str(), id);
+        ingredient_ids.insert(&ingredient.id, id);
     }
 
     eprintln!("Recipes ({})", export.recipes.len());
@@ -149,56 +167,32 @@ pub fn upload(client: &Client, export: &Export) -> Result<Value, Error> {
         } else {
             recipes.reused += 1;
         }
-        recipe_ids.insert(recipe.id.as_str(), id);
+        recipe_ids.insert(&recipe.id, id);
     }
 
     let (mut requirements, mut dependencies, mut tags) = (0, 0, 0);
     for (n, recipe) in export.recipes.iter().enumerate() {
         eprintln!("[{}/{}] {}", n + 1, export.recipes.len(), recipe.name);
-        let id = &recipe_ids[recipe.id.as_str()];
+        let id = &recipe_ids[&recipe.id];
 
-        for requirement in &recipe.requirements {
-            let ingredient = &ingredient_ids[requirement.ingredient.id.as_str()];
-            client.put(
-                &["recipes", id, "requirements", ingredient],
-                &RequirementInput {
-                    quantity: requirement.quantity.trim().into(),
-                    optional: requirement.optional,
-                    group: requirement.group.clone(),
-                },
-            )?;
+        for (ingredient, requirement) in &recipe.requirements {
+            let ingredient = &ingredient_ids[ingredient];
+            client.put(&["recipes", id, "requirements", ingredient], requirement)?;
             requirements += 1;
         }
-        for dependency in &recipe.dependencies {
-            let requisite = &recipe_ids[dependency.recipe.id.as_str()];
-            client.put(
-                &["recipes", id, "dependencies", requisite],
-                &DependencyInput {
-                    quantity: dependency.quantity.trim().into(),
-                    optional: dependency.optional,
-                },
-            )?;
+        for (requisite, dependency) in &recipe.dependencies {
+            let requisite = &recipe_ids[requisite];
+            client.put(&["recipes", id, "dependencies", requisite], dependency)?;
             dependencies += 1;
         }
         for tag in &recipe.tags {
             client.call(
                 Method::PUT,
-                &["recipes", id, "tags", &tag.name],
+                &["recipes", id, "tags", labels[tag]],
                 &[],
                 None::<&()>,
             )?;
             tags += 1;
-        }
-    }
-
-    // The server recomputes classifications from the ingredients; they
-    // should match what v0.3 had.
-    eprintln!("Checking classifications");
-    let mut classification_mismatches = Vec::new();
-    for recipe in &export.recipes {
-        let stored = client.get(&["recipes", &recipe_ids[recipe.id.as_str()]], &[])?;
-        if classification(&stored) != recipe.classifications {
-            classification_mismatches.push(recipe.name.clone());
         }
     }
 
@@ -209,7 +203,6 @@ pub fn upload(client: &Client, export: &Export) -> Result<Value, Error> {
         "dependencies": dependencies,
         "tags": tags,
         "ingredients_with_different_flags": flag_conflicts,
-        "classification_mismatches": classification_mismatches,
     }))
 }
 

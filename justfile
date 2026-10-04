@@ -48,7 +48,7 @@ serve:
 spoon:
     FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 dx serve -p spoon --port 8081
 
-# Sign in as dev@example.com / password. `data`, a v0.3 export, is imported
+# Sign in as dev@example.com / password. `data`, a chopstick export, is imported
 # with chopstick if it exists. Everything is lost on exit.
 #
 # Run emulators, server and spoon (on http://localhost:8081) with sample data

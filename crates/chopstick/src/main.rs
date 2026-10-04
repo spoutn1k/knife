@@ -39,6 +39,8 @@ pub enum Error {
     Export(PathBuf, String),
     #[error("the export breaks the server's rules:\n  {}", .0.join("\n  "))]
     Invalid(Vec<String>),
+    #[error("unexpected response from {0}: {1}")]
+    Response(String, serde_json::Error),
     #[error("invalid server URL: {0}")]
     Url(String),
     #[error(transparent)]
@@ -86,13 +88,15 @@ enum Command {
     /// Labels, which recipes are tagged with
     #[command(subcommand)]
     Label(LabelCommand),
-    /// Upload a v0.3 export (data.json); safe to rerun
+    /// Upload a file written by `export`; safe to rerun
     Import {
         file: PathBuf,
         /// Only check the export, without uploading anything
         #[arg(long)]
         dry_run: bool,
     },
+    /// Print every ingredient, label and recipe as JSON, losing nothing
+    Export,
 }
 
 #[derive(Args)]
@@ -277,6 +281,10 @@ fn run(command: Command) -> Result<Value, Error> {
                     let export = import::read(&file)?;
                     import::check(&export)?;
                     import::upload(&client, &export)
+                }
+                Command::Export => {
+                    let export = export::download(&client)?;
+                    Ok(serde_json::to_value(export).expect("an export is valid JSON"))
                 }
                 Command::Login { .. } | Command::Logout => unreachable!("handled above"),
             }
