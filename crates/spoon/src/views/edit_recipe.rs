@@ -10,7 +10,9 @@ use dioxus::prelude::*;
 use knife_core::input::{
     DependencyInput, NewIngredient, NewRecipe as NewRecipeInput, RecipePatch, RequirementInput,
 };
-use knife_core::{Classification, IngredientId, Recipe, RecipeId, Requirement, Summary, simplify};
+use knife_core::{
+    Classification, Dependency, IngredientId, Recipe, RecipeId, Requirement, Summary, simplify,
+};
 
 #[component]
 pub fn EditRecipe(id: String) -> Element {
@@ -588,53 +590,18 @@ async fn create_ingredient(
 fn Dependencies(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     let api = use_api();
     let mutation = use_mutation();
-    let mut name = use_signal(String::new);
-    let mut quantity = use_signal(String::new);
-    let mut optional = use_signal(|| false);
-
-    let suggestions = use_resource({
-        let api = api.clone();
-        move || {
-            let api = api.clone();
-            let prefix = name();
-            async move { api.recipes(&prefix).await }
-        }
-    });
-    let matched: Option<RecipeId> = suggestions
-        .read()
-        .as_ref()
-        .and_then(|r| r.as_ref().ok())
-        .and_then(|list| {
-            let wanted = simplify(&name.read());
-            list.iter()
-                .find(|s| simplify(&s.name) == wanted)
-                .map(|s| s.id.clone())
-        });
-
-    let submit = {
-        let (api, id) = (api.clone(), recipe.id.clone());
-        move |e: FormEvent| {
-            e.prevent_default();
-            let (api, id, matched) = (api.clone(), id.clone(), matched.clone());
-            mutation.run(async move {
-                let Some(requisite) = matched else {
-                    return Err(crate::Error::NoSuchRecipe(name()));
-                };
-                let input = DependencyInput {
-                    quantity: quantity().trim().to_owned(),
-                    optional: optional(),
-                };
-                on_saved(api.put_dependency(&id, &requisite, &input).await?);
-                name.set(String::new());
-                quantity.set(String::new());
-                optional.set(false);
-                Ok(())
-            });
-        }
-    };
+    // The dependency being edited in the form, if any.
+    let mut editing = use_signal(|| None::<(RecipeId, Dependency)>);
+    // Bumped after each save, to reset the form.
+    let mut saves = use_signal(|| 0u32);
 
     let mut dependencies: Vec<_> = recipe.dependencies.iter().collect();
     dependencies.sort_by_key(|(_, d)| simplify(&d.name));
+
+    let form_key = match &*editing.read() {
+        Some((id, _)) => format!("{}-{id}", saves()),
+        None => format!("{}-new", saves()),
+    };
 
     rsx! {
         if dependencies.is_empty() {
@@ -649,6 +616,14 @@ fn Dependencies(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
                         span { class: "muted", " (optional)" }
                     }
                     span { class: "actions",
+                        button {
+                            class: "link",
+                            onclick: {
+                                let entry = (requisite.clone(), dependency.clone());
+                                move |_| editing.set(Some(entry.clone()))
+                            },
+                            "Edit"
+                        }
                         button {
                             class: "remove",
                             title: "Stop using this recipe",
@@ -668,20 +643,109 @@ fn Dependencies(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
                 }
             }
         }
+        {mutation.banner()}
+        // Keyed so that a save or a new edit starts from a fresh form.
+        {rsx! {
+            DependencyForm {
+                key: "{form_key}",
+                recipe_id: recipe.id.clone(),
+                editing: editing(),
+                on_saved: move |updated| {
+                    editing.set(None);
+                    saves += 1;
+                    on_saved(updated);
+                },
+                on_cancel: move |_| editing.set(None),
+            }
+        }}
+    }
+}
+
+/// Makes the recipe use another, or changes how much of it it uses.
+#[component]
+fn DependencyForm(
+    recipe_id: RecipeId,
+    editing: Option<(RecipeId, Dependency)>,
+    on_saved: EventHandler<Recipe>,
+    on_cancel: EventHandler<()>,
+) -> Element {
+    let api = use_api();
+    let mutation = use_mutation();
+    let existing = editing.as_ref().map(|(_, d)| d.clone());
+    let mut name = use_signal(|| {
+        existing
+            .as_ref()
+            .map(|d| d.name.clone())
+            .unwrap_or_default()
+    });
+    let mut quantity = use_signal(|| {
+        existing
+            .as_ref()
+            .map(|d| d.quantity.clone())
+            .unwrap_or_default()
+    });
+    let mut optional = use_signal(|| existing.as_ref().is_some_and(|d| d.optional));
+
+    let suggestions = use_resource({
+        let api = api.clone();
+        move || {
+            let api = api.clone();
+            let prefix = name();
+            async move { api.recipes(&prefix).await }
+        }
+    });
+    // The recipe the typed name refers to, if it exists.
+    let matched: Option<RecipeId> = match &editing {
+        Some((id, _)) => Some(id.clone()),
+        None => suggestions
+            .read()
+            .as_ref()
+            .and_then(|r| r.as_ref().ok())
+            .and_then(|list| {
+                let wanted = simplify(&name.read());
+                list.iter()
+                    .find(|s| simplify(&s.name) == wanted)
+                    .map(|s| s.id.clone())
+            }),
+    };
+
+    let submit = {
+        let recipe_id = recipe_id.clone();
+        move |e: FormEvent| {
+            e.prevent_default();
+            let (api, id, matched) = (api.clone(), recipe_id.clone(), matched.clone());
+            mutation.run(async move {
+                let Some(requisite) = matched else {
+                    return Err(crate::Error::NoSuchRecipe(name()));
+                };
+                let input = DependencyInput {
+                    quantity: quantity().trim().to_owned(),
+                    optional: optional(),
+                };
+                on_saved(api.put_dependency(&id, &requisite, &input).await?);
+                Ok(())
+            });
+        }
+    };
+
+    rsx! {
         form { class: "card stack", onsubmit: submit,
-            h3 { "Use another recipe" }
+            h3 {
+                if editing.is_some() { "Change {name}" } else { "Use another recipe" }
+            }
             div { class: "row wrap",
                 input {
                     class: "grow",
                     placeholder: "Recipe, such as a sauce or a dough",
                     list: "recipe-names",
                     required: true,
+                    disabled: editing.is_some(),
                     value: "{name}",
                     oninput: move |e| name.set(e.value()),
                 }
                 datalist { id: "recipe-names",
                     if let Some(Ok(list)) = &*suggestions.read() {
-                        for s in list.iter().filter(|s| s.id != recipe.id) {
+                        for s in list.iter().filter(|s| s.id != recipe_id) {
                             option { key: "{s.id}", value: "{s.name}" }
                         }
                     }
@@ -703,7 +767,17 @@ fn Dependencies(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
             }
             {mutation.banner()}
             div { class: "row",
-                button { r#type: "submit", disabled: *mutation.busy.read(), "Add" }
+                button { r#type: "submit", disabled: *mutation.busy.read(),
+                    if editing.is_some() { "Save" } else { "Add" }
+                }
+                if editing.is_some() {
+                    button {
+                        r#type: "button",
+                        class: "secondary",
+                        onclick: move |_| on_cancel(()),
+                        "Cancel"
+                    }
+                }
             }
         }
     }
