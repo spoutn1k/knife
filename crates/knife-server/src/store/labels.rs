@@ -1,25 +1,38 @@
+use super::cache::with_prefix;
 use super::loader::Recipes;
 use super::{
-    LABELS, RECIPES, Result, Store, StoreError, StoredRecipe, containing, get, in_transaction,
-    label_doc_id, put, remove, with_prefix,
+    LABELS, Result, Store, StoreError, Tx, get, in_transaction, label_doc_id, put, remove,
 };
-use firestore::{FirestoreDb, FirestoreTransaction};
+use firestore::FirestoreDb;
 use knife_core::input::LabelPatch;
-use knife_core::{Label, LabelDetails, simplify};
+use knife_core::{Label, LabelDetails, Recipe, simplify};
 
 impl Store {
     pub async fn list_labels(&self, prefix: &str) -> Result<Vec<Label>> {
-        with_prefix(&self.db, LABELS, prefix).await
+        let cached = self.cache.current(&self.db).await?;
+        Ok(with_prefix(&cached.labels, prefix)
+            .into_iter()
+            .cloned()
+            .collect())
     }
 
     pub async fn get_label(&self, label: &str) -> Result<LabelDetails> {
-        let label = require(&self.db, &simplify(label)).await?;
-        let tagged: Vec<StoredRecipe> =
-            containing(&self.db, RECIPES, "tags", &label.simple_name).await?;
+        let simple_name = simplify(label);
+        let cached = self.cache.current(&self.db).await?;
+        let label = cached
+            .labels
+            .get(&label_doc_id(&simple_name))
+            .cloned()
+            .ok_or_else(|| StoreError::NotFound(format!("label {simple_name}")))?;
 
         Ok(LabelDetails {
+            recipes: cached
+                .recipes
+                .values()
+                .filter(|r| r.tags.contains(&label.simple_name))
+                .map(Recipe::summary)
+                .collect(),
             label,
-            recipes: tagged.iter().map(|s| s.recipe.summary()).collect(),
         })
     }
 
@@ -93,7 +106,7 @@ async fn require(db: &FirestoreDb, simple_name: &str) -> Result<Label> {
 /// does not exist and deleting it when no recipe uses it any more.
 pub(super) async fn adjust_label(
     db: &FirestoreDb,
-    tx: &mut FirestoreTransaction<'_>,
+    tx: &mut Tx<'_>,
     simple_name: &str,
     name: Option<&str>,
     delta: i64,

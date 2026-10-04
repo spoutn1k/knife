@@ -1,9 +1,10 @@
+use super::cache::with_prefix;
 use super::labels::adjust_label;
 use super::loader::Recipes;
 use super::{
     NAMES, NameDoc, NameKind, RECIPES, Result, Store, StoreError, StoredRecipe, get,
     in_transaction, ingredients, move_name, name_doc_id, name_taken_by, new_id, put, put_recipe,
-    remove, with_prefix,
+    remove,
 };
 use firestore::FirestoreDb;
 use knife_core::input::{DependencyInput, NewRecipe, RecipePatch, RequirementInput};
@@ -15,14 +16,19 @@ use std::collections::{BTreeMap, BTreeSet};
 
 impl Store {
     pub async fn list_recipes(&self, prefix: &str) -> Result<Vec<RecipeListing>> {
-        let found: Vec<StoredRecipe> = with_prefix(&self.db, RECIPES, prefix).await?;
-        Ok(found.iter().map(|s| s.recipe.listing()).collect())
+        let cached = self.cache.current(&self.db).await?;
+        Ok(with_prefix(&cached.recipes, prefix)
+            .into_iter()
+            .map(Recipe::listing)
+            .collect())
     }
 
     pub async fn get_recipe(&self, id: &RecipeId) -> Result<Recipe> {
-        let stored: Option<StoredRecipe> = get(&self.db, RECIPES, &id.0).await?;
-        stored
-            .map(|s| s.recipe)
+        let cached = self.cache.current(&self.db).await?;
+        cached
+            .recipes
+            .get(&id.0)
+            .cloned()
             .ok_or_else(|| StoreError::NotFound(format!("recipe {id}")))
     }
 
@@ -316,7 +322,7 @@ impl Store {
 /// classifications, queue the writes and return the updated recipe.
 async fn finish(
     db: &FirestoreDb,
-    tx: &mut firestore::FirestoreTransaction<'_>,
+    tx: &mut super::Tx<'_>,
     recipes: &mut Recipes,
     id: &RecipeId,
 ) -> Result<Recipe> {

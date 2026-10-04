@@ -52,9 +52,9 @@ impl From<StoreError> for ApiError {
             StoreError::Rule(Rule::DependencyCycle) => {
                 Self::new(StatusCode::CONFLICT, err.to_string())
             }
-            StoreError::Rule(Rule::MissingRecipe(_)) | StoreError::Firestore(_) => {
-                Self::internal(err)
-            }
+            StoreError::Rule(Rule::MissingRecipe(_))
+            | StoreError::Firestore(_)
+            | StoreError::Cache(_) => Self::internal(err),
             StoreError::Rule(_) => Self::new(StatusCode::BAD_REQUEST, err.to_string()),
         }
     }

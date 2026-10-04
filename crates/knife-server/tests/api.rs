@@ -460,3 +460,35 @@ async fn deleting_a_label_untags_recipes() {
     let (_, recipe) = client.get(&format!("/api/recipes/{horchata}")).await;
     assert_eq!(recipe["tags"], json!([]));
 }
+
+/// Two servers on the same database, as Cloud Run runs with more than one
+/// instance: each sees the other's writes despite its cache.
+#[tokio::test]
+#[ignore = "needs the Firestore emulator"]
+async fn instances_see_each_others_writes() {
+    let (a, b) = (Client::new().await, Client::new().await);
+    let n = nonce();
+    let search = format!("/api/recipes?prefix=gazpacho%20{n}");
+
+    let (status, listed) = b.get(&search).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(listed, json!([]));
+
+    let id = a.recipe(&format!("Gazpacho {n}")).await;
+    let (_, listed) = b.get(&search).await;
+    assert_eq!(listed[0]["id"], id);
+
+    let (status, _) = b
+        .patch(&format!("/api/recipes/{id}"), json!({ "author": "Abuela" }))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, shown) = a.get(&format!("/api/recipes/{id}")).await;
+    assert_eq!(shown["author"], "Abuela");
+
+    let (status, _) = a.delete(&format!("/api/recipes/{id}")).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let (status, _) = b.get(&format!("/api/recipes/{id}")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (_, listed) = b.get(&search).await;
+    assert_eq!(listed, json!([]));
+}

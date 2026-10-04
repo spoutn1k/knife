@@ -1,8 +1,8 @@
 //! Recipes read during a transaction, kept in memory so later reads see
 //! earlier changes, and written back together at the end.
 
-use super::{RECIPES, Result, StoreError, StoredRecipe, containing, get, put_recipe};
-use firestore::{FirestoreDb, FirestoreTransaction};
+use super::{RECIPES, Result, StoreError, StoredRecipe, Tx, containing, get, put_recipe};
+use firestore::FirestoreDb;
 use knife_core::graph::{Graph, Node};
 use knife_core::{Recipe, RecipeId};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -122,7 +122,7 @@ impl Recipes {
     }
 
     /// Queue every edited recipe for writing.
-    pub fn write(&self, db: &FirestoreDb, tx: &mut FirestoreTransaction) -> Result<()> {
+    pub fn write(&self, db: &FirestoreDb, tx: &mut Tx) -> Result<()> {
         for id in &self.dirty {
             put_recipe(db, tx, &self.loaded[id])?;
         }

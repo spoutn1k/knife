@@ -1,27 +1,38 @@
+use super::cache::with_prefix;
 use super::loader::Recipes;
 use super::{
     INGREDIENTS, NAMES, NameDoc, NameKind, RECIPES, Result, Store, StoreError, StoredRecipe,
     containing, get, in_transaction, move_name, name_doc_id, name_taken_by, new_id, put, remove,
-    with_prefix,
 };
 use firestore::FirestoreDb;
 use knife_core::input::{IngredientPatch, NewIngredient};
-use knife_core::{Ingredient, IngredientDetails, IngredientId, Summary};
+use knife_core::{Ingredient, IngredientDetails, IngredientId, Recipe, Summary};
 
 impl Store {
     pub async fn list_ingredients(&self, prefix: &str) -> Result<Vec<Summary<IngredientId>>> {
-        let found: Vec<Ingredient> = with_prefix(&self.db, INGREDIENTS, prefix).await?;
-        Ok(found.iter().map(Ingredient::summary).collect())
+        let cached = self.cache.current(&self.db).await?;
+        Ok(with_prefix(&cached.ingredients, prefix)
+            .into_iter()
+            .map(Ingredient::summary)
+            .collect())
     }
 
     pub async fn get_ingredient(&self, id: &IngredientId) -> Result<IngredientDetails> {
-        let ingredient = require(&self.db, id).await?;
-        let used_in: Vec<StoredRecipe> =
-            containing(&self.db, RECIPES, "ingredient_ids", &id.0).await?;
+        let cached = self.cache.current(&self.db).await?;
+        let ingredient = cached
+            .ingredients
+            .get(&id.0)
+            .cloned()
+            .ok_or_else(|| StoreError::NotFound(format!("ingredient {id}")))?;
 
         Ok(IngredientDetails {
             ingredient,
-            used_in: used_in.iter().map(|s| s.recipe.summary()).collect(),
+            used_in: cached
+                .recipes
+                .values()
+                .filter(|r| r.requirements.contains_key(id))
+                .map(Recipe::summary)
+                .collect(),
         })
     }
 
