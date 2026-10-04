@@ -22,7 +22,10 @@ pub fn LabelList() -> Element {
     });
 
     rsx! {
-        h1 { "Labels" }
+        div { class: "title-row",
+            h1 { "Labels" }
+            Link { class: "button secondary", to: Route::LabelGraph {}, "Graph" }
+        }
         p { class: "muted", "Tag recipes from their edit page to create labels." }
         SearchBox { value: search, placeholder: "Search labels" }
         match &*labels.read() {

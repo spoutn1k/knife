@@ -2,6 +2,7 @@
 
 mod edit_recipe;
 mod ingredients;
+mod label_graph;
 mod labels;
 mod recipe;
 mod recipes;
@@ -9,6 +10,7 @@ mod sign_in;
 
 pub use edit_recipe::EditRecipe;
 pub use ingredients::{IngredientList, IngredientPage};
+pub use label_graph::LabelGraph;
 pub use labels::LabelList;
 pub use recipe::RecipePage;
 pub use recipes::{NewRecipe, RecipeList};

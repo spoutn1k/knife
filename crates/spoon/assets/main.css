@@ -306,3 +306,25 @@ button.picker { text-align: left; overflow: hidden; text-overflow: ellipsis; }
 mark.match { background: var(--accent-soft); color: inherit; border-radius: 2px; }
 /* Tags already use the soft accent: mark them with the strong one. */
 .tag mark.match { background: var(--accent); color: var(--accent-text); }
+
+/* Label graph: hovering a label lights it and its neighbours, dims the rest. */
+svg.label-graph {
+  display: block; width: 100%; height: auto; max-height: 85vh;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.label-graph line { stroke: var(--muted); stroke-opacity: 0.45; stroke-linecap: round; }
+.label-graph line.lit { stroke: var(--accent); stroke-opacity: 0.9; }
+.label-graph line, .label-graph .node { transition: opacity 0.15s; }
+.label-graph .dim { opacity: 0.15; }
+.label-graph .node { cursor: pointer; }
+.label-graph circle { fill: var(--muted); }
+.label-graph .node.lit circle { fill: var(--accent); }
+/* A halo of the background keeps names readable over edges. */
+.label-graph text {
+  font-family: var(--mono); font-size: 11px; fill: var(--text); text-anchor: middle;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 3px; pointer-events: none;
+}
+/* Labels are dragged: no text selection, and no scrolling under a finger. */
+svg.label-graph { user-select: none; -webkit-user-select: none; touch-action: none; }
+.label-graph .node { cursor: grab; }
+.label-graph.dragging, .label-graph.dragging .node { cursor: grabbing; }

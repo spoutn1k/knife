@@ -18,8 +18,8 @@ use std::convert::Infallible;
 use std::fmt;
 use std::str::FromStr;
 use views::{
-    EditRecipe, IngredientList, IngredientPage, LabelList, NewRecipe, NotFound, RecipeList,
-    RecipePage, SignIn,
+    EditRecipe, IngredientList, IngredientPage, LabelGraph, LabelList, NewRecipe, NotFound,
+    RecipeList, RecipePage, SignIn,
 };
 
 pub use api::Error;
@@ -46,6 +46,8 @@ pub enum Route {
         IngredientPage { id: String },
         #[route("/labels")]
         LabelList {},
+        #[route("/labels/graph")]
+        LabelGraph {},
         #[route("/:..segments")]
         NotFound { segments: Vec<String> },
 }
