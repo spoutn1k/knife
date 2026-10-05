@@ -3,7 +3,8 @@
 
 use crate::api::{Api, use_api};
 use crate::components::{
-    ContainsChecks, ErrorBanner, Highlight, Loading, Match, confirm, fuzzy_filter, use_mutation,
+    ContainsChecks, ErrorBanner, Highlight, Loading, Match, confirm, fuzzy_filter, tint,
+    use_mutation,
 };
 use crate::views::recipe::{by_group, use_label_names};
 use crate::views::recipes::RecipeLinks;
@@ -277,7 +278,7 @@ fn Tags(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     rsx! {
         div { class: "tags",
             for tag in recipe.tags.iter().cloned() {
-                span { key: "{tag}", class: "tag",
+                span { key: "{tag}", class: "tag tinted", style: tint(&tag),
                     Link { to: Route::RecipeList { labels: LabelSet::one(&tag), diets: DietSet::default() },
                         {names.get(&tag).cloned().unwrap_or(tag.clone())}
                     }

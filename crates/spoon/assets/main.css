@@ -197,6 +197,22 @@ ul.requirements .quantity { min-width: 4.5rem; color: var(--muted); font-variant
 ul.requirements .name { margin-left: auto; text-align: right; }
 ul.requirements .actions { margin-left: auto; display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.9rem; }
 
+/* Labels each have a color: a `.tinted` element sets --hue from the label's
+   name, and the color scheme sets lightness and chroma, in OKLCH so every
+   hue comes out equally light. */
+.tinted {
+  --tint-deep: oklch(0.47 0.11 var(--hue));
+  --tint-soft: oklch(0.95 0.03 var(--hue));
+  --tint-line: oklch(0.87 0.055 var(--hue));
+}
+@media (prefers-color-scheme: dark) {
+  .tinted {
+    --tint-deep: oklch(0.78 0.09 var(--hue));
+    --tint-soft: oklch(0.27 0.025 var(--hue));
+    --tint-line: oklch(0.37 0.045 var(--hue));
+  }
+}
+
 .tags, ul.tags { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; list-style: none; padding: 0; margin: 0.75rem 0; }
 /* Labels are set in monospace wherever they appear, and where they are typed. */
 .tag, form.inline input, ul.label-rows input { font-family: var(--mono); }
@@ -209,6 +225,8 @@ ul.requirements .actions { margin-left: auto; display: flex; gap: 0.5rem; align-
 }
 .tag.plain { padding: 0.1rem 0.75rem; }
 .tag .count { color: var(--muted); padding: 0 0.35rem; }
+.tag.tinted { background: var(--tint-soft); color: var(--tint-deep); box-shadow: inset 0 0 0 1px var(--tint-line); }
+.tag.tinted a { color: inherit; }
 form.inline input { width: auto; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.9rem; }
 
 ul.diets { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; padding: 0; margin: 0.5rem 0; }
@@ -255,6 +273,9 @@ ul.diets .icon { width: 1.1em; height: 1.1em; flex: none; }
 .label-filter .tag:hover { text-decoration: none; outline: 1px solid var(--accent); }
 .label-filter .tag.selected { background: var(--accent); color: var(--accent-text); }
 .label-filter .tag.selected .count { color: inherit; opacity: 0.8; }
+.label-filter .tag.tinted { color: var(--tint-deep); }
+.label-filter .tag.tinted:hover { outline-color: var(--tint-deep); }
+.label-filter .tag.tinted.selected { background: var(--tint-deep); color: var(--surface); }
 
 /* Labels page */
 ul.label-rows { list-style: none; padding: 0; margin: 0; max-width: 36rem; }
@@ -328,23 +349,10 @@ button.picker { text-align: left; overflow: hidden; text-overflow: ellipsis; }
 mark.match { background: var(--accent-soft); color: inherit; border-radius: 2px; }
 /* Tags already use the soft accent: mark them with the strong one. */
 .tag mark.match { background: var(--accent); color: var(--accent-text); }
+.tag.tinted mark.match { background: var(--tint-deep); color: var(--surface); }
 
-/* Landing page: a band with the search, then one shelf of recipes per label.
-   Each shelf sets --hue from its label's name; the theme sets lightness and
-   chroma, in OKLCH so every hue comes out equally light. */
-.tinted {
-  --tint-deep: oklch(0.47 0.11 var(--hue));
-  --tint-soft: oklch(0.95 0.03 var(--hue));
-  --tint-line: oklch(0.87 0.055 var(--hue));
-}
-@media (prefers-color-scheme: dark) {
-  .tinted {
-    --tint-deep: oklch(0.78 0.09 var(--hue));
-    --tint-soft: oklch(0.27 0.025 var(--hue));
-    --tint-line: oklch(0.37 0.045 var(--hue));
-  }
-}
-
+/* Landing page: a band with the search, then themes of labels, each label
+   with a few of its recipes. */
 /* Full width behind the content: the shadow paints the sides, the clip keeps
    it from adding height. */
 .hero {

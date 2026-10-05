@@ -3,7 +3,7 @@
 
 use crate::api::use_api;
 use crate::components::{
-    DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fuzzy_filter,
+    DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fnv, fuzzy_filter, tint,
 };
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
@@ -18,13 +18,16 @@ struct Theme {
 
 /// The themes, in page order. Each shows [`SHELVES`] of its labels, picked
 /// at random among those with recipes; one with none is left out.
-const THEMES: &[Theme] = &[Theme {
-    title: "Cuisines",
-    labels: &["français", "italien", "japonais", "coreen", "oriental"],
-},Theme {
-    title: "Sain",
-    labels: &["soupe", "salade", "leger", "poisson"],
-}];
+const THEMES: &[Theme] = &[
+    Theme {
+        title: "Cuisines",
+        labels: &["français", "italien", "japonais", "coreen", "oriental"],
+    },
+    Theme {
+        title: "Sain",
+        labels: &["soupe", "salade", "leger", "poisson"],
+    },
+];
 
 /// Labels shown per theme.
 const SHELVES: usize = 4;
@@ -147,7 +150,7 @@ fn Shelf(label: Label, recipes: Vec<RecipeListing>) -> Element {
         diets: DietSet::default(),
     };
     rsx! {
-        section { class: "shelf tinted", style: "--hue: {hue(&label.simple_name)}",
+        section { class: "shelf tinted", style: tint(&label.simple_name),
             div { class: "shelf-head",
                 h3 {
                     Link { class: "shelf-name", to: filtered.clone(), "{label.name}" }
@@ -197,34 +200,9 @@ fn plural(n: usize) -> &'static str {
     if n == 1 { "recipe" } else { "recipes" }
 }
 
-/// A label's hue in degrees, always the same for the same label. The color
-/// scheme picks the lightness and saturation.
-fn hue(simple_name: &str) -> u32 {
-    fnv(0, simple_name) % 360
-}
-
-/// FNV-1a of `seed` then `text`: stable across builds, unlike the standard
-/// hasher.
-fn fnv(seed: u32, text: &str) -> u32 {
-    seed.to_le_bytes()
-        .into_iter()
-        .chain(text.bytes())
-        .fold(0x811c_9dc5, |h, b| {
-            (h ^ u32::from(b)).wrapping_mul(0x0100_0193)
-        })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn hues_are_stable_and_in_range() {
-        assert_eq!(hue("dessert"), hue("dessert"));
-        for name in ["dessert", "soup", "weeknight", "breakfast", ""] {
-            assert!(hue(name) < 360);
-        }
-    }
 
     #[test]
     fn theme_labels_are_simple_names() {

@@ -173,6 +173,28 @@ pub fn PenIcon() -> Element {
     }
 }
 
+/// A label's hue in degrees, always the same for the same label. The color
+/// scheme picks the lightness and saturation; see `.tinted` in the stylesheet.
+pub fn hue(simple_name: &str) -> u32 {
+    fnv(0, simple_name) % 360
+}
+
+/// FNV-1a of `seed` then `text`: stable across builds, unlike the standard
+/// hasher.
+pub fn fnv(seed: u32, text: &str) -> u32 {
+    seed.to_le_bytes()
+        .into_iter()
+        .chain(text.bytes())
+        .fold(0x811c_9dc5, |h, b| {
+            (h ^ u32::from(b)).wrapping_mul(0x0100_0193)
+        })
+}
+
+/// The style giving a `.tinted` element its label's color.
+pub fn tint(simple_name: &str) -> String {
+    format!("--hue: {}", hue(simple_name))
+}
+
 /// An item kept by [`fuzzy_filter`], with the positions of the characters
 /// of its name that matched, for [`Highlight`].
 #[derive(Debug, Clone, PartialEq)]
@@ -404,7 +426,15 @@ pub fn ContainsChecks(value: Classification, onchange: EventHandler<Classificati
 
 #[cfg(test)]
 mod tests {
-    use super::fuzzy_filter;
+    use super::{fuzzy_filter, hue};
+
+    #[test]
+    fn hues_are_stable_and_in_range() {
+        assert_eq!(hue("dessert"), hue("dessert"));
+        for name in ["dessert", "soup", "weeknight", "breakfast", ""] {
+            assert!(hue(name) < 360);
+        }
+    }
 
     fn search(query: &str) -> Vec<&'static str> {
         let names = [

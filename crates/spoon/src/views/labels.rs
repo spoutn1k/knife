@@ -4,7 +4,7 @@
 use crate::Error;
 use crate::api::use_api;
 use crate::components::{
-    ErrorBanner, Highlight, Loading, Match, SearchBox, confirm, fuzzy_filter, use_mutation,
+    ErrorBanner, Highlight, Loading, Match, SearchBox, confirm, fuzzy_filter, tint, use_mutation,
 };
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
@@ -144,7 +144,8 @@ fn LabelRow(label: Label, indices: Vec<u32>, on_changed: EventHandler<()>) -> El
                 }
             } else {
                 Link {
-                    class: "tag plain",
+                    class: "tag plain tinted",
+                    style: tint(&label.simple_name),
                     to: Route::RecipeList { labels: LabelSet::one(&label.simple_name), diets: DietSet::default() },
                     Highlight { text: label.name.clone(), indices }
                 }

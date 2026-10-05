@@ -3,6 +3,7 @@
 use crate::api::use_api;
 use crate::components::{
     Diet, DietIcon, DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fuzzy_filter,
+    tint,
 };
 use crate::views::edit_recipe::RecipeForm;
 use crate::views::recipe::use_label_names;
@@ -165,7 +166,8 @@ fn LabelFilter(labels: Vec<Label>, selected: LabelSet, diets: DietSet) -> Elemen
             for label in labels {
                 Link {
                     key: "{label.simple_name}",
-                    class: if selected.0.contains(&label.simple_name) { "tag plain selected" } else { "tag plain" },
+                    class: if selected.0.contains(&label.simple_name) { "tag plain tinted selected" } else { "tag plain tinted" },
+                    style: tint(&label.simple_name),
                     to: Route::RecipeList { labels: selected.toggled(&label.simple_name), diets: diets.clone() },
                     "{label.name}"
                     span { class: "count", "{label.recipe_count}" }
@@ -240,7 +242,7 @@ fn RecipeTags(tags: Vec<String>, labels: HashMap<String, String>) -> Element {
     rsx! {
         span { class: "tags",
             for (tag, name) in names[..shown].iter() {
-                Link { key: "{tag}", class: "tag plain", to: Route::RecipeList { labels: LabelSet::one(tag), diets: DietSet::default() }, "{name}" }
+                Link { key: "{tag}", class: "tag plain tinted", style: tint(tag), to: Route::RecipeList { labels: LabelSet::one(tag), diets: DietSet::default() }, "{name}" }
             }
             if !hidden.is_empty() {
                 span { class: "more", title: hidden.join(", "), "+{hidden.len()}" }

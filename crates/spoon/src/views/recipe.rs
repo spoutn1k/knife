@@ -5,7 +5,7 @@
 //! it are listed last.
 
 use crate::api::{Api, use_api};
-use crate::components::{Diets, ErrorBanner, Loading, Markdown, PenIcon};
+use crate::components::{Diets, ErrorBanner, Loading, Markdown, PenIcon, tint};
 use crate::views::recipes::RecipeLinks;
 use crate::{DietSet, Error, LabelSet, Route};
 use dioxus::prelude::*;
@@ -106,7 +106,7 @@ fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>, used_in: Vec<Summary<Reci
                 if !recipe.tags.is_empty() {
                     ul { class: "tags eyebrow",
                         for tag in recipe.tags.iter() {
-                            li { key: "{tag}", class: "tag plain",
+                            li { key: "{tag}", class: "tag plain tinted", style: tint(tag),
                                 Link { to: Route::RecipeList { labels: LabelSet::one(tag), diets: DietSet::default() },
                                     {labels.get(tag).unwrap_or(tag).clone()}
                                 }
