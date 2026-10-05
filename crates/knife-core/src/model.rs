@@ -122,7 +122,9 @@ pub struct RecipeListing {
     /// Simple names of the labels on the recipe.
     pub tags: BTreeSet<String>,
     pub classification: Classification,
-    /// How many ingredients the recipe lists, optional ones included.
+    /// How many different ingredients the recipe needs, optional ones
+    /// included. `GET /recipes` counts those of the recipes it uses too;
+    /// [`Recipe::listing`], only the recipe's own.
     #[serde(default)]
     pub requirement_count: u32,
     /// How many other recipes the recipe uses directly.

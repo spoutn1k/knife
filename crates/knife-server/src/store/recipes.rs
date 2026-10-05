@@ -19,7 +19,10 @@ impl Store {
         let cached = self.cache.current(&self.db).await?;
         Ok(with_prefix(&cached.recipes, prefix)
             .into_iter()
-            .map(Recipe::listing)
+            .map(|recipe| RecipeListing {
+                requirement_count: ingredient_count(&cached.recipes, recipe),
+                ..recipe.listing()
+            })
             .collect())
     }
 
@@ -352,5 +355,84 @@ async fn name_conflict(db: &FirestoreDb, holder: &str) -> StoreError {
     StoreError::Conflict {
         detail: "a recipe with this name already exists".into(),
         existing,
+    }
+}
+
+/// How many different ingredients `recipe` needs, its own and those of the
+/// recipes it uses, directly or not. An ingredient several of them need
+/// counts once.
+fn ingredient_count(recipes: &BTreeMap<String, Recipe>, recipe: &Recipe) -> u32 {
+    let mut seen = BTreeSet::from([&recipe.id]);
+    let mut queue = vec![recipe];
+    let mut ingredients = BTreeSet::new();
+    while let Some(recipe) = queue.pop() {
+        ingredients.extend(recipe.requirements.keys());
+        for id in recipe.dependencies.keys() {
+            if let Some(requisite) = recipes.get(&id.0)
+                && seen.insert(&requisite.id)
+            {
+                queue.push(requisite);
+            }
+        }
+    }
+    ingredients.len() as u32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn recipe(id: &str, ingredients: &[&str], uses: &[&str]) -> Recipe {
+        let requirement = |name: &str| Requirement {
+            name: name.into(),
+            classification: Classification::default(),
+            quantity: String::new(),
+            optional: false,
+            group: String::new(),
+        };
+        let dependency = |name: &str| Dependency {
+            name: name.into(),
+            quantity: String::new(),
+            optional: false,
+        };
+        Recipe {
+            id: RecipeId(id.into()),
+            name: id.into(),
+            simple_name: id.into(),
+            author: String::new(),
+            directions: String::new(),
+            information: String::new(),
+            requirements: ingredients
+                .iter()
+                .map(|i| (IngredientId((*i).into()), requirement(i)))
+                .collect(),
+            dependencies: uses
+                .iter()
+                .map(|r| (RecipeId((*r).into()), dependency(r)))
+                .collect(),
+            tags: BTreeSet::new(),
+            classification: Classification::default(),
+            created_by: UserId::from("alice"),
+            updated_by: UserId::from("alice"),
+        }
+    }
+
+    #[test]
+    fn ingredients_of_used_recipes_count_once() {
+        let recipes: BTreeMap<String, Recipe> = [
+            recipe("pie", &["apple", "butter"], &["pastry", "custard"]),
+            recipe("pastry", &["flour", "butter"], &["sugar_dough"]),
+            recipe("custard", &["milk", "egg"], &["sugar_dough", "missing"]),
+            recipe("sugar_dough", &["sugar", "flour"], &[]),
+        ]
+        .into_iter()
+        .map(|r| (r.id.0.clone(), r))
+        .collect();
+
+        let count = |id: &str| ingredient_count(&recipes, &recipes[id]);
+        // apple, butter, flour, milk, egg, sugar.
+        assert_eq!(count("pie"), 6);
+        assert_eq!(count("pastry"), 3);
+        assert_eq!(count("sugar_dough"), 2);
     }
 }

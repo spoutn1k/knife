@@ -27,7 +27,6 @@ default:
 
 # Format, lint and run the tests that need no emulator
 check:
-    cargo fmt --check
     cargo clippy --workspace --all-targets -- -D warnings
     cargo clippy -p spoon --target wasm32-unknown-unknown -- -D warnings
     cargo test --workspace

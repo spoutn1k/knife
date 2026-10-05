@@ -9,3 +9,5 @@ knife.egg-info
 *-debug.log
 # Exported recipe data
 data.json
+# Firebase CLI deploy cache
+.firebase/

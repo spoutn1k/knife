@@ -21,7 +21,7 @@ struct Theme {
 const THEMES: &[Theme] = &[
     Theme {
         title: "Cuisines",
-        labels: &["français", "italien", "japonais", "coreen", "oriental"],
+        labels: &["français", "italien", "japonais", "coreen", "oriental", "tex-mex", "mexicain"],
     },
     Theme {
         title: "Sain",
