@@ -18,7 +18,7 @@ use std::convert::Infallible;
 use std::fmt;
 use std::str::FromStr;
 use views::{
-    EditRecipe, IngredientList, IngredientPage, LabelList, NewRecipe, NotFound, RecipeList,
+    EditRecipe, Home, IngredientList, IngredientPage, LabelList, NewRecipe, NotFound, RecipeList,
     RecipePage, SignIn,
 };
 
@@ -31,9 +31,11 @@ const ICON: Asset = asset!("/assets/icon.svg");
 #[rustfmt::skip]
 pub enum Route {
     #[layout(Shell)]
+        #[route("/")]
+        Home {},
         /// `?labels=a,b` keeps only the recipes with all those labels, and
         /// `diets=vegan,gluten-free` only those fitting all those diets.
-        #[route("/?:labels&:diets")]
+        #[route("/recipes?:labels&:diets")]
         RecipeList { labels: LabelSet, diets: DietSet },
         #[route("/recipes/new")]
         NewRecipe {},
@@ -183,7 +185,7 @@ fn Shell() -> Element {
         header { class: "top",
             Link {
                 class: "brand",
-                to: Route::RecipeList { labels: LabelSet::default(), diets: DietSet::default() },
+                to: Route::Home {},
                 onclick: move |_| menu_open.set(false),
                 "knife"
             }
@@ -201,6 +203,7 @@ fn Shell() -> Element {
                 class: if menu_open() { "menu open" } else { "menu" },
                 onclick: move |_| menu_open.set(false),
                 nav {
+                    Link { to: Route::RecipeList { labels: LabelSet::default(), diets: DietSet::default() }, active_class: "active", "Recipes" }
                     Link { to: Route::IngredientList {}, active_class: "active", "Ingredients" }
                     Link { to: Route::LabelList {}, active_class: "active", "Labels" }
                 }

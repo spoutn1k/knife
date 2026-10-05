@@ -164,7 +164,6 @@ setup:
 
 # Unauthenticated invocations are allowed so Hosting can forward requests;
 # knife-server checks Firebase ID tokens and membership itself.
-#
 
 # Deploy the pushed image to Cloud Run
 deploy-server: push

@@ -1,6 +1,7 @@
 //! One module per kind of page.
 
 mod edit_recipe;
+mod home;
 mod ingredients;
 mod labels;
 mod recipe;
@@ -8,6 +9,7 @@ mod recipes;
 mod sign_in;
 
 pub use edit_recipe::EditRecipe;
+pub use home::Home;
 pub use ingredients::{IngredientList, IngredientPage};
 pub use labels::LabelList;
 pub use recipe::RecipePage;
