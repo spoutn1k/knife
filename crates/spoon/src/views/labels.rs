@@ -4,17 +4,20 @@
 use crate::Error;
 use crate::api::use_api;
 use crate::components::{
-    ErrorBanner, Highlight, Loading, Match, SearchBox, confirm, fuzzy_filter, tint, use_mutation,
+    ErrorBanner, Highlight, Loading, Match, MergeIcon, PenIcon, SearchBox, SortColumn, SortHeader,
+    TrashIcon, confirm, fuzzy_filter, sort_rows, tint, use_mutation,
 };
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::input::LabelPatch;
 use knife_core::{Label, simplify};
+use std::cmp::Ordering;
 
 #[component]
 pub fn LabelList() -> Element {
     let api = use_api();
     let search = use_signal(String::new);
+    let sort = use_signal(|| None::<(LabelColumn, bool)>);
     // Every label, loaded once and filtered here as the search is typed.
     let mut labels = use_resource(move || {
         let api = api.clone();
@@ -30,18 +33,28 @@ pub fn LabelList() -> Element {
             Some(Err(e)) => rsx! { ErrorBanner { message: e.to_string() } },
             Some(Ok(list)) if list.is_empty() => rsx! { p { class: "muted", "No labels yet." } },
             Some(Ok(list)) => {
-                let shown = fuzzy_filter(list, |l| &l.name, &search.read());
+                let mut shown = fuzzy_filter(list, |l| &l.name, &search.read());
+                sort_rows(&mut shown, sort());
                 if shown.is_empty() {
                     rsx! { p { class: "muted", "No label matches." } }
                 } else {
                     rsx! {
-                        ul { class: "label-rows",
-                            for Match { item: label, indices } in shown {
-                                LabelRow {
-                                    key: "{label.simple_name}",
-                                    label,
-                                    indices,
-                                    on_changed: move |_| labels.restart(),
+                        table { class: "data label-rows",
+                            thead {
+                                tr {
+                                    SortHeader { column: LabelColumn::Name, sort, "Label" }
+                                    SortHeader { column: LabelColumn::Recipes, sort, class: "count", "Recipes" }
+                                    th { class: "actions", "Actions" }
+                                }
+                            }
+                            tbody {
+                                for Match { item: label, indices } in shown {
+                                    LabelRow {
+                                        key: "{label.simple_name}",
+                                        label,
+                                        indices,
+                                        on_changed: move |_| labels.restart(),
+                                    }
                                 }
                             }
                         }
@@ -49,6 +62,28 @@ pub fn LabelList() -> Element {
                 }
             }
         }
+    }
+}
+
+/// A column the label table can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LabelColumn {
+    Name,
+    Recipes,
+}
+
+impl SortColumn for LabelColumn {
+    type Item = Label;
+
+    fn compare(self, a: &Label, b: &Label) -> Ordering {
+        match self {
+            Self::Name => a.simple_name.cmp(&b.simple_name),
+            Self::Recipes => a.recipe_count.cmp(&b.recipe_count),
+        }
+    }
+
+    fn starts_descending(self) -> bool {
+        self == Self::Recipes
     }
 }
 
@@ -100,69 +135,90 @@ fn LabelRow(label: Label, indices: Vec<u32>, on_changed: EventHandler<()>) -> El
         }
     };
 
-    let recipes = match label.recipe_count {
-        1 => "1 recipe".to_owned(),
-        n => format!("{n} recipes"),
-    };
-
     rsx! {
-        li {
+        tr {
             if mode() == Mode::Merge {
-                MergeForm {
-                    label: label.clone(),
-                    on_merged: move |_| {
-                        mode.set(Mode::View);
-                        on_changed(());
-                    },
-                    on_cancel: move |_| mode.set(Mode::View),
+                td { class: "editing", colspan: 3,
+                    MergeForm {
+                        label: label.clone(),
+                        on_merged: move |_| {
+                            mode.set(Mode::View);
+                            on_changed(());
+                        },
+                        on_cancel: move |_| mode.set(Mode::View),
+                    }
                 }
             } else if mode() == Mode::Rename {
-                form { class: "row grow", onsubmit: rename,
-                    input {
-                        class: "grow",
-                        required: true,
-                        value: "{name}",
-                        oninput: move |e| name.set(e.value()),
-                    }
-                    button {
-                        r#type: "submit",
-                        disabled: *mutation.busy.read() || name() == label.name,
-                        "Rename"
-                    }
-                    button {
-                        r#type: "button",
-                        class: "secondary",
-                        onclick: {
-                            let original = label.name.clone();
-                            move |_| {
-                                name.set(original.clone());
-                                mode.set(Mode::View);
-                            }
-                        },
-                        "Cancel"
+                td { class: "editing", colspan: 3,
+                    form { class: "row", onsubmit: rename,
+                        input {
+                            class: "grow",
+                            required: true,
+                            value: "{name}",
+                            oninput: move |e| name.set(e.value()),
+                        }
+                        button {
+                            r#type: "submit",
+                            disabled: *mutation.busy.read() || name() == label.name,
+                            "Rename"
+                        }
+                        button {
+                            r#type: "button",
+                            class: "secondary",
+                            onclick: {
+                                let original = label.name.clone();
+                                move |_| {
+                                    name.set(original.clone());
+                                    mode.set(Mode::View);
+                                }
+                            },
+                            "Cancel"
+                        }
                     }
                 }
             } else {
-                Link {
-                    class: "tag plain tinted",
-                    style: tint(&label.simple_name),
-                    to: Route::RecipeList { labels: LabelSet::one(&label.simple_name), diets: DietSet::default() },
-                    Highlight { text: label.name.clone(), indices }
+                td {
+                    Link {
+                        class: "tag plain tinted",
+                        style: tint(&label.simple_name),
+                        to: Route::RecipeList { labels: LabelSet::one(&label.simple_name), diets: DietSet::default() },
+                        Highlight { text: label.name.clone(), indices }
+                    }
                 }
-                span { class: "muted", "{recipes}" }
-                span { class: "actions",
-                    button { class: "link", onclick: move |_| mode.set(Mode::Rename), "Rename" }
-                    button { class: "link", onclick: move |_| mode.set(Mode::Merge), "Merge" }
-                    button {
-                        class: "link danger-text",
-                        disabled: *mutation.busy.read(),
-                        onclick: delete,
-                        "Delete"
+                td { class: "count", "{label.recipe_count}" }
+                td { class: "actions",
+                    span { class: "icon-buttons",
+                        button {
+                            class: "icon-button",
+                            title: "Rename",
+                            "aria-label": "Rename {label.name}",
+                            onclick: move |_| mode.set(Mode::Rename),
+                            PenIcon {}
+                        }
+                        button {
+                            class: "icon-button",
+                            title: "Merge into another label",
+                            "aria-label": "Merge {label.name}",
+                            onclick: move |_| mode.set(Mode::Merge),
+                            MergeIcon {}
+                        }
+                        button {
+                            class: "icon-button danger",
+                            title: "Delete",
+                            "aria-label": "Delete {label.name}",
+                            disabled: *mutation.busy.read(),
+                            onclick: delete,
+                            TrashIcon {}
+                        }
                     }
                 }
             }
         }
-        {mutation.banner()}
+        if mutation.error.read().is_some() {
+            tr { class: "error-row",
+                td { colspan: 3, {mutation.banner()} }
+            }
+        }
     }
 }
 
@@ -225,8 +281,11 @@ fn MergeForm(label: Label, on_merged: EventHandler<()>, on_cancel: EventHandler<
     rsx! {
         form { class: "stack grow", onsubmit: submit,
             p { class: "muted",
-                "Merge {label.name} into another label. Its recipes take the other label, "
-                "and {label.name} is deleted."
+                "Merge "
+                span { class: "tag plain tinted", style: tint(&label.simple_name), "{label.name}" }
+                " into another label. Its recipes take the other label, and "
+                span { class: "tag plain tinted", style: tint(&label.simple_name), "{label.name}" }
+                " is deleted."
             }
             div { class: "row wrap",
                 input {

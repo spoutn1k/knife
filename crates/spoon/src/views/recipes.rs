@@ -2,14 +2,15 @@
 
 use crate::api::use_api;
 use crate::components::{
-    Diet, DietIcon, DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fuzzy_filter,
-    tint,
+    Diet, DietIcon, DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, SortColumn,
+    SortHeader, fuzzy_filter, sort_rows, tint,
 };
 use crate::views::edit_recipe::RecipeForm;
 use crate::views::recipe::use_label_names;
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::{Label, RecipeId, RecipeListing, Summary, simplify};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 /// Characters of label names shown per row before the rest become "+n".
@@ -177,18 +178,61 @@ fn LabelFilter(labels: Vec<Label>, selected: LabelSet, diets: DietSet) -> Elemen
     }
 }
 
+/// A column the recipe table can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RecipeColumn {
+    Name,
+    Diet,
+    Ingredients,
+    Uses,
+    Author,
+}
+
+impl SortColumn for RecipeColumn {
+    type Item = RecipeListing;
+
+    fn compare(self, a: &RecipeListing, b: &RecipeListing) -> Ordering {
+        match self {
+            Self::Name => simplify(&a.name).cmp(&simplify(&b.name)),
+            // By how many diets the recipe fits.
+            Self::Diet => diet_count(a).cmp(&diet_count(b)),
+            Self::Ingredients => a.requirement_count.cmp(&b.requirement_count),
+            Self::Uses => a.dependency_count.cmp(&b.dependency_count),
+            // Recipes with no author last.
+            Self::Author => (a.author.is_empty(), simplify(&a.author))
+                .cmp(&(b.author.is_empty(), simplify(&b.author))),
+        }
+    }
+
+    fn starts_descending(self) -> bool {
+        matches!(self, Self::Diet | Self::Ingredients | Self::Uses)
+    }
+}
+
+fn diet_count(recipe: &RecipeListing) -> usize {
+    Diet::ALL
+        .iter()
+        .filter(|d| d.allows(recipe.classification))
+        .count()
+}
+
 #[component]
 fn RecipeTable(recipes: Vec<Match<RecipeListing>>) -> Element {
     let labels = use_label_names();
+    let sort = use_signal(|| None::<(RecipeColumn, bool)>);
+    let mut recipes = recipes;
+    sort_rows(&mut recipes, sort());
 
     rsx! {
-        table { class: "recipes",
+        table { class: "data recipes",
             thead {
                 tr {
-                    th { "Recipe" }
-                    th { "Diet" }
+                    SortHeader { column: RecipeColumn::Name, sort, "Recipe" }
+                    SortHeader { column: RecipeColumn::Diet, sort, "Diet" }
                     th { class: "labels", "Labels" }
-                    th { class: "author", "From" }
+                    SortHeader { column: RecipeColumn::Ingredients, sort, class: "count", "Ingredients" }
+                    SortHeader { column: RecipeColumn::Uses, sort, class: "count uses", "Uses" }
+                    SortHeader { column: RecipeColumn::Author, sort, class: "author", "From" }
                 }
             }
             tbody {
@@ -204,6 +248,12 @@ fn RecipeTable(recipes: Vec<Match<RecipeListing>>) -> Element {
                             RecipeTags {
                                 tags: recipe.tags.iter().cloned().collect(),
                                 labels: labels.clone(),
+                            }
+                        }
+                        td { class: "count", "{recipe.requirement_count}" }
+                        td { class: "count uses",
+                            if recipe.dependency_count > 0 {
+                                "{recipe.dependency_count}"
                             }
                         }
                         td { class: "author muted", "{recipe.author}" }

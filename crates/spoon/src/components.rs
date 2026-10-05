@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 use knife_core::Classification;
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
+use std::cmp::Ordering;
 use std::future::Future;
 use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
@@ -173,6 +174,49 @@ pub fn PenIcon() -> Element {
     }
 }
 
+/// Two paths joining, for merge buttons shown as icons.
+#[component]
+pub fn MergeIcon() -> Element {
+    rsx! {
+        svg {
+            class: "icon",
+            "aria-hidden": "true",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            circle { cx: "6", cy: "5", r: "2" }
+            circle { cx: "6", cy: "19", r: "2" }
+            circle { cx: "18", cy: "12", r: "2" }
+            path { d: "M6 7v10" }
+            path { d: "M6 7c0 3 3 5 10 5" }
+        }
+    }
+}
+
+/// A bin, for delete buttons shown as icons.
+#[component]
+pub fn TrashIcon() -> Element {
+    rsx! {
+        svg {
+            class: "icon",
+            "aria-hidden": "true",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            path { d: "M4 7h16" }
+            path { d: "M9 7V4h6v3" }
+            path { d: "M6 7l1 13h10l1-13" }
+            path { d: "M10 11v5M14 11v5" }
+        }
+    }
+}
+
 /// A label's hue in degrees, always the same for the same label. The color
 /// scheme picks the lightness and saturation; see `.tinted` in the stylesheet.
 pub fn hue(simple_name: &str) -> u32 {
@@ -279,6 +323,68 @@ pub fn Highlight(text: String, indices: Vec<u32>) -> Element {
 
 /// A search field, filtering a list as it is typed. Pressing "/" anywhere
 /// but in another field focuses it.
+/// A column a table of `Item`s can be sorted by.
+pub trait SortColumn: Copy + PartialEq + 'static {
+    type Item;
+
+    /// Compares two items on this column, ascending.
+    fn compare(self, a: &Self::Item, b: &Self::Item) -> Ordering;
+
+    /// Whether the first sort is descending: counts read best largest first,
+    /// text A to Z.
+    fn starts_descending(self) -> bool;
+}
+
+/// The column a table is sorted by, and whether descending. Unsorted, rows
+/// keep the given order, such as best match first.
+pub type Sort<C> = Option<(C, bool)>;
+
+/// Sorts `rows` as `sort` says. Stable, so ties keep the given order.
+pub fn sort_rows<C: SortColumn>(rows: &mut [Match<C::Item>], sort: Sort<C>) {
+    if let Some((column, descending)) = sort {
+        rows.sort_by(|a, b| {
+            let order = column.compare(&a.item, &b.item);
+            if descending { order.reverse() } else { order }
+        });
+    }
+}
+
+/// A column heading that sorts the table by its column. Selecting it again
+/// reverses the order, then a third time goes back to the given order.
+#[component]
+pub fn SortHeader<C: SortColumn>(
+    column: C,
+    sort: Signal<Sort<C>>,
+    #[props(default)] class: String,
+    children: Element,
+) -> Element {
+    let current = sort().filter(|(c, _)| *c == column).map(|(_, d)| d);
+    let first = column.starts_descending();
+    let (aria, arrow) = match current {
+        None => ("none", ""),
+        Some(true) => ("descending", "▾"),
+        Some(false) => ("ascending", "▴"),
+    };
+
+    rsx! {
+        th { class: "{class}", "aria-sort": aria,
+            button {
+                class: "sort",
+                r#type: "button",
+                onclick: move |_| {
+                    sort.set(match current {
+                        None => Some((column, first)),
+                        Some(d) if d == first => Some((column, !first)),
+                        Some(_) => None,
+                    })
+                },
+                {children}
+                span { class: "arrow", "aria-hidden": "true", "{arrow}" }
+            }
+        }
+    }
+}
+
 #[component]
 pub fn SearchBox(value: Signal<String>, placeholder: String) -> Element {
     use_slash_focus();
