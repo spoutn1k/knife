@@ -328,3 +328,65 @@ button.picker { text-align: left; overflow: hidden; text-overflow: ellipsis; }
 mark.match { background: var(--accent-soft); color: inherit; border-radius: 2px; }
 /* Tags already use the soft accent: mark them with the strong one. */
 .tag mark.match { background: var(--accent); color: var(--accent-text); }
+
+/* Landing page: a band with the search, then one shelf of recipes per label.
+   Each shelf sets --hue from its label's name; the theme sets lightness and
+   chroma, in OKLCH so every hue comes out equally light. */
+.tinted {
+  --tint-deep: oklch(0.47 0.11 var(--hue));
+  --tint-soft: oklch(0.95 0.03 var(--hue));
+  --tint-line: oklch(0.87 0.055 var(--hue));
+}
+@media (prefers-color-scheme: dark) {
+  .tinted {
+    --tint-deep: oklch(0.78 0.09 var(--hue));
+    --tint-soft: oklch(0.27 0.025 var(--hue));
+    --tint-line: oklch(0.37 0.045 var(--hue));
+  }
+}
+
+/* Full width behind the content: the shadow paints the sides, the clip keeps
+   it from adding height. */
+.hero {
+  display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; justify-content: space-between;
+  margin: 0 0 2rem; padding: 2.25rem 0 1.75rem;
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 100vmax var(--accent-soft);
+  clip-path: inset(0 -100vmax);
+}
+/* Flush with the header, unless a banner comes first. */
+main > .hero:first-child { margin-top: -1rem; }
+.hero h1 { margin: 0 0 0.9rem; font-size: 2.2rem; }
+.hero input.search { margin: 0; max-width: 28rem; border-radius: 999px; padding: 0.6rem 1.1rem; background: var(--surface); }
+.hero .button { border-radius: 999px; padding: 0.55rem 1.1rem; font-weight: 600; }
+
+.theme { margin-bottom: 2.5rem; }
+.theme > h2 { margin: 0 0 1rem; font-size: 1.5rem; }
+.shelves { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 1.5rem; }
+@media (max-width: 760px) { .shelves { grid-template-columns: minmax(0, 1fr); } }
+.shelf { min-width: 0; }
+.shelf-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
+.shelf-head h3 { margin: 0; display: flex; align-items: center; gap: 0.6rem; font-size: 1.2rem; min-width: 0; }
+.shelf-head h3 .muted { font-size: 0.9rem; font-weight: 400; white-space: nowrap; }
+.shelf-name {
+  font-family: var(--mono); font-weight: 600;
+  background: var(--tint-deep); color: var(--surface);
+  border-radius: 999px; padding: 0.15rem 0.9rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.shelf-name:hover { text-decoration: none; }
+.shelf .see-all { color: var(--tint-deep); font-weight: 500; white-space: nowrap; }
+.shelf-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.shelf-cards .recipe-card { min-height: 6.5rem; padding: 0.8rem 0.9rem; }
+.shelf-cards .recipe-card .name { font-size: 1rem; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.75rem; }
+
+.recipe-card {
+  display: flex; flex-direction: column; gap: 0.35rem; min-height: 7.5rem;
+  padding: 1rem 1.1rem; border-radius: 10px; color: var(--text);
+  background: var(--tint-soft, var(--surface)); border: 1px solid var(--tint-line, var(--border));
+}
+.recipe-card:hover { text-decoration: none; border-color: var(--tint-deep, var(--accent)); }
+.recipe-card .name { font-weight: 600; font-size: 1.1rem; line-height: 1.3; }
+.recipe-card .author { font-size: 0.85rem; color: var(--muted); }
+.recipe-card .diet-icons { margin-top: auto; }
