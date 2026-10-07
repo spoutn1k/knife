@@ -119,6 +119,14 @@ impl Accounts {
         Ok(())
     }
 
+    /// Email the account a link to choose a new password, from the project's
+    /// template. The Auth emulator only records the link.
+    pub async fn send_password_reset(&self, email: &str) -> Result<(), AccountError> {
+        let body = json!({ "requestType": "PASSWORD_RESET", "email": email });
+        self.call::<Value>(":sendOobCode", body).await?;
+        Ok(())
+    }
+
     /// Delete an account. Deleting one that does not exist succeeds.
     pub async fn delete(&self, uid: &UserId) -> Result<(), AccountError> {
         match self

@@ -1,7 +1,9 @@
 //! The members of the recipe book and their rights, for admins.
 
 use crate::api::{use_admin, use_api, use_me};
-use crate::components::{ErrorBanner, KeyIcon, Loading, PenIcon, TrashIcon, confirm, use_mutation};
+use crate::components::{
+    ErrorBanner, KeyIcon, Loading, MailIcon, PenIcon, TrashIcon, confirm, use_mutation,
+};
 use dioxus::prelude::*;
 use knife_core::MemberListing;
 use knife_core::input::{MIN_PASSWORD_LEN, MemberPatch, NewMember};
@@ -79,6 +81,8 @@ fn MemberRow(member: MemberListing, is_me: bool, on_changed: EventHandler<()>) -
     let mut mode = use_signal(|| Mode::View);
     let mut name = use_signal(|| member.display_name.clone());
     let mut password = use_signal(String::new);
+    // Where the last password reset email went.
+    let mut reset_sent = use_signal(|| None::<String>);
 
     let save = {
         let (api, uid) = (api.clone(), member.uid.clone());
@@ -128,6 +132,19 @@ fn MemberRow(member: MemberListing, is_me: bool, on_changed: EventHandler<()>) -
             admin: Some(e.checked()),
             ..Default::default()
         })
+    };
+
+    let send_reset = {
+        let (api, uid, email) = (api.clone(), member.uid.clone(), member.email.clone());
+        move |_| {
+            let (api, uid, email) = (api.clone(), uid.clone(), email.clone());
+            reset_sent.set(None);
+            mutation.run(async move {
+                api.send_password_reset(&uid).await?;
+                reset_sent.set(email);
+                Ok(())
+            });
+        }
     };
 
     let remove = {
@@ -237,6 +254,14 @@ fn MemberRow(member: MemberListing, is_me: bool, on_changed: EventHandler<()>) -
                         }
                         button {
                             class: "icon-button",
+                            title: "Email a link to choose a new password",
+                            "aria-label": "Email {member.display_name} a password reset link",
+                            disabled: busy || member.email.is_none(),
+                            onclick: send_reset,
+                            MailIcon {}
+                        }
+                        button {
+                            class: "icon-button",
                             title: "Set a new password",
                             "aria-label": "Set a new password for {member.display_name}",
                             onclick: move |_| mode.set(Mode::Password),
@@ -259,6 +284,12 @@ fn MemberRow(member: MemberListing, is_me: bool, on_changed: EventHandler<()>) -
         if mutation.error.read().is_some() {
             tr { class: "error-row",
                 td { colspan: 4, {mutation.banner()} }
+            }
+        } else if let Some(email) = reset_sent() {
+            tr { class: "error-row",
+                td { colspan: 4,
+                    p { class: "muted", "Password reset email sent to {email}." }
+                }
             }
         }
     }

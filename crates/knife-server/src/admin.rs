@@ -8,7 +8,7 @@ use crate::members::Member;
 use crate::routes::{Body, Path};
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::routing::{get, patch};
+use axum::routing::{get, patch, post};
 use axum::{Extension, Json, Router};
 use knife_core::input::{MemberPatch, NewMember};
 use knife_core::{MemberListing, UserId, simplify};
@@ -22,6 +22,7 @@ pub fn router(auth: Arc<Auth>) -> Router {
     Router::new()
         .route("/members", get(list_members).post(add_member))
         .route("/members/{uid}", patch(update_member).delete(remove_member))
+        .route("/members/{uid}/password-reset", post(send_password_reset))
         .with_state(auth)
 }
 
@@ -160,6 +161,19 @@ async fn update_member(
 
     let email = email_of(&auth, &uid).await?;
     Ok(Json(listing(uid, email, member)))
+}
+
+/// Emails the member a link to choose a new password.
+async fn send_password_reset(State(auth): Admin, Path(uid): Path<UserId>) -> Result<StatusCode> {
+    existing(&auth, &uid).await?;
+    let email = email_of(&auth, &uid).await?.ok_or_else(|| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "this member has no account with an email",
+        )
+    })?;
+    auth.accounts.send_password_reset(&email).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Removes a member and deletes their account.

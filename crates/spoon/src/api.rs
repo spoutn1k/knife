@@ -467,6 +467,13 @@ impl Api {
         self.write(Method::PATCH, &["members", &uid.0], patch).await
     }
 
+    /// Have Firebase email the member a link to choose a new password.
+    pub async fn send_password_reset(&self, uid: &UserId) -> Result<()> {
+        let path = ["members", &uid.0, "password-reset"];
+        self.send(Method::POST, &path, &[], None::<&()>).await?;
+        Ok(())
+    }
+
     /// Remove a member and delete their account.
     pub async fn remove_member(&self, uid: &UserId) -> Result<()> {
         self.delete(&["members", &uid.0]).await

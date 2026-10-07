@@ -214,6 +214,24 @@ async fn admins_manage_members() {
     let (_, me) = send(&app, &token, Method::GET, "/api/me", None).await;
     assert_eq!(me["editor"], true);
 
+    // A reset link, which the emulator records instead of emailing.
+    let reset_uri = format!("{member_uri}/password-reset");
+    let (status, _) = send(&app, &admin, Method::POST, &reset_uri, None).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let url = format!(
+        "http://{}/emulator/v1/projects/{PROJECT}/oobCodes",
+        emulator_host("FIREBASE_AUTH_EMULATOR_HOST")
+    );
+    let codes: Value = reqwest::get(url).await.unwrap().json().await.unwrap();
+    assert!(
+        codes["oobCodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["email"] == email.as_str() && c["requestType"] == "PASSWORD_RESET"),
+        "{codes}"
+    );
+
     // Admins cannot lock themselves out.
     let own_uri = format!("/api/members/{admin_uid}");
     let body = json!({ "admin": false });
