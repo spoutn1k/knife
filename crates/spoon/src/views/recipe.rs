@@ -6,6 +6,7 @@
 
 use crate::api::{Api, use_api};
 use crate::components::{Diets, ErrorBanner, Loading, Markdown, PenIcon, tint};
+use crate::views::edit_recipe::OPENED_FROM;
 use crate::views::recipes::RecipeLinks;
 use crate::{DietSet, Error, LabelSet, Route};
 use dioxus::prelude::*;
@@ -119,6 +120,10 @@ fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>, used_in: Vec<Summary<Reci
                     Link {
                         class: "button secondary edit",
                         to: Route::EditRecipe { id: recipe.id.0.clone() },
+                        onclick: {
+                            let id = recipe.id.clone();
+                            move |_| *OPENED_FROM.write() = Some(id.clone())
+                        },
                         title: "Edit",
                         "aria-label": "Edit",
                         PenIcon {}

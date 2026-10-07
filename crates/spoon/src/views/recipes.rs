@@ -5,6 +5,7 @@ use crate::components::{
     Diet, DietIcon, DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, SortColumn,
     SortHeader, fuzzy_filter, sort_rows, tint, use_mutation,
 };
+use crate::views::edit_recipe::OPENED_FROM;
 use crate::views::recipe::use_label_names;
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
@@ -350,6 +351,11 @@ fn NewRecipeDialog(on_close: EventHandler<()>) -> Element {
             };
             match api.create_recipe(&input).await {
                 Ok(recipe) => {
+                    // The recipe page comes first, for "Done" to go back to.
+                    navigator.push(Route::RecipePage {
+                        id: recipe.id.0.clone(),
+                    });
+                    *OPENED_FROM.write() = Some(recipe.id.clone());
                     navigator.push(Route::EditRecipe { id: recipe.id.0 });
                     Ok(())
                 }

@@ -15,6 +15,11 @@ use knife_core::{
     Classification, Dependency, IngredientId, Recipe, RecipeId, Requirement, Summary, simplify,
 };
 
+/// The recipe whose page, the entry before in the history, opened its edit
+/// page. "Done" then goes back to it, keeping the edit page out of the
+/// history; otherwise, it replaces the edit page with the recipe's.
+pub(crate) static OPENED_FROM: GlobalSignal<Option<RecipeId>> = Signal::global(|| None);
+
 #[component]
 pub fn EditRecipe(id: String) -> Element {
     let api = use_api();
@@ -47,6 +52,14 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     let mut used_by = use_signal(Vec::<Summary<RecipeId>>::new);
 
     let id = recipe.id.clone();
+    let done = move |_| {
+        if OPENED_FROM.read().as_ref() == Some(&id) {
+            navigator.go_back();
+        } else {
+            navigator.replace(Route::RecipePage { id: id.0.clone() });
+        }
+    };
+    let id = recipe.id.clone();
     let name = recipe.name.clone();
     let delete_recipe = move |_| {
         if !confirm(&format!("Delete {name}?")) {
@@ -74,7 +87,7 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
         div { class: "title-row",
             h1 { "Edit {recipe.name}" }
             div { class: "row",
-                Link { class: "button", to: Route::RecipePage { id: recipe.id.0.clone() }, "Done" }
+                button { r#type: "button", onclick: done, "Done" }
                 button { class: "danger", disabled: *delete.busy.read(), onclick: delete_recipe, "Delete" }
             }
         }
