@@ -13,11 +13,11 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use firestore::FirestoreDb;
 use knife_core::UserId;
 use knife_server::auth::Verifier;
-use knife_server::members::Members;
+use knife_server::members::{Member, Members};
 use knife_server::store::Store;
 use knife_server::{Auth, app};
 use serde_json::{Value, json};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
@@ -72,7 +72,13 @@ impl Client {
         let db = FirestoreDb::new(PROJECT).await.unwrap();
         let auth = Auth {
             verifier: Verifier::emulator(PROJECT),
-            members: Members::Fixed(HashSet::from([UserId::from(UID)])),
+            members: Members::Fixed(HashMap::from([(
+                UserId::from(UID),
+                Member {
+                    display_name: "Tester".into(),
+                    editor: true,
+                },
+            )])),
         };
         Self {
             app: app(auth, Store::new(db)),

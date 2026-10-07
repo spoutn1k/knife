@@ -9,7 +9,7 @@ mod components;
 mod markdown;
 mod views;
 
-use api::{Api, use_api};
+use api::{Api, MeResource, use_api};
 use auth::{Identity, Session};
 use components::{Diet, ErrorBanner, Loading};
 use dioxus::prelude::*;
@@ -172,9 +172,26 @@ fn Shell() -> Element {
     let api = use_api();
     let session = api.session;
 
-    let Some(email) = session.read().as_ref().map(|s| s.email.clone()) else {
+    // Refetched on sign in and out, which change the session.
+    let me = use_resource({
+        let api = api.clone();
+        move || {
+            let api = api.clone();
+            let signed_in = api.session.read().is_some();
+            async move {
+                if signed_in {
+                    Some(api.me().await)
+                } else {
+                    None
+                }
+            }
+        }
+    });
+    use_context_provider(|| me);
+
+    if session.read().is_none() {
         return rsx! { SignIn {} };
-    };
+    }
 
     // The menu, folded behind a button on phones.
     let mut menu_open = use_signal(|| false);
@@ -209,7 +226,7 @@ fn Shell() -> Element {
             }
         }
         main {
-            Membership { key: "{email}" }
+            Membership {}
             Outlet::<Route> {}
         }
     }
@@ -240,14 +257,10 @@ fn MenuIcon(open: bool) -> Element {
 /// otherwise shows up as an error on every page.
 #[component]
 fn Membership() -> Element {
-    let api = use_api();
-    let me = use_resource(move || {
-        let api = api.clone();
-        async move { api.me().await }
-    });
+    let me: MeResource = use_context();
 
     match &*me.read() {
-        Some(Err(e)) if e.status() == Some(403) => rsx! {
+        Some(Some(Err(e))) if e.status() == Some(403) => rsx! {
             ErrorBanner {
                 message: "This account is not a member of the recipe book. Ask a member to add it."
             }

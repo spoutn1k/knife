@@ -1,7 +1,7 @@
 //! Ingredients and what they contain.
 
 use crate::Route;
-use crate::api::use_api;
+use crate::api::{use_api, use_editor};
 use crate::components::{
     ContainsChecks, Diets, ErrorBanner, Highlight, Loading, Match, SearchBox, confirm,
     fuzzy_filter, use_mutation,
@@ -14,6 +14,7 @@ use knife_core::{Classification, IngredientDetails, IngredientId, Summary, simpl
 #[component]
 pub fn IngredientList() -> Element {
     let api = use_api();
+    let editor = use_editor();
     let navigator = use_navigator();
     let search = use_signal(String::new);
     // Every ingredient, loaded once and filtered here as the search is typed.
@@ -66,21 +67,23 @@ pub fn IngredientList() -> Element {
                 }
             }
         }
-        form { class: "card stack", onsubmit: create,
-            h2 { "New ingredient" }
-            input {
-                placeholder: "Name",
-                required: true,
-                value: "{name}",
-                oninput: move |e| name.set(e.value()),
-            }
-            fieldset {
-                legend { "It contains:" }
-                ContainsChecks { value: flags(), onchange: move |c| flags.set(c) }
-            }
-            {mutation.banner()}
-            div { class: "row",
-                button { r#type: "submit", disabled: *mutation.busy.read(), "Create" }
+        if editor {
+            form { class: "card stack", onsubmit: create,
+                h2 { "New ingredient" }
+                input {
+                    placeholder: "Name",
+                    required: true,
+                    value: "{name}",
+                    oninput: move |e| name.set(e.value()),
+                }
+                fieldset {
+                    legend { "It contains:" }
+                    ContainsChecks { value: flags(), onchange: move |c| flags.set(c) }
+                }
+                {mutation.banner()}
+                div { class: "row",
+                    button { r#type: "submit", disabled: *mutation.busy.read(), "Create" }
+                }
             }
         }
     }
@@ -134,6 +137,7 @@ fn IngredientView(
     on_saved: EventHandler<IngredientDetails>,
 ) -> Element {
     let api = use_api();
+    let editor = use_editor();
     let navigator = use_navigator();
     let mutation = use_mutation();
     let ingredient = &details.ingredient;
@@ -197,36 +201,40 @@ fn IngredientView(
     rsx! {
         div { class: "title-row",
             h1 { "{ingredient.name}" }
-            button {
-                class: "danger",
-                disabled: used || *mutation.busy.read(),
-                title: if used { "Used by recipes: remove it from them first" } else { "" },
-                onclick: delete,
-                "Delete"
+            if editor {
+                button {
+                    class: "danger",
+                    disabled: used || *mutation.busy.read(),
+                    title: if used { "Used by recipes: remove it from them first" } else { "" },
+                    onclick: delete,
+                    "Delete"
+                }
             }
         }
         Diets { classification: ingredient.classification }
         {mutation.banner()}
-        form { class: "card stack", onsubmit: rename,
-            label {
-                "Name"
-                div { class: "row",
-                    input {
-                        class: "grow",
-                        required: true,
-                        value: "{name}",
-                        oninput: move |e| name.set(e.value()),
-                    }
-                    button {
-                        r#type: "submit",
-                        disabled: *mutation.busy.read() || name() == ingredient.name,
-                        "Rename"
+        if editor {
+            form { class: "card stack", onsubmit: rename,
+                label {
+                    "Name"
+                    div { class: "row",
+                        input {
+                            class: "grow",
+                            required: true,
+                            value: "{name}",
+                            oninput: move |e| name.set(e.value()),
+                        }
+                        button {
+                            r#type: "submit",
+                            disabled: *mutation.busy.read() || name() == ingredient.name,
+                            "Rename"
+                        }
                     }
                 }
-            }
-            fieldset {
-                legend { "It contains:" }
-                ContainsChecks { value: ingredient.classification, onchange: set_flags }
+                fieldset {
+                    legend { "It contains:" }
+                    ContainsChecks { value: ingredient.classification, onchange: set_flags }
+                }
             }
         }
         h2 { "Used in" }
@@ -235,7 +243,9 @@ fn IngredientView(
         } else {
             p { class: "muted", "No recipe uses it." }
         }
-        MergeForm { details: details.clone() }
+        if editor {
+            MergeForm { details: details.clone() }
+        }
     }
 }
 

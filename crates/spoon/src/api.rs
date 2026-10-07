@@ -84,6 +84,8 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub struct Me {
     pub uid: String,
     pub email: Option<String>,
+    /// May change the recipe book; other members can only read it.
+    pub editor: bool,
 }
 
 /// Shared through the Dioxus context; cheap to clone.
@@ -459,4 +461,23 @@ async fn decode<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
 /// The [`Api`] provided by the app root.
 pub fn use_api() -> Api {
     use_context()
+}
+
+/// `GET /api/me` for the signed-in user, provided by the shell: `None` when
+/// signed out.
+pub type MeResource = Resource<Option<Result<Me>>>;
+
+/// The signed-in user, once known.
+pub fn use_me() -> Option<Me> {
+    let me: MeResource = use_context();
+    match &*me.read() {
+        Some(Some(Ok(me))) => Some(me.clone()),
+        _ => None,
+    }
+}
+
+/// Whether the signed-in user may change the recipe book. False until known,
+/// so that editing controls never show to read-only members.
+pub fn use_editor() -> bool {
+    use_me().is_some_and(|me| me.editor)
 }

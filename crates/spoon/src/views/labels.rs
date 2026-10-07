@@ -2,7 +2,7 @@
 //! recipes are the recipe list, filtered by label.
 
 use crate::Error;
-use crate::api::use_api;
+use crate::api::{use_api, use_editor};
 use crate::components::{
     ErrorBanner, Highlight, Loading, Match, MergeIcon, PenIcon, SearchBox, SortColumn, SortHeader,
     TrashIcon, confirm, fuzzy_filter, sort_rows, tint, use_mutation,
@@ -16,6 +16,7 @@ use std::cmp::Ordering;
 #[component]
 pub fn LabelList() -> Element {
     let api = use_api();
+    let editor = use_editor();
     let search = use_signal(String::new);
     let sort = use_signal(|| None::<(LabelColumn, bool)>);
     // Every label, loaded once and filtered here as the search is typed.
@@ -26,7 +27,9 @@ pub fn LabelList() -> Element {
 
     rsx! {
         h1 { "Labels" }
-        p { class: "muted", "Tag recipes from their edit page to create labels." }
+        if editor {
+            p { class: "muted", "Tag recipes from their edit page to create labels." }
+        }
         SearchBox { value: search, placeholder: "Search labels" }
         match &*labels.read() {
             None => rsx! { Loading {} },
@@ -44,7 +47,9 @@ pub fn LabelList() -> Element {
                                 tr {
                                     SortHeader { column: LabelColumn::Name, sort, "Label" }
                                     SortHeader { column: LabelColumn::Recipes, sort, class: "count", "Recipes" }
-                                    th { class: "actions", "Actions" }
+                                    if editor {
+                                        th { class: "actions", "Actions" }
+                                    }
                                 }
                             }
                             tbody {
@@ -53,6 +58,7 @@ pub fn LabelList() -> Element {
                                         key: "{label.simple_name}",
                                         label,
                                         indices,
+                                        editor,
                                         on_changed: move |_| labels.restart(),
                                     }
                                 }
@@ -98,7 +104,12 @@ enum Mode {
 /// A label with its recipe count, renamed in place, merged into another or
 /// deleted. `indices` are the letters of its name matched by the search.
 #[component]
-fn LabelRow(label: Label, indices: Vec<u32>, on_changed: EventHandler<()>) -> Element {
+fn LabelRow(
+    label: Label,
+    indices: Vec<u32>,
+    editor: bool,
+    on_changed: EventHandler<()>,
+) -> Element {
     let api = use_api();
     let mutation = use_mutation();
     let mut mode = use_signal(|| Mode::View);
@@ -186,29 +197,31 @@ fn LabelRow(label: Label, indices: Vec<u32>, on_changed: EventHandler<()>) -> El
                     }
                 }
                 td { class: "count", "{label.recipe_count}" }
-                td { class: "actions",
-                    span { class: "icon-buttons",
-                        button {
-                            class: "icon-button",
-                            title: "Rename",
-                            "aria-label": "Rename {label.name}",
-                            onclick: move |_| mode.set(Mode::Rename),
-                            PenIcon {}
-                        }
-                        button {
-                            class: "icon-button",
-                            title: "Merge into another label",
-                            "aria-label": "Merge {label.name}",
-                            onclick: move |_| mode.set(Mode::Merge),
-                            MergeIcon {}
-                        }
-                        button {
-                            class: "icon-button danger",
-                            title: "Delete",
-                            "aria-label": "Delete {label.name}",
-                            disabled: *mutation.busy.read(),
-                            onclick: delete,
-                            TrashIcon {}
+                if editor {
+                    td { class: "actions",
+                        span { class: "icon-buttons",
+                            button {
+                                class: "icon-button",
+                                title: "Rename",
+                                "aria-label": "Rename {label.name}",
+                                onclick: move |_| mode.set(Mode::Rename),
+                                PenIcon {}
+                            }
+                            button {
+                                class: "icon-button",
+                                title: "Merge into another label",
+                                "aria-label": "Merge {label.name}",
+                                onclick: move |_| mode.set(Mode::Merge),
+                                MergeIcon {}
+                            }
+                            button {
+                                class: "icon-button danger",
+                                title: "Delete",
+                                "aria-label": "Delete {label.name}",
+                                disabled: *mutation.busy.read(),
+                                onclick: delete,
+                                TrashIcon {}
+                            }
                         }
                     }
                 }

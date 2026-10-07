@@ -1,12 +1,12 @@
 //! The recipe list, and the dialog to create a recipe.
 
-use crate::api::use_api;
+use crate::api::{use_api, use_editor};
 use crate::components::{
     Diet, DietIcon, DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, SortColumn,
     SortHeader, fuzzy_filter, sort_rows, tint, use_mutation,
 };
 use crate::views::edit_recipe::OPENED_FROM;
-use crate::views::recipe::use_label_names;
+use crate::views::recipe::{sorted_tags, use_labels};
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::input::NewRecipe as NewRecipeInput;
@@ -219,7 +219,7 @@ fn diet_count(recipe: &RecipeListing) -> usize {
 
 #[component]
 fn RecipeTable(recipes: Vec<Match<RecipeListing>>) -> Element {
-    let labels = use_label_names();
+    let labels = use_labels();
     let sort = use_signal(|| None::<(RecipeColumn, bool)>);
     let mut recipes = recipes;
     sort_rows(&mut recipes, sort());
@@ -268,15 +268,8 @@ fn RecipeTable(recipes: Vec<Match<RecipeListing>>) -> Element {
 /// A recipe's labels, as many as fit in [`LABEL_BUDGET`], then "+n" for the
 /// rest, which hovering it lists.
 #[component]
-fn RecipeTags(tags: Vec<String>, labels: HashMap<String, String>) -> Element {
-    let mut names: Vec<(String, String)> = tags
-        .into_iter()
-        .map(|tag| {
-            let name = labels.get(&tag).cloned().unwrap_or_else(|| tag.clone());
-            (tag, name)
-        })
-        .collect();
-    names.sort_by_key(|(_, name)| simplify(name));
+fn RecipeTags(tags: Vec<String>, labels: HashMap<String, Label>) -> Element {
+    let names = sorted_tags(&tags, &labels);
 
     // At least one label, then more while they fit.
     let mut used = 0;
@@ -317,10 +310,15 @@ pub fn RecipeLinks(recipes: Vec<Summary<RecipeId>>) -> Element {
 }
 
 /// A "New recipe" button, opening a dialog asking for its name. The recipe
-/// is then created and its edit page opened, to fill in the rest.
+/// is then created and its edit page opened, to fill in the rest. Shown to
+/// editors only.
 #[component]
 pub fn NewRecipeButton() -> Element {
+    let editor = use_editor();
     let mut open = use_signal(|| false);
+    if !editor {
+        return rsx! {};
+    }
     rsx! {
         button { r#type: "button", onclick: move |_| open.set(true), "New recipe" }
         if open() {

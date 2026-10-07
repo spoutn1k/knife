@@ -1,12 +1,12 @@
 //! A recipe's edit page: its text, then its tags, ingredients and the
 //! recipes it uses. Each change to those is saved as it is made.
 
-use crate::api::{Api, use_api};
+use crate::api::{Api, use_api, use_me};
 use crate::components::{
     ContainsChecks, ErrorBanner, Highlight, Loading, Match, confirm, fuzzy_filter, tint,
     use_mutation,
 };
-use crate::views::recipe::{by_group, use_label_names};
+use crate::views::recipe::{RecipePage, by_group, use_label_names};
 use crate::views::recipes::RecipeLinks;
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
@@ -23,12 +23,17 @@ pub(crate) static OPENED_FROM: GlobalSignal<Option<RecipeId>> = Signal::global(|
 #[component]
 pub fn EditRecipe(id: String) -> Element {
     let api = use_api();
+    let read_only = use_me().is_some_and(|me| !me.editor);
     let mut recipe = use_resource(use_reactive!(|id| {
         let api = api.clone();
         async move { api.recipe(&RecipeId(id)).await }
     }));
     // Writes on this page return the updated recipe.
     let on_saved = move |updated: Recipe| recipe.set(Some(Ok(updated)));
+
+    if read_only {
+        return rsx! { RecipePage { id } };
+    }
 
     match &*recipe.read() {
         None => rsx! { Loading {} },

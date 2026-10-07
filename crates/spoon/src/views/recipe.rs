@@ -4,13 +4,13 @@
 //! "For <recipe>" heading, in the order to prepare them. The recipes using
 //! it are listed last.
 
-use crate::api::{Api, use_api};
+use crate::api::{Api, use_api, use_editor};
 use crate::components::{Diets, ErrorBanner, Loading, Markdown, PenIcon, tint};
 use crate::views::edit_recipe::OPENED_FROM;
 use crate::views::recipes::RecipeLinks;
 use crate::{DietSet, Error, LabelSet, Route};
 use dioxus::prelude::*;
-use knife_core::{IngredientId, Recipe, RecipeId, Requirement, Summary, simplify};
+use knife_core::{IngredientId, Label, Recipe, RecipeId, Requirement, Summary, simplify};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[component]
@@ -84,9 +84,27 @@ fn sorted_dependencies(recipe: &Recipe) -> Vec<&RecipeId> {
     ids.into_iter().map(|(id, _)| id).collect()
 }
 
+/// Tags with their display names, most used first, then by name.
+pub(super) fn sorted_tags<'a>(
+    tags: impl IntoIterator<Item = &'a String>,
+    labels: &'a HashMap<String, Label>,
+) -> Vec<(&'a String, &'a String)> {
+    let mut tags: Vec<_> = tags
+        .into_iter()
+        .map(|tag| {
+            let label = labels.get(tag);
+            (tag, label.map_or(tag, |l| &l.name), label.map_or(0, |l| l.recipe_count))
+        })
+        .collect();
+    tags.sort_by_key(|&(_, name, count)| (std::cmp::Reverse(count), simplify(name)));
+    tags.into_iter().map(|(tag, name, _)| (tag, name)).collect()
+}
+
 #[component]
 fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>, used_in: Vec<Summary<RecipeId>>) -> Element {
-    let labels = use_label_names();
+    let editor = use_editor();
+    let labels = use_labels();
+    let tags = sorted_tags(&recipe.tags, &labels);
     let with_ingredients: Vec<&Recipe> = requisites
         .iter()
         .filter(|r| !r.requirements.is_empty())
@@ -106,10 +124,10 @@ fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>, used_in: Vec<Summary<Reci
             header { class: "recipe-header",
                 if !recipe.tags.is_empty() {
                     ul { class: "tags eyebrow",
-                        for tag in recipe.tags.iter() {
+                        for (tag, name) in tags {
                             li { key: "{tag}", class: "tag plain tinted", style: tint(tag),
                                 Link { to: Route::RecipeList { labels: LabelSet::one(tag), diets: DietSet::default() },
-                                    {labels.get(tag).unwrap_or(tag).clone()}
+                                    "{name}"
                                 }
                             }
                         }
@@ -117,17 +135,19 @@ fn RecipeView(recipe: Recipe, requisites: Vec<Recipe>, used_in: Vec<Summary<Reci
                 }
                 div { class: "name",
                     h1 { "{recipe.name}" }
-                    Link {
-                        class: "button secondary edit",
-                        to: Route::EditRecipe { id: recipe.id.0.clone() },
-                        onclick: {
-                            let id = recipe.id.clone();
-                            move |_| *OPENED_FROM.write() = Some(id.clone())
-                        },
-                        title: "Edit",
-                        "aria-label": "Edit",
-                        PenIcon {}
-                        span { "Edit" }
+                    if editor {
+                        Link {
+                            class: "button secondary edit",
+                            to: Route::EditRecipe { id: recipe.id.0.clone() },
+                            onclick: {
+                                let id = recipe.id.clone();
+                                move |_| *OPENED_FROM.write() = Some(id.clone())
+                            },
+                            title: "Edit",
+                            "aria-label": "Edit",
+                            PenIcon {}
+                            span { "Edit" }
+                        }
                     }
                 }
                 div { class: "byline",
@@ -258,9 +278,9 @@ pub(super) fn by_group(recipe: &Recipe) -> BTreeMap<&str, Vec<(&IngredientId, &R
     groups
 }
 
-/// Display names of the labels, by simple name. Recipes store only the
-/// simple names of their tags.
-pub(super) fn use_label_names() -> HashMap<String, String> {
+/// The labels, by simple name. Recipes store only the simple names of their
+/// tags.
+pub(super) fn use_labels() -> HashMap<String, Label> {
     let api = use_api();
     let labels = use_resource(move || {
         let api = api.clone();
@@ -269,8 +289,16 @@ pub(super) fn use_label_names() -> HashMap<String, String> {
     match &*labels.read() {
         Some(Ok(labels)) => labels
             .iter()
-            .map(|l| (l.simple_name.clone(), l.name.clone()))
+            .map(|l| (l.simple_name.clone(), l.clone()))
             .collect(),
         _ => HashMap::new(),
     }
+}
+
+/// Display names of the labels, by simple name.
+pub(super) fn use_label_names() -> HashMap<String, String> {
+    use_labels()
+        .into_iter()
+        .map(|(simple_name, l)| (simple_name, l.name))
+        .collect()
 }

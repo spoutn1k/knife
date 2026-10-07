@@ -47,8 +47,9 @@ serve:
 spoon:
     FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 dx serve -p spoon --port 8081
 
-# Sign in as dev@example.com / password. `data`, a chopstick export, is imported
-# with chopstick if it exists. Everything is lost on exit.
+# Sign in as editor@email.com, or user@email.com to only read; the password is
+# `password`. `data`, a chopstick export, is imported with chopstick if it
+# exists. Everything is lost on exit.
 #
 # Run emulators, server and spoon (on http://localhost:8081) with sample data
 local data="data.json":
@@ -59,16 +60,23 @@ local data="data.json":
 _local data:
     #!/usr/bin/env bash
     set -euo pipefail
-    email=dev@example.com password=password
+    password=password
     auth=http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts
 
-    echo "== Creating $email, a member of the recipe book"
-    body="{\"email\":\"$email\",\"password\":\"$password\",\"returnSecureToken\":true}"
-    uid=$(curl -fsS "$auth:signUp?key=local" -H 'Content-Type: application/json' -d "$body" |
-        sed -E 's/.*"localId": *"([^"]+)".*/\1/')
-    curl -fsS -o /dev/null -X PATCH -H 'Authorization: Bearer owner' \
-        -H 'Content-Type: application/json' -d '{"fields":{"display_name":{"stringValue":"Dev"}}}' \
-        "http://127.0.0.1:8080/v1/projects/{{ project }}/databases/(default)/documents/members/$uid"
+    # member EMAIL NAME EDITOR: an account and its member document.
+    member() {
+        echo "== Creating $1, $([[ $3 == true ]] && echo an editor || echo a reader) of the recipe book"
+        local body="{\"email\":\"$1\",\"password\":\"$password\",\"returnSecureToken\":true}"
+        local uid
+        uid=$(curl -fsS "$auth:signUp?key=local" -H 'Content-Type: application/json' -d "$body" |
+            sed -E 's/.*"localId": *"([^"]+)".*/\1/')
+        curl -fsS -o /dev/null -X PATCH -H 'Authorization: Bearer owner' \
+            -H 'Content-Type: application/json' \
+            -d "{\"fields\":{\"display_name\":{\"stringValue\":\"$2\"},\"editor\":{\"booleanValue\":$3}}}" \
+            "http://127.0.0.1:8080/v1/projects/{{ project }}/databases/(default)/documents/members/$uid"
+    }
+    member editor@email.com Editor true
+    member user@email.com User false
 
     {{ emulator_env }} RUST_LOG=info GOOGLE_CLOUD_PROJECT={{ project }} cargo run -p {{ service }} &
     server=$!
@@ -83,7 +91,7 @@ _local data:
         export XDG_CONFIG_HOME=$(mktemp -d) {{ emulator_env }}
         trap 'kill $server; rm -rf "$XDG_CONFIG_HOME"' EXIT
         KNIFE_PASSWORD=$password cargo run -q -p chopstick -- login \
-            --email "$email" --api-key local --url http://127.0.0.1:8000
+            --email editor@email.com --api-key local --url http://127.0.0.1:8000
         cargo run -q -p chopstick -- import {{ quote(data) }}
     else
         echo "== No {{ data }}: starting with an empty recipe book"

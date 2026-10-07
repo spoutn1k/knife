@@ -91,6 +91,7 @@ async fn only_members_get_in() {
         .document_id(&uid)
         .object(&Member {
             display_name: "Test".into(),
+            editor: false,
         })
         .execute()
         .await
