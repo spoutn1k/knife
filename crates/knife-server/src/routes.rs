@@ -25,11 +25,11 @@ type Db = State<Arc<Store>>;
 /// A JSON body; malformed or unknown fields give a problem response.
 #[derive(FromRequest)]
 #[from_request(via(axum::Json), rejection(ApiError))]
-pub struct Body<T>(T);
+pub struct Body<T>(pub T);
 
 #[derive(FromRequestParts)]
 #[from_request(via(axum::extract::Path), rejection(ApiError))]
-pub struct Path<T>(T);
+pub struct Path<T>(pub T);
 
 #[derive(FromRequestParts)]
 #[from_request(via(axum::extract::Query), rejection(ApiError))]

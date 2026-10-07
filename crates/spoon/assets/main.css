@@ -300,6 +300,15 @@ table.label-rows td.actions { padding-top: 0.3rem; padding-bottom: 0.3rem; }
 table.data.label-rows td.editing { padding: 0.75rem; }
 table.label-rows tr:has(+ .error-row) td { border-bottom: none; }
 
+/* Members page */
+table.member-rows .right { text-align: right; width: 1%; padding-left: 0.75rem; }
+table.member-rows .actions { text-align: right; white-space: nowrap; width: 1%; padding-left: 0.75rem; }
+table.member-rows td.actions { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+table.member-rows .member-email { font-size: 0.85rem; overflow-wrap: anywhere; }
+table.data.member-rows td.editing { padding: 0.75rem; }
+table.member-rows tr:has(+ .error-row) td { border-bottom: none; }
+table.member-rows + .card { margin-top: 1.5rem; }
+
 /* Data tables: the recipes and the labels */
 table.data { width: 100%; border-collapse: collapse; }
 table.data th {

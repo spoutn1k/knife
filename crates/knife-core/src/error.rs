@@ -19,6 +19,12 @@ pub enum Error {
     #[error("nothing to update")]
     EmptyPatch,
 
+    #[error("invalid email address: {0:?}")]
+    InvalidEmail(String),
+
+    #[error("passwords need at least {0} characters")]
+    PasswordTooShort(usize),
+
     #[error("a recipe cannot depend on itself")]
     SelfDependency,
 

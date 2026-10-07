@@ -31,6 +31,17 @@ id_type!(
     UserId
 );
 
+/// A member of the recipe book, as `GET /members` lists them. `email` is the
+/// account's, if it still exists.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemberListing {
+    pub uid: UserId,
+    pub email: Option<String>,
+    pub display_name: String,
+    pub editor: bool,
+    pub admin: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ingredient {
     pub id: IngredientId,

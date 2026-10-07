@@ -195,6 +195,76 @@ impl LabelPatch {
     }
 }
 
+/// Firebase Auth refuses shorter passwords.
+pub const MIN_PASSWORD_LEN: usize = 6;
+
+/// Body of `POST /members`: makes the account with this email a member,
+/// creating the account with `password` if there is none.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NewMember {
+    pub email: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub password: Option<String>,
+    #[serde(default)]
+    pub editor: bool,
+    #[serde(default)]
+    pub admin: bool,
+}
+
+impl NewMember {
+    /// Returns the validated display name.
+    pub fn validate(&self) -> Result<ValidName, Error> {
+        check_email(&self.email)?;
+        check_password(self.password.as_deref())?;
+        ValidName::new(&self.display_name)
+    }
+}
+
+/// Body of `PATCH /members/{uid}`. `password` replaces the account's.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemberPatch {
+    pub display_name: Option<String>,
+    pub editor: Option<bool>,
+    pub admin: Option<bool>,
+    pub password: Option<String>,
+}
+
+impl MemberPatch {
+    /// Returns the validated new display name, if the patch changes it.
+    pub fn validate(&self) -> Result<Option<ValidName>, Error> {
+        if *self == Self::default() {
+            return Err(Error::EmptyPatch);
+        }
+        check_password(self.password.as_deref())?;
+        self.display_name.as_deref().map(ValidName::new).transpose()
+    }
+}
+
+/// A rough check, catching typos; Firebase Auth has the last word.
+fn check_email(email: &str) -> Result<(), Error> {
+    let valid = email
+        .split_once('@')
+        .is_some_and(|(user, domain)| !user.is_empty() && !domain.is_empty())
+        && !email.contains(char::is_whitespace);
+    if valid {
+        Ok(())
+    } else {
+        Err(Error::InvalidEmail(email.to_owned()))
+    }
+}
+
+fn check_password(password: Option<&str>) -> Result<(), Error> {
+    match password {
+        Some(p) if p.chars().count() < MIN_PASSWORD_LEN => {
+            Err(Error::PasswordTooShort(MIN_PASSWORD_LEN))
+        }
+        _ => Ok(()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,6 +384,50 @@ mod tests {
         let input = RequirementInput::merged(&kept, &merged);
         assert!(input.optional);
         assert_eq!(input.group, "garnish");
+    }
+
+    fn new_member(email: &str, password: Option<&str>) -> NewMember {
+        NewMember {
+            email: email.into(),
+            display_name: "Alice".into(),
+            password: password.map(String::from),
+            editor: false,
+            admin: false,
+        }
+    }
+
+    #[test]
+    fn new_members_need_an_email() {
+        assert!(new_member("alice@example.com", None).validate().is_ok());
+        for email in ["", "alice", "@example.com", "alice@", "al ice@example.com"] {
+            assert_eq!(
+                new_member(email, None).validate(),
+                Err(Error::InvalidEmail(email.into()))
+            );
+        }
+    }
+
+    #[test]
+    fn passwords_have_a_minimum_length() {
+        assert_eq!(
+            new_member("alice@example.com", Some("12345")).validate(),
+            Err(Error::PasswordTooShort(MIN_PASSWORD_LEN))
+        );
+        assert!(
+            new_member("alice@example.com", Some("123456"))
+                .validate()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn member_patch_needs_a_change() {
+        assert_eq!(MemberPatch::default().validate(), Err(Error::EmptyPatch));
+        let patch = MemberPatch {
+            editor: Some(true),
+            ..Default::default()
+        };
+        assert_eq!(patch.validate(), Ok(None));
     }
 
     #[test]

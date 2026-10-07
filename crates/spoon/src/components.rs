@@ -196,6 +196,27 @@ pub fn MergeIcon() -> Element {
     }
 }
 
+/// A key, for password buttons shown as icons.
+#[component]
+pub fn KeyIcon() -> Element {
+    rsx! {
+        svg {
+            class: "icon",
+            "aria-hidden": "true",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            circle { cx: "8", cy: "15", r: "4" }
+            path { d: "M10.8 12.2 20 3" }
+            path { d: "M16 7l3 3" }
+            path { d: "M18 5l2 2" }
+        }
+    }
+}
+
 /// A bin, for delete buttons shown as icons.
 #[component]
 pub fn TrashIcon() -> Element {

@@ -3,12 +3,12 @@
 use crate::auth::{IdToken, Identity, Session};
 use dioxus::prelude::*;
 use knife_core::input::{
-    DependencyInput, IngredientPatch, LabelPatch, NewIngredient, NewRecipe, RecipePatch,
-    RequirementInput,
+    DependencyInput, IngredientPatch, LabelPatch, MemberPatch, NewIngredient, NewMember, NewRecipe,
+    RecipePatch, RequirementInput,
 };
 use knife_core::{
-    Ingredient, IngredientDetails, IngredientId, Label, Recipe, RecipeDetails, RecipeId,
-    RecipeListing, Summary,
+    Ingredient, IngredientDetails, IngredientId, Label, MemberListing, Recipe, RecipeDetails,
+    RecipeId, RecipeListing, Summary, UserId,
 };
 use reqwest::{Method, Url};
 use serde::de::DeserializeOwned;
@@ -86,6 +86,8 @@ pub struct Me {
     pub email: Option<String>,
     /// May change the recipe book; other members can only read it.
     pub editor: bool,
+    /// May manage members.
+    pub admin: bool,
 }
 
 /// Shared through the Dioxus context; cheap to clone.
@@ -448,6 +450,27 @@ impl Api {
         };
         Ok(into)
     }
+
+    // --- Members -----------------------------------------------------------
+
+    pub async fn members(&self) -> Result<Vec<MemberListing>> {
+        self.get(&["members"], &[]).await
+    }
+
+    pub async fn add_member(&self, input: &NewMember) -> Result<MemberListing> {
+        input.validate()?;
+        self.write(Method::POST, &["members"], input).await
+    }
+
+    pub async fn update_member(&self, uid: &UserId, patch: &MemberPatch) -> Result<MemberListing> {
+        patch.validate()?;
+        self.write(Method::PATCH, &["members", &uid.0], patch).await
+    }
+
+    /// Remove a member and delete their account.
+    pub async fn remove_member(&self, uid: &UserId) -> Result<()> {
+        self.delete(&["members", &uid.0]).await
+    }
 }
 
 /// Read a JSON body. A body that does not match `T`, as from a server older
@@ -480,4 +503,9 @@ pub fn use_me() -> Option<Me> {
 /// so that editing controls never show to read-only members.
 pub fn use_editor() -> bool {
     use_me().is_some_and(|me| me.editor)
+}
+
+/// Whether the signed-in user may manage members. False until known.
+pub fn use_admin() -> bool {
+    use_me().is_some_and(|me| me.admin)
 }

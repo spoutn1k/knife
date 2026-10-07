@@ -1,4 +1,5 @@
 use firestore::FirestoreDb;
+use knife_server::accounts::Accounts;
 use knife_server::auth::Verifier;
 use knife_server::members::Members;
 use knife_server::store::Store;
@@ -17,11 +18,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::var("GOOGLE_CLOUD_PROJECT").unwrap_or_else(|_| DEFAULT_PROJECT.into());
 
     // Same variable the Firebase SDKs use to detect the Auth emulator.
-    let verifier = if std::env::var_os("FIREBASE_AUTH_EMULATOR_HOST").is_some() {
-        tracing::warn!("FIREBASE_AUTH_EMULATOR_HOST is set: accepting unsigned tokens");
-        Verifier::emulator(&project_id)
-    } else {
-        Verifier::google(&project_id)
+    let (verifier, accounts) = match std::env::var("FIREBASE_AUTH_EMULATOR_HOST") {
+        Ok(host) => {
+            tracing::warn!("FIREBASE_AUTH_EMULATOR_HOST is set: accepting unsigned tokens");
+            (
+                Verifier::emulator(&project_id),
+                Accounts::emulator(&project_id, &host),
+            )
+        }
+        Err(_) => (Verifier::google(&project_id), Accounts::google(&project_id)),
     };
 
     // Uses FIRESTORE_EMULATOR_HOST when set, Application Default Credentials
@@ -39,6 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth = Auth {
         verifier,
         members: Members::firestore(db.clone()),
+        accounts,
     };
 
     tracing::info!("serving {project_id} on {}", listener.local_addr()?);

@@ -1,11 +1,14 @@
 //! HTTP API for knife, a shared family recipe book.
 
+pub mod accounts;
+mod admin;
 pub mod auth;
 mod error;
 pub mod members;
 mod routes;
 pub mod store;
 
+use accounts::Accounts;
 use auth::{CurrentUser, TokenError, Verifier};
 use axum::extract::{Request, State};
 use axum::http::{Method, header};
@@ -14,34 +17,44 @@ use axum::response::Response;
 use axum::routing::get;
 use axum::{Extension, Json, Router};
 pub use error::ApiError;
-use members::Members;
+use members::{Member, Members};
 use serde_json::{Value, json};
 use std::sync::Arc;
 use store::Store;
 
-/// Who may use the API.
+/// Who may use the API, and their accounts.
 pub struct Auth {
     pub verifier: Verifier,
     pub members: Members,
+    pub accounts: Accounts,
 }
 
 pub fn app(auth: Auth, store: Store) -> Router {
-    let api = routes::router(Arc::new(store)).route("/me", get(me));
+    let auth = Arc::new(auth);
+    api(
+        routes::router(Arc::new(store)),
+        admin::router(auth.clone()),
+        auth,
+    )
+}
+
+/// The recipe book, which only editors change, and member management, which
+/// only admins see, both for members only.
+fn api(book: Router, admin: Router, auth: Arc<Auth>) -> Router {
+    let members_only = Router::new()
+        .merge(book.route_layer(middleware::from_fn(editors_write)))
+        .merge(admin.route_layer(middleware::from_fn(admins_only)))
+        .route("/me", get(me))
+        .route_layer(middleware::from_fn_with_state(auth, require_member));
 
     let api = Router::new()
         .route("/health", get(|| async { "ok" }))
-        .merge(members_only(api, Arc::new(auth)));
-
+        .merge(members_only);
     Router::new().nest("/api", api)
 }
 
-fn members_only(router: Router, auth: Arc<Auth>) -> Router {
-    router.route_layer(middleware::from_fn_with_state(auth, require_member))
-}
-
-/// Reject requests without a valid ID token from a family member, and changes
-/// from members who are not editors. Makes the [`CurrentUser`] and their
-/// [`members::Member`] record available to handlers.
+/// Reject requests without a valid ID token from a family member. Makes the
+/// [`CurrentUser`] and their [`Member`] record available to handlers.
 async fn require_member(
     State(state): State<Arc<Auth>>,
     mut request: Request,
@@ -66,59 +79,84 @@ async fn require_member(
         .map_err(ApiError::internal)?
         .ok_or_else(|| ApiError::forbidden("not a member of this recipe book"))?;
 
-    // Every route that changes the recipe book uses a non-safe method.
+    request.extensions_mut().insert(user);
+    request.extensions_mut().insert(member);
+    Ok(next.run(request).await)
+}
+
+/// Reject changes from members who are not editors. Every route that changes
+/// the recipe book uses a non-safe method.
+async fn editors_write(
+    Extension(member): Extension<Member>,
+    request: Request,
+    next: Next,
+) -> Result<Response, ApiError> {
     let reads = matches!(*request.method(), Method::GET | Method::HEAD);
     if !reads && !member.editor {
         return Err(ApiError::forbidden(
             "this account can only read the recipe book",
         ));
     }
+    Ok(next.run(request).await)
+}
 
-    request.extensions_mut().insert(user);
-    request.extensions_mut().insert(member);
+async fn admins_only(
+    Extension(member): Extension<Member>,
+    request: Request,
+    next: Next,
+) -> Result<Response, ApiError> {
+    if !member.admin {
+        return Err(ApiError::forbidden("only admins manage members"));
+    }
     Ok(next.run(request).await)
 }
 
 async fn me(
     Extension(user): Extension<CurrentUser>,
-    Extension(member): Extension<members::Member>,
+    Extension(member): Extension<Member>,
 ) -> Json<Value> {
-    Json(json!({ "uid": user.uid, "email": user.email, "editor": member.editor }))
+    Json(json!({
+        "uid": user.uid,
+        "email": user.email,
+        "editor": member.editor,
+        "admin": member.admin,
+    }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::auth::tests::{claims, sign, test_verifier};
+    use crate::auth::tests::{PROJECT, claims, sign, test_verifier};
     use axum::body::{Body, to_bytes};
     use axum::http::{Request, StatusCode};
     use knife_core::UserId;
-    use members::Member;
-    use std::collections::HashMap;
     use tower::ServiceExt;
 
-    /// The auth layer around `/api/me`, without storage.
+    /// The auth layers, around stand-ins for the recipe book at `/api/book`
+    /// and member management at `/api/admin`, without storage.
     fn test_app() -> Router {
         let auth = Auth {
             verifier: test_verifier(),
-            members: Members::Fixed(HashMap::from([
-                (UserId::from("alice"), member(true)),
-                (UserId::from("bob"), member(false)),
-            ])),
+            members: Members::fixed([
+                (UserId::from("alice"), member(true, true)),
+                (UserId::from("bob"), member(false, false)),
+            ]),
+            // Never called.
+            accounts: Accounts::emulator(PROJECT, "127.0.0.1:1"),
         };
-        let api = Router::new()
-            .route("/health", get(|| async { "ok" }))
-            .merge(members_only(
-                Router::new().route("/me", get(me).post(|| async { "{}" })),
-                Arc::new(auth),
-            ));
-        Router::new().nest("/api", api)
+        let ok = || async { "{}" };
+        api(
+            Router::new().route("/book", get(ok).post(ok)),
+            Router::new().route("/admin", get(ok)),
+            Arc::new(auth),
+        )
     }
 
-    fn member(editor: bool) -> Member {
+    fn member(editor: bool, admin: bool) -> Member {
         Member {
             display_name: "Test".into(),
             editor,
+            admin,
         }
     }
 
@@ -186,21 +224,36 @@ mod tests {
         let (status, body) = get_me(Some(&bob)).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["editor"], false);
+        assert_eq!(body["admin"], false);
 
-        let (status, _) = send(Request::post("/api/me"), Some(&bob)).await;
+        let (status, _) = send(Request::get("/api/book"), Some(&bob)).await;
+        assert_eq!(status, StatusCode::OK);
+        let (status, _) = send(Request::post("/api/book"), Some(&bob)).await;
         assert_eq!(status, StatusCode::FORBIDDEN);
     }
 
     #[tokio::test]
     async fn editors_can_write() {
         let alice = sign(&claims("alice"), "test-key");
-        let (status, _) = send(Request::post("/api/me"), Some(&alice)).await;
+        let (status, _) = send(Request::post("/api/book"), Some(&alice)).await;
         assert_eq!(status, StatusCode::OK);
     }
 
+    #[tokio::test]
+    async fn only_admins_manage_members() {
+        let alice = sign(&claims("alice"), "test-key");
+        let (status, _) = send(Request::get("/api/admin"), Some(&alice)).await;
+        assert_eq!(status, StatusCode::OK);
+
+        let bob = sign(&claims("bob"), "test-key");
+        let (status, _) = send(Request::get("/api/admin"), Some(&bob)).await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+    }
+
     #[test]
-    fn editor_defaults_to_false() {
+    fn rights_default_to_none() {
         let member: Member = serde_json::from_value(json!({ "display_name": "Bob" })).unwrap();
         assert!(!member.editor);
+        assert!(!member.admin);
     }
 }

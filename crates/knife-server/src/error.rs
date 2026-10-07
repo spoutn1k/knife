@@ -1,3 +1,4 @@
+use crate::accounts::AccountError;
 use crate::store::StoreError;
 use axum::extract::rejection::{JsonRejection, PathRejection, QueryRejection};
 use axum::http::{StatusCode, header};
@@ -56,6 +57,26 @@ impl From<StoreError> for ApiError {
             | StoreError::Firestore(_)
             | StoreError::Cache(_) => Self::internal(err),
             StoreError::Rule(_) => Self::new(StatusCode::BAD_REQUEST, err.to_string()),
+        }
+    }
+}
+
+impl From<knife_core::Error> for ApiError {
+    fn from(err: knife_core::Error) -> Self {
+        StoreError::Rule(err).into()
+    }
+}
+
+impl From<AccountError> for ApiError {
+    fn from(err: AccountError) -> Self {
+        match err.code() {
+            Some("EMAIL_EXISTS") => {
+                Self::new(StatusCode::CONFLICT, "an account already uses this email")
+            }
+            Some("INVALID_EMAIL") => Self::new(StatusCode::BAD_REQUEST, "invalid email address"),
+            Some("WEAK_PASSWORD") => Self::new(StatusCode::BAD_REQUEST, "password is too weak"),
+            Some(_) => Self::new(StatusCode::BAD_REQUEST, err.to_string()),
+            None => Self::internal(err),
         }
     }
 }

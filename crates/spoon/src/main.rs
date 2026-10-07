@@ -18,8 +18,8 @@ use std::convert::Infallible;
 use std::fmt;
 use std::str::FromStr;
 use views::{
-    EditRecipe, Home, IngredientList, IngredientPage, LabelList, NotFound, RecipeList, RecipePage,
-    SignIn,
+    EditRecipe, Home, IngredientList, IngredientPage, LabelList, MemberList, NotFound, RecipeList,
+    RecipePage, SignIn,
 };
 
 pub use api::Error;
@@ -47,6 +47,8 @@ pub enum Route {
         IngredientPage { id: String },
         #[route("/labels")]
         LabelList {},
+        #[route("/members")]
+        MemberList {},
         #[route("/:..segments")]
         NotFound { segments: Vec<String> },
 }
@@ -188,6 +190,7 @@ fn Shell() -> Element {
         }
     });
     use_context_provider(|| me);
+    let admin = matches!(&*me.read(), Some(Some(Ok(me))) if me.admin);
 
     if session.read().is_none() {
         return rsx! { SignIn {} };
@@ -221,6 +224,9 @@ fn Shell() -> Element {
                     Link { to: Route::RecipeList { labels: LabelSet::default(), diets: DietSet::default() }, active_class: "active", "Recipes" }
                     Link { to: Route::IngredientList {}, active_class: "active", "Ingredients" }
                     Link { to: Route::LabelList {}, active_class: "active", "Labels" }
+                    if admin {
+                        Link { to: Route::MemberList {}, active_class: "active", "Members" }
+                    }
                 }
                 button { class: "link", onclick: move |_| api.sign_out(), "Sign out" }
             }
