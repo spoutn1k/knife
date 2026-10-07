@@ -1,14 +1,14 @@
-//! The recipe list, and the page to create a recipe.
+//! The recipe list, and the dialog to create a recipe.
 
 use crate::api::use_api;
 use crate::components::{
     Diet, DietIcon, DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, SortColumn,
-    SortHeader, fuzzy_filter, sort_rows, tint,
+    SortHeader, fuzzy_filter, sort_rows, tint, use_mutation,
 };
-use crate::views::edit_recipe::RecipeForm;
 use crate::views::recipe::use_label_names;
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
+use knife_core::input::NewRecipe as NewRecipeInput;
 use knife_core::{Label, RecipeId, RecipeListing, Summary, simplify};
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -75,7 +75,7 @@ pub fn RecipeList(labels: LabelSet, diets: DietSet) -> Element {
     rsx! {
         div { class: "title-row",
             h1 { "Recipes" }
-            Link { class: "button", to: Route::NewRecipe {}, "New recipe" }
+            NewRecipeButton {}
         }
         div { class: "filters",
             div { class: "filters-head",
@@ -315,11 +315,102 @@ pub fn RecipeLinks(recipes: Vec<Summary<RecipeId>>) -> Element {
     }
 }
 
+/// A "New recipe" button, opening a dialog asking for its name. The recipe
+/// is then created and its edit page opened, to fill in the rest.
 #[component]
-pub fn NewRecipe() -> Element {
+pub fn NewRecipeButton() -> Element {
+    let mut open = use_signal(|| false);
     rsx! {
-        h1 { "New recipe" }
-        p { class: "muted", "Ingredients and tags come next, once the recipe is created." }
-        RecipeForm { recipe: None }
+        button { r#type: "button", onclick: move |_| open.set(true), "New recipe" }
+        if open() {
+            NewRecipeDialog { on_close: move |_| open.set(false) }
+        }
+    }
+}
+
+#[component]
+fn NewRecipeDialog(on_close: EventHandler<()>) -> Element {
+    let api = use_api();
+    let navigator = use_navigator();
+    let mutation = use_mutation();
+    let mut name = use_signal(String::new);
+    // A recipe holding the name, after a conflict.
+    let mut taken_by = use_signal(|| None::<Summary<RecipeId>>);
+
+    let submit = move |e: FormEvent| {
+        e.prevent_default();
+        let api = api.clone();
+        taken_by.set(None);
+        mutation.run(async move {
+            let input = NewRecipeInput {
+                name: name(),
+                author: String::new(),
+                directions: String::new(),
+                information: String::new(),
+            };
+            match api.create_recipe(&input).await {
+                Ok(recipe) => {
+                    navigator.push(Route::EditRecipe { id: recipe.id.0 });
+                    Ok(())
+                }
+                Err(e) => {
+                    taken_by.set(e.existing());
+                    Err(e)
+                }
+            }
+        });
+    };
+
+    rsx! {
+        div {
+            class: "dialog-backdrop",
+            onclick: move |_| on_close(()),
+            onkeydown: move |e| {
+                if e.key() == Key::Escape {
+                    on_close(());
+                }
+            },
+            form {
+                class: "dialog compact",
+                role: "dialog",
+                "aria-modal": "true",
+                "aria-label": "New recipe",
+                onclick: move |e| e.stop_propagation(),
+                onsubmit: submit,
+                div { class: "dialog-head",
+                    h2 { "New recipe" }
+                    button {
+                        r#type: "button",
+                        class: "remove",
+                        title: "Close",
+                        onclick: move |_| on_close(()),
+                        "×"
+                    }
+                }
+                label {
+                    "Name"
+                    input {
+                        required: true,
+                        value: "{name}",
+                        oninput: move |e| name.set(e.value()),
+                        onmounted: move |e| async move {
+                            _ = e.set_focus(true).await;
+                        },
+                    }
+                }
+                {mutation.banner()}
+                if let Some(existing) = taken_by() {
+                    p {
+                        "See "
+                        Link { to: Route::RecipePage { id: existing.id.0 }, "{existing.name}" }
+                        "."
+                    }
+                }
+                div { class: "row",
+                    button { r#type: "submit", disabled: *mutation.busy.read(), "Create" }
+                    button { r#type: "button", class: "secondary", onclick: move |_| on_close(()), "Cancel" }
+                }
+            }
+        }
     }
 }

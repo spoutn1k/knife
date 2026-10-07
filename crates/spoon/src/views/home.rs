@@ -5,6 +5,7 @@ use crate::api::use_api;
 use crate::components::{
     DietIcons, ErrorBanner, Highlight, Loading, Match, SearchBox, fnv, fuzzy_filter, tint,
 };
+use crate::views::recipes::NewRecipeButton;
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
 use knife_core::{Label, RecipeListing, simplify};
@@ -68,7 +69,7 @@ pub fn Home() -> Element {
                 h1 { "What are we cooking?" }
                 SearchBox { value: search, placeholder }
             }
-            Link { class: "button", to: Route::NewRecipe {}, "New recipe" }
+            NewRecipeButton {}
         }
         match (&*recipes.read(), &*labels.read()) {
             (Some(Err(e)), _) | (_, Some(Err(e))) => rsx! { ErrorBanner { message: e.to_string() } },

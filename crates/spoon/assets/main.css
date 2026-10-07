@@ -365,6 +365,8 @@ button.picker { text-align: left; overflow: hidden; text-overflow: ellipsis; }
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 1rem;
 }
+/* Dialogs holding a short form fit it. */
+.dialog.compact { height: auto; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; }
 .dialog-head h2 { margin: 0; }
 .dialog ul.choices { flex: 1; min-height: 0; list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -388,9 +390,9 @@ mark.match { background: var(--accent-soft); color: inherit; border-radius: 2px;
 .hero {
   display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; justify-content: space-between;
   margin: 0 0 2rem; padding: 2.25rem 0 1.75rem;
-  background: var(--accent-soft);
-  box-shadow: 0 0 0 100vmax var(--accent-soft);
-  clip-path: inset(0 -100vmax);
+  /* Full width: the border image paints 100vmax past each side. Unlike a
+     clip-path, it does not clip what the hero holds, such as dialogs. */
+  border-image: linear-gradient(var(--accent-soft), var(--accent-soft)) fill 0 / 0 / 0 100vmax;
 }
 /* Flush with the header, unless a banner comes first. */
 main > .hero:first-child { margin-top: -1rem; }

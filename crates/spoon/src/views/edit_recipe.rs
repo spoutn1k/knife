@@ -10,9 +10,7 @@ use crate::views::recipe::{by_group, use_label_names};
 use crate::views::recipes::RecipeLinks;
 use crate::{DietSet, LabelSet, Route};
 use dioxus::prelude::*;
-use knife_core::input::{
-    DependencyInput, NewIngredient, NewRecipe as NewRecipeInput, RecipePatch, RequirementInput,
-};
+use knife_core::input::{DependencyInput, NewIngredient, RecipePatch, RequirementInput};
 use knife_core::{
     Classification, Dependency, IngredientId, Recipe, RecipeId, Requirement, Summary, simplify,
 };
@@ -84,7 +82,7 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
         if !used_by.read().is_empty() {
             RecipeLinks { recipes: used_by() }
         }
-        RecipeForm { recipe: Some(recipe.clone()), on_saved }
+        RecipeForm { recipe: recipe.clone(), on_saved }
         div { class: "columns",
             section {
                 h2 { "Ingredients" }
@@ -100,31 +98,22 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     }
 }
 
-/// The text fields of a recipe. A new recipe opens its edit page once
-/// created; an existing one stays there and passes the saved recipe to
-/// `on_saved`.
+/// The text fields of a recipe, passing the saved recipe to `on_saved`.
 #[component]
-pub(super) fn RecipeForm(
-    recipe: Option<Recipe>,
-    on_saved: Option<EventHandler<Recipe>>,
-) -> Element {
+fn RecipeForm(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     let api = use_api();
-    let navigator = use_navigator();
     let mutation = use_mutation();
-    let field = |get: fn(&Recipe) -> &String| recipe.as_ref().map(get).cloned().unwrap_or_default();
-    let mut name = use_signal(|| field(|r| &r.name));
-    let mut author = use_signal(|| field(|r| &r.author));
-    let mut directions = use_signal(|| field(|r| &r.directions));
-    let mut information = use_signal(|| field(|r| &r.information));
+    let mut name = use_signal(|| recipe.name.clone());
+    let mut author = use_signal(|| recipe.author.clone());
+    let mut directions = use_signal(|| recipe.directions.clone());
+    let mut information = use_signal(|| recipe.information.clone());
     // A recipe holding the name, after a conflict on save.
     let mut taken_by = use_signal(|| None::<Summary<RecipeId>>);
 
-    let dirty = recipe.as_ref().is_none_or(|r| {
-        name() != r.name
-            || author() != r.author
-            || directions() != r.directions
-            || information() != r.information
-    });
+    let dirty = name() != recipe.name
+        || author() != recipe.author
+        || directions() != recipe.directions
+        || information() != recipe.information;
 
     let original = recipe.clone();
     let submit = move |e: FormEvent| {
@@ -133,39 +122,21 @@ pub(super) fn RecipeForm(
         let original = original.clone();
         taken_by.set(None);
         mutation.run(async move {
-            let saved = match &original {
-                None => {
-                    let input = NewRecipeInput {
-                        name: name(),
-                        author: author(),
-                        directions: directions(),
-                        information: information(),
-                    };
-                    api.create_recipe(&input).await
-                }
-                Some(original) => {
-                    let changed = |new: String, old: &String| (new != *old).then_some(new);
-                    let patch = RecipePatch {
-                        name: changed(name(), &original.name),
-                        author: changed(author(), &original.author),
-                        directions: changed(directions(), &original.directions),
-                        information: changed(information(), &original.information),
-                    };
-                    if patch == RecipePatch::default() {
-                        Ok(original.clone())
-                    } else {
-                        api.update_recipe(&original.id, &patch).await
-                    }
-                }
+            let changed = |new: String, old: &String| (new != *old).then_some(new);
+            let patch = RecipePatch {
+                name: changed(name(), &original.name),
+                author: changed(author(), &original.author),
+                directions: changed(directions(), &original.directions),
+                information: changed(information(), &original.information),
+            };
+            let saved = if patch == RecipePatch::default() {
+                Ok(original.clone())
+            } else {
+                api.update_recipe(&original.id, &patch).await
             };
             match saved {
                 Ok(recipe) => {
-                    match on_saved {
-                        Some(on_saved) => on_saved(recipe),
-                        None => {
-                            navigator.push(Route::EditRecipe { id: recipe.id.0 });
-                        }
-                    }
+                    on_saved(recipe);
                     Ok(())
                 }
                 Err(e) => {
@@ -178,12 +149,10 @@ pub(super) fn RecipeForm(
 
     let original = recipe.clone();
     let revert = move |_| {
-        if let Some(r) = &original {
-            name.set(r.name.clone());
-            author.set(r.author.clone());
-            directions.set(r.directions.clone());
-            information.set(r.information.clone());
-        }
+        name.set(original.name.clone());
+        author.set(original.author.clone());
+        directions.set(original.directions.clone());
+        information.set(original.information.clone());
     };
 
     rsx! {
@@ -236,15 +205,10 @@ pub(super) fn RecipeForm(
                 }
             }
             div { class: "row",
-                if recipe.is_some() {
-                    button { r#type: "submit", disabled: !dirty || *mutation.busy.read(), "Save" }
-                    if dirty {
-                        button { r#type: "button", class: "secondary", onclick: revert, "Revert" }
-                        span { class: "muted", "Unsaved changes" }
-                    }
-                } else {
-                    button { r#type: "submit", disabled: *mutation.busy.read(), "Create" }
-                    Link { class: "button secondary", to: Route::RecipeList { labels: LabelSet::default(), diets: DietSet::default() }, "Cancel" }
+                button { r#type: "submit", disabled: !dirty || *mutation.busy.read(), "Save" }
+                if dirty {
+                    button { r#type: "button", class: "secondary", onclick: revert, "Revert" }
+                    span { class: "muted", "Unsaved changes" }
                 }
             }
         }

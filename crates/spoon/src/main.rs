@@ -18,8 +18,8 @@ use std::convert::Infallible;
 use std::fmt;
 use std::str::FromStr;
 use views::{
-    EditRecipe, Home, IngredientList, IngredientPage, LabelList, NewRecipe, NotFound, RecipeList,
-    RecipePage, SignIn,
+    EditRecipe, Home, IngredientList, IngredientPage, LabelList, NotFound, RecipeList, RecipePage,
+    SignIn,
 };
 
 pub use api::Error;
@@ -37,8 +37,6 @@ pub enum Route {
         /// `diets=vegan,gluten-free` only those fitting all those diets.
         #[route("/recipes?:labels&:diets")]
         RecipeList { labels: LabelSet, diets: DietSet },
-        #[route("/recipes/new")]
-        NewRecipe {},
         #[route("/recipes/:id")]
         RecipePage { id: String },
         #[route("/recipes/:id/edit")]

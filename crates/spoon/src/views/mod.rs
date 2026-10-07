@@ -13,7 +13,7 @@ pub use home::Home;
 pub use ingredients::{IngredientList, IngredientPage};
 pub use labels::LabelList;
 pub use recipe::RecipePage;
-pub use recipes::{NewRecipe, RecipeList};
+pub use recipes::RecipeList;
 pub use sign_in::SignIn;
 
 use crate::{DietSet, LabelSet, Route};
