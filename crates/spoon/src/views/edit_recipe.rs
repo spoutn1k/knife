@@ -1,5 +1,6 @@
 //! A recipe's edit page: its text, then its tags, ingredients and the
-//! recipes it uses. Each change to those is saved as it is made.
+//! recipes it uses. Each change is saved as it is made, text once typing
+//! pauses.
 
 use crate::api::{Api, use_api, use_me};
 use crate::components::{
@@ -9,7 +10,9 @@ use crate::components::{
 use crate::views::recipe::{RecipePage, by_group, use_label_names};
 use crate::views::recipes::RecipeLinks;
 use crate::{DietSet, LabelSet, Route};
+use dioxus::core::{Task, spawn_forever};
 use dioxus::prelude::*;
+use gloo_timers::future::TimeoutFuture;
 use knife_core::input::{DependencyInput, NewIngredient, RecipePatch, RequirementInput};
 use knife_core::{
     Classification, Dependency, IngredientId, Recipe, RecipeId, Requirement, Summary, simplify,
@@ -55,6 +58,8 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     let delete = use_mutation();
     // Recipes using this one, after a refused delete.
     let mut used_by = use_signal(Vec::<Summary<RecipeId>>::new);
+    // Whether the text fields have changes not saved yet.
+    let pending = use_signal(|| false);
 
     let id = recipe.id.clone();
     let done = move |_| {
@@ -92,6 +97,12 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
         div { class: "title-row",
             h1 { "Edit {recipe.name}" }
             div { class: "row",
+                // Hidden rather than removed, so the buttons do not move.
+                span {
+                    class: "muted",
+                    style: if !pending() { "visibility: hidden" },
+                    "Saving…"
+                }
                 button { r#type: "button", onclick: done, "Done" }
                 button { class: "danger", disabled: *delete.busy.read(), onclick: delete_recipe, "Delete" }
             }
@@ -100,7 +111,7 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
         if !used_by.read().is_empty() {
             RecipeLinks { recipes: used_by() }
         }
-        RecipeForm { recipe: recipe.clone(), on_saved }
+        RecipeForm { recipe: recipe.clone(), on_saved, pending }
         div { class: "columns",
             section {
                 h2 { "Ingredients" }
@@ -116,79 +127,126 @@ fn RecipeEditor(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
     }
 }
 
-/// The text fields of a recipe, passing the saved recipe to `on_saved`.
+/// How long typing must pause before the text fields are saved.
+const SAVE_DELAY_MS: u32 = 500;
+
+/// The text fields of a recipe, saved once typing pauses, passing the saved
+/// recipe to `on_saved` and whether changes are left to save to `pending`.
 #[component]
-fn RecipeForm(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
+fn RecipeForm(
+    recipe: Recipe,
+    on_saved: EventHandler<Recipe>,
+    mut pending: Signal<bool>,
+) -> Element {
     let api = use_api();
-    let mutation = use_mutation();
-    let mut name = use_signal(|| recipe.name.clone());
-    let mut author = use_signal(|| recipe.author.clone());
-    let mut directions = use_signal(|| recipe.directions.clone());
-    let mut information = use_signal(|| recipe.information.clone());
+    let name = use_signal(|| recipe.name.clone());
+    let author = use_signal(|| recipe.author.clone());
+    let directions = use_signal(|| recipe.directions.clone());
+    let information = use_signal(|| recipe.information.clone());
+    // The fields as last saved, which the next save patches.
+    let mut saved = use_signal(|| recipe.clone());
+    // The save waiting for typing to pause, if any.
+    let mut timer = use_signal(|| None::<Task>);
+    let mut saving = use_signal(|| false);
+    let mut error = use_signal(|| None::<String>);
     // A recipe holding the name, after a conflict on save.
     let mut taken_by = use_signal(|| None::<Summary<RecipeId>>);
 
-    let dirty = name() != recipe.name
-        || author() != recipe.author
-        || directions() != recipe.directions
-        || information() != recipe.information;
+    let patch = move || {
+        let saved = saved.peek();
+        let changed = |new: Signal<String>, old: &String| {
+            let new = new.peek();
+            (*new != *old).then(|| new.clone())
+        };
+        RecipePatch {
+            name: changed(name, &saved.name),
+            author: changed(author, &saved.author),
+            directions: changed(directions, &saved.directions),
+            information: changed(information, &saved.information),
+        }
+    };
 
-    let original = recipe.clone();
-    let submit = move |e: FormEvent| {
-        e.prevent_default();
+    let save = {
         let api = api.clone();
-        let original = original.clone();
-        taken_by.set(None);
-        mutation.run(async move {
-            let changed = |new: String, old: &String| (new != *old).then_some(new);
-            let patch = RecipePatch {
-                name: changed(name(), &original.name),
-                author: changed(author(), &original.author),
-                directions: changed(directions(), &original.directions),
-                information: changed(information(), &original.information),
-            };
-            let saved = if patch == RecipePatch::default() {
-                Ok(original.clone())
-            } else {
-                api.update_recipe(&original.id, &patch).await
-            };
-            match saved {
-                Ok(recipe) => {
-                    on_saved(recipe);
-                    Ok(())
+        move || {
+            let api = api.clone();
+            async move {
+                // A save already running sends what changed meanwhile.
+                if *saving.peek() {
+                    return;
                 }
-                Err(e) => {
-                    taken_by.set(e.existing());
-                    Err(e)
+                saving.set(true);
+                loop {
+                    let patch = patch();
+                    if patch == RecipePatch::default() {
+                        break;
+                    }
+                    let id = saved.peek().id.clone();
+                    match api.update_recipe(&id, &patch).await {
+                        Ok(recipe) => {
+                            error.set(None);
+                            taken_by.set(None);
+                            saved.set(recipe.clone());
+                            on_saved(recipe);
+                        }
+                        Err(e) => {
+                            taken_by.set(e.existing());
+                            error.set(Some(e.to_string()));
+                            break;
+                        }
+                    }
+                    // Typing meanwhile: its own timer saves it.
+                    if timer.peek().is_some() {
+                        break;
+                    }
                 }
+                saving.set(false);
             }
-        });
+        }
     };
 
-    let original = recipe.clone();
-    let revert = move |_| {
-        name.set(original.name.clone());
-        author.set(original.author.clone());
-        directions.set(original.directions.clone());
-        information.set(original.information.clone());
+    let edit = move |mut field: Signal<String>| {
+        let save = save.clone();
+        move |e: FormEvent| {
+            field.set(e.value());
+            if let Some(task) = timer.take() {
+                task.cancel();
+            }
+            let save = save.clone();
+            timer.set(Some(spawn(async move {
+                TimeoutFuture::new(SAVE_DELAY_MS).await;
+                timer.set(None);
+                save().await;
+            })));
+        }
     };
+
+    // Leaving the page cancels its tasks: send what is left unsaved, from
+    // outside the page. It overlaps any save cut short, which is harmless.
+    use_drop(move || {
+        let patch = patch();
+        if patch != RecipePatch::default() {
+            let id = saved.peek().id.clone();
+            spawn_forever(async move {
+                let _ = api.update_recipe(&id, &patch).await;
+            });
+        }
+    });
+
+    use_effect(move || pending.set(timer().is_some() || saving()));
 
     rsx! {
-        form { class: "card stack", onsubmit: submit,
+        div { class: "card stack",
             label {
                 "Name"
-                input {
-                    required: true,
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value()),
-                }
+                input { required: true, value: "{name}", oninput: edit(name) }
             }
             label {
                 "From"
                 input {
                     placeholder: "Grandma, a book, a website…",
                     value: "{author}",
-                    oninput: move |e| author.set(e.value()),
+                    oninput: edit(author),
                 }
             }
             label {
@@ -199,7 +257,7 @@ fn RecipeForm(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
                 textarea {
                     rows: 12,
                     value: "{directions}",
-                    oninput: move |e| directions.set(e.value()),
+                    oninput: edit(directions),
                 }
             }
             label {
@@ -211,22 +269,22 @@ fn RecipeForm(recipe: Recipe, on_saved: EventHandler<Recipe>) -> Element {
                     rows: 4,
                     placeholder: "Servings, timing, variations…",
                     value: "{information}",
-                    oninput: move |e| information.set(e.value()),
+                    oninput: edit(information),
                 }
             }
-            {mutation.banner()}
+            if let Some(message) = error() {
+                ErrorBanner { message }
+            }
             if let Some(existing) = taken_by() {
                 p {
                     "See "
-                    Link { to: Route::RecipePage { id: existing.id.0 }, "{existing.name}" }
+                    Link {
+                        to: Route::RecipePage {
+                            id: existing.id.0,
+                        },
+                        "{existing.name}"
+                    }
                     "."
-                }
-            }
-            div { class: "row",
-                button { r#type: "submit", disabled: !dirty || *mutation.busy.read(), "Save" }
-                if dirty {
-                    button { r#type: "button", class: "secondary", onclick: revert, "Revert" }
-                    span { class: "muted", "Unsaved changes" }
                 }
             }
         }
